@@ -30,8 +30,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 
-from .evidence import (ALPHA, BASE_BAR, Q, T_STAR, ebh, half_width, log_e_one_sided, max_versions_passing,
-                       mixing_rho2, normal_tail, serial_factor, trades_needed, wilson_bounds_count, z_equivalent)
+from .evidence import (ALPHA, BASE_BAR, Q, T_STAR, ebh, log_e_record, max_versions_passing, mixing_rho2,
+                       normal_tail, range_of, record_of, skew_shift, trades_needed, wilson_bounds_count, z_equivalent)
 from .compare import compare_runs
 from .readers import ReadResult, Trades, number, read_any
 from .words import count, day, fmt, iso_day, join_and, one_in, rnd, round_list, share
@@ -50,6 +50,7 @@ CHANGELOG = [
 ]
 
 MIN_TRADES = 30
+MIN_LOSSES = 5            # "real edge" needs this many losing trades: an unseen loss has an unknown size
 FEW_TRADES = 100
 RECENT = 30
 FADED_WINDOWS = (30, 60)
@@ -135,12 +136,6 @@ def make_settings(variants_tried: Any = None, benchmark_return_pct: Any = None, 
 
 
 # ── small statistics ──────────────────────────────────────────────────────────
-
-def _sd(x: np.ndarray) -> float:
-    sd = float(np.std(x, ddof=1)) if len(x) > 1 else float("nan")
-    scale = float(np.mean(np.abs(x))) if len(x) else 0.0
-    return max(sd, 1e-9 * (scale + 1.0)) if math.isfinite(sd) else sd
-
 
 def _drawdown(x: np.ndarray) -> Tuple[float, float, int]:
     """(worst drop from a peak, current drop, trades since the last peak)."""
@@ -291,29 +286,23 @@ def _measure(st: Trades, family_bar: float) -> Dict[str, Any]:
     m: Dict[str, Any] = {"n": n}
     if n == 0:
         return m
-    total = float(x.sum())
-    sd = _sd(x)
-    factor = serial_factor(x)
-    sd_eff = sd * math.sqrt(factor) if math.isfinite(sd) else sd
-    rho_family, rho_alone = mixing_rho2(family_bar), mixing_rho2(BASE_BAR)
-    m.update(mean=total / n, total=total, sd=sd, sd_eff=sd_eff, serial_factor=factor,
-             rho_family=rho_family, family_bar=family_bar)
-    if n >= 2 and math.isfinite(sd_eff):
-        h95 = half_width(n, sd_eff, BASE_BAR, rho_alone)
-        hadj = half_width(n, sd_eff, family_bar, rho_family)
-        m.update(lower=m["mean"] - h95, upper=m["mean"] + h95, adj_lower=m["mean"] - hadj,
-                 adj_upper=m["mean"] + hadj)
-    ok = n >= MIN_TRADES and math.isfinite(sd_eff)
-    m["log_e_up"] = log_e_one_sided(n, total, sd_eff, rho_family, +1) if ok else 0.0
-    m["log_e_down"] = log_e_one_sided(n, total, sd_eff, rho_family, -1) if ok else 0.0
+    rec = record_of(x)
+    rho_family = mixing_rho2(family_bar)
+    m.update(mean=rec.mean, total=rec.total, sd_eff=rec.sd, serial_factor=rec.serial, skew=rec.skew,
+             record=rec, rho_family=rho_family, family_bar=family_bar)
+    if n >= 2 and math.isfinite(rec.sd):
+        m["lower"], m["upper"] = range_of(rec, BASE_BAR)
+        m["adj_lower"], m["adj_upper"] = range_of(rec, family_bar, rho_family)
+    ok = n >= MIN_TRADES and math.isfinite(rec.sd)
+    m["log_e_up"] = log_e_record(rec, family_bar, +1, rho_family) if ok else 0.0
+    m["log_e_down"] = log_e_record(rec, family_bar, -1, rho_family) if ok else 0.0
     return m
 
 
 def _passes_alone(x: np.ndarray, bar: float) -> bool:
     if len(x) < MIN_TRADES:
         return False
-    sd = _sd(x) * math.sqrt(serial_factor(x))
-    return log_e_one_sided(len(x), float(x.sum()), sd, mixing_rho2(bar), +1) >= math.log(bar)
+    return log_e_record(record_of(x), bar, +1) >= math.log(bar)
 
 
 def _market(st: Trades, settings: Settings, single_symbol: bool) -> Optional[Dict[str, Any]]:
@@ -553,7 +542,7 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
     # recent trades: broken, or a bad streak?
     recent = None
     stretch = None
-    if n >= 2 * RECENT:
+    if n >= 2 * RECENT and details:
         earlier, latest = x[:-RECENT], x[-RECENT:]
         stretch = _stretch(earlier, latest, "stretch30")
         recent = _recent_card(stretch, earlier, latest, unit, st)
@@ -570,11 +559,13 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
                 faded, faded_window, faded_p = True, w, s["p_low"]
 
     # the verdict
-    downgraded = False
+    downgraded = few_losses = False
     if n < MIN_TRADES:
         code = "too_early"
     elif faded:
         code = "faded"
+    elif passes_up and len(losses) < MIN_LOSSES:
+        code, few_losses = "cant_tell", True
     elif passes_up:
         code = "real_edge"
         if market_adjusted is not None and not market_adjusted["passes"]:
@@ -588,9 +579,9 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
     else:
         code = "no_edge"
     needed = None
-    if code == "cant_tell" and not downgraded:
-        needed = trades_needed(mean, sd_eff, n, bar, m["rho_family"])
-    survives = max_versions_passing(n, total, sd_eff, strategies=strategies) if code == "real_edge" else None
+    if code == "cant_tell" and not downgraded and not few_losses:
+        needed = trades_needed(m["record"], bar, m["rho_family"])
+    survives = max_versions_passing(m["record"], strategies=strategies) if code == "real_edge" else None
 
     # money first, percent second
     pct = st.pct if unit != "%" else None
@@ -628,7 +619,14 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
         plain += " Past results can still stop working, so keep checking new trades."
         verdict = _verdict(code, head, plain)
     elif code == "cant_tell":
-        if downgraded and market is not None:
+        if few_losses:
+            lost = len(losses)
+            few = "no losing trades" if lost == 0 else f"only {count(lost, 'losing trade')}"
+            head = f"Can't tell yet: {per}, but {few}, so nobody can tell how big a loss gets."
+            plain = (f"It won {len(wins)} of {count(n, 'trade')}, {per} on average. Strategies that win small and "
+                     "often can hide one huge loss, and with so few losses its size is unknown. A verdict needs "
+                     f"at least {MIN_LOSSES} losing trades.")
+        elif downgraded and market is not None:
             head = (f"Can't tell yet: most of the {per} looks like the market rising "
                     f"({fmt(market['hold_pct'], '%')} over the same dates).")
             plain = (f"It made {per}, but the price itself rose {fmt(market['hold_pct'], '%')} over the same dates. "
@@ -665,8 +663,13 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
         verdict["plain"] = money_card["sentence"] + " " + verdict["plain"]
 
     # numbers for the assistant
-    coin_above, fan = _coin_flips(x, fan=details and settings.include_chart) if n >= 2 else (0, [])
-    z_bar = z_equivalent(n, bar, m["rho_family"]) if n >= 2 else math.inf
+    if details:
+        coin_above, fan = _coin_flips(x, fan=settings.include_chart) if n >= 2 else (0, [])
+    else:                       # validation runs: the count from the normal approximation, no pictures
+        z_obs = total / math.sqrt(max(float(np.dot(x, x)), 1e-300))
+        coin_above, fan = int(round(COIN_FLIPS * normal_tail(z_obs))), []
+    z_bar = (z_equivalent(n, bar, m["rho_family"]) + skew_shift(m["skew"], n, bar, m["rho_family"], +1)
+             / math.sqrt(n)) if n >= 2 else math.inf
     needed_share = normal_tail(z_bar)
     coin = {"copies": COIN_FLIPS, "ended_higher": coin_above, "share": coin_above / COIN_FLIPS,
             "needed_at_most": int(math.floor(COIN_FLIPS * needed_share)),
@@ -698,7 +701,8 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
         "evidence": {"e_value": e_up if n >= MIN_TRADES else None,
                      "e_value_below": math.exp(min(m["log_e_down"], 700)) if n >= MIN_TRADES else None,
                      "bar": bar, "passes": bool(passes_up), "passes_below": bool(down and mean < 0),
-                     "versions_or_strategies": family, "serial_factor": m["serial_factor"]},
+                     "versions_or_strategies": family, "serial_factor": m["serial_factor"],
+                     "skew": m["skew"]},
         "adjusted": ({"versions_tried": versions, "strategies": strategies,
                       "range": [m.get("adj_lower"), m.get("adj_upper")], "bar": bar, "passes": bool(passes_up)}
                      if family > 1 else None),
@@ -718,10 +722,11 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
     questions += _questions(st, read, settings, code, mean, n, unit, benchmark, versions, strategies, source)
     # what would change it
     changes += _changes(code, n, mean, unit, m, needed, survives, versions, settings, benchmark, faded_window,
-                        market_adjusted, total)
+                        market_adjusted, total, few_losses)
     positive_backtest = code == "real_edge" and source != "live"
     audit = _audit_prompt(flags, st, positive_backtest, losing=code in ("losing", "no_edge"))
-    next_step = _next_step(code, n, needed, settings, source, flags, versions, strategies, fees, read, split_day)
+    next_step = _next_step(code, n, needed, settings, source, flags, versions, strategies, fees, read, split_day,
+                           few_losses)
     card.update(
         verdict=verdict, next_step=next_step, numbers=rnd(numbers), checks=checks, ask_the_user=questions,
         what_would_change_it=changes, ai_audit_prompt=audit, red_flags=[f["code"] for f in flags],
@@ -927,6 +932,13 @@ def _checks(st, read, settings, n, code, mean, unit, fees, top3, drawdown, recen
                           "Every trade pays fees twice, on the way in and out. A small edge before fees is often a "
                           "loss after them.",
                           "Check the strategy's commission setting, or tell us (fees_included)."))
+    n_losses = int((st.pnl < 0).sum())
+    if n >= MIN_TRADES and mean > 0 and n_losses < MIN_LOSSES:
+        out.append(_check("few_losses", "warn", (f"No losing trades in {count(n, 'trade')}." if n_losses == 0 else
+                                                  f"Only {count(n_losses, 'losing trade')} in {count(n, 'trade')}."),
+                          "Strategies that win small and often can hide one huge loss. Until a few losses have "
+                          "happened, nobody can tell how big they get.",
+                          "Keep trading it on paper until it has had a few losses, then check again."))
     if money_card["disagree"]:
         out.append(_check("percent_vs_money", "warn", money_card["sentence"], money_card["why"],
                           "Look at the size of each trade: the losses come from the big positions."))
@@ -1028,11 +1040,14 @@ def _questions(st, read, settings, code, mean, n, unit, benchmark, versions, str
 
 
 def _changes(code, n, mean, unit, m, needed, survives, versions, settings, benchmark, faded_window,
-             market_adjusted, total) -> List[Dict[str, Any]]:
+             market_adjusted, total, few_losses=False) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     if code == "too_early":
         out.append({"code": "more_trades", "text": f"At least {MIN_TRADES - n} more trades before any verdict."})
-    if code == "cant_tell":
+    if code == "cant_tell" and few_losses:
+        out.append({"code": "more_losses", "text": f"At least {MIN_LOSSES} losing trades. Their size decides "
+                                                   "whether the wins are worth it."})
+    elif code == "cant_tell":
         if needed:
             out.append({"code": "more_trades", "text": f"About {needed:,} more trades at this average "
                                                        f"({fmt(mean, unit)} each) would settle it."})
@@ -1072,7 +1087,7 @@ def _changes(code, n, mean, unit, m, needed, survives, versions, settings, bench
 
 
 def _next_step(code, n, needed, settings, source, flags, versions, strategies, fees, read,
-               split_day) -> Dict[str, str]:
+               split_day, few_losses=False) -> Dict[str, str]:
     fees_known = settings.fees_included
     loss_shape = {"small_wins_big_losses", "averaging_down"}
     if flags and code in ("losing", "no_edge") and {f["code"] for f in flags} & loss_shape:
@@ -1087,6 +1102,9 @@ def _next_step(code, n, needed, settings, source, flags, versions, strategies, f
     if fees_known is False and code in ("real_edge", "cant_tell"):
         return {"text": "Re-run the backtest with fees and slippage, then check again.",
                 "why": "A small edge before fees is often a loss after them."}
+    if code == "cant_tell" and few_losses:
+        return {"text": f"Keep it on paper until it has had at least {MIN_LOSSES} losing trades, then check again.",
+                "why": "The size of the losses decides whether many small wins are worth it."}
     if code in ("real_edge", "cant_tell") and not versions and strategies == 1 and source != "live":
         return {"text": "Tell your AI how many versions you tried, then check again.",
                 "why": "Trying many versions and keeping the best one makes luck look like skill."}
@@ -1099,6 +1117,9 @@ def _next_step(code, n, needed, settings, source, flags, versions, strategies, f
                     "why": "Edges fade. Checking often catches it early, and the method allows checking any time."}
         return {"text": "Paper-trade it for 30 to 50 trades, then compare those trades with this backtest.",
                 "why": "A backtest can be tuned to its own data. New trades it has never seen are the real test."}
+    if code == "cant_tell" and few_losses:
+        return {"text": f"Keep it on paper until it has had at least {MIN_LOSSES} losing trades, then check again.",
+                "why": "The size of the losses decides whether many small wins are worth it."}
     if code == "cant_tell":
         if needed:
             return {"text": f"Keep it on paper until about {needed:,} more trades, then check again.",
@@ -1184,6 +1205,9 @@ HOW_WE_KNOW = [
     "zero.",
     "The spread is the sample standard deviation, widened by a Newey-West long-run variance factor when "
     "neighbouring trades move together (never narrowed).",
+    "When losses are rarer but bigger than wins (negative skew), the bar for 'above zero' is raised by the "
+    "Edgeworth term of a studentized mean (Hall 1987), and the range is widened on that side; the same for "
+    "'below zero' and positive skew. Skew never lowers a bar.",
     "Coin-flip copies flip the sign of each trade at random: same trades, same sizes, zero edge by construction.",
     "'Faded' needs the earlier trades to pass on their own and the latest 30 or 60 trades to be worse than 99.75% of "
     "stretches resampled from the earlier trades.",

@@ -12,6 +12,13 @@ What changed here, and why:
   zero" and "the verdict is real_edge" are the same statement for a single
   strategy. The earlier version reported a two-sided Robbins-mixture range
   next to an e-value bar it did not match, so the two could disagree.
+* Records whose losses are rarer but bigger than their wins (negative skew:
+  grids, martingales, option selling) are the classic false "edge": at a few
+  dozen trades the big loss has often not happened yet. The claim "above
+  zero" must clear a bar raised by the Edgeworth term of a studentized mean
+  (Hall 1987) when the trades are skewed against it, and only then: skew is
+  never allowed to lower a bar. The same holds for "below zero" and positive
+  skew. The range is widened on the matching side.
 * The false discovery rate is q = 0.05 (it was 0.10): with both directions of
   each strategy in one family, a single strategy needs e >= 2/q = 40, which is
   exactly the 95% range clearing zero. With N versions tried the family is 2N
@@ -31,6 +38,7 @@ from __future__ import annotations
 
 import functools
 import math
+from dataclasses import dataclass
 from typing import Dict, Mapping, Optional, Set, Tuple
 
 import numpy as np
@@ -40,6 +48,8 @@ ALPHA = 0.05             # the range is a two-sided 95% range: alpha/2 on each s
 T_STAR = 100             # the mixture decides soonest around this many trades
 BASE_BAR = 2.0 / Q       # one strategy, one version: e >= 40
 SERIAL_ADJUST = True     # widen the spread when neighbouring trades move together (Newey-West)
+SKEW_ADJUST = True       # raise a claim's bar when the trades are skewed against it (Edgeworth)
+SKEW_CAP = 6.0
 
 
 def mixing_rho2(bar: float, t_star: int = T_STAR) -> float:
@@ -114,6 +124,79 @@ def normal_tail(z: float) -> float:
     return 0.5 * math.erfc(z / math.sqrt(2.0))
 
 
+@dataclass(frozen=True)
+class Record:
+    """What the evidence needs from a list of trade results."""
+    n: int
+    total: float
+    sd: float            # the effective spread: sample SD, widened for serial correlation
+    skew: float          # sample skewness (adjusted Fisher-Pearson), 0 when unknown
+    serial: float = 1.0  # the variance factor the spread was widened by
+
+    @property
+    def mean(self) -> float:
+        return self.total / self.n if self.n else float("nan")
+
+
+def sample_skew(x: "np.ndarray") -> float:
+    n = len(x)
+    if n < 3:
+        return 0.0
+    d = x - x.mean()
+    m2 = float(np.dot(d, d)) / n
+    if m2 <= 0:
+        return 0.0
+    g1 = float(np.mean(d ** 3)) / m2 ** 1.5
+    return float(np.clip(g1 * math.sqrt(n * (n - 1)) / (n - 2), -SKEW_CAP, SKEW_CAP))
+
+
+def record_of(x: "np.ndarray") -> Record:
+    x = np.asarray(x, dtype=float)
+    n = len(x)
+    if n < 2:
+        return Record(n, float(x.sum()) if n else 0.0, float("nan"), 0.0)
+    sd = float(np.std(x, ddof=1))
+    scale = float(np.mean(np.abs(x)))
+    sd = max(sd, 1e-9 * (scale + 1.0))
+    factor = serial_factor(x)
+    return Record(n, float(x.sum()), sd * math.sqrt(factor), sample_skew(x), factor)
+
+
+def skew_shift(skew: float, n: int, bar: float, rho2: float, sign: int) -> float:
+    """How much more standardized sum a claim in direction ``sign`` must show
+    when the trades are skewed against it: the Edgeworth term of a studentized
+    mean at the bar's z, g (2 z^2 + 1) / 6 with g the skew against the claim.
+    Zero when the skew is on the claim's side."""
+    against = -skew if sign > 0 else skew
+    if not SKEW_ADJUST or against <= 0 or n < 3:
+        return 0.0
+    z = boundary(n, bar, rho2) / math.sqrt(n)
+    return min(against, SKEW_CAP) * (2.0 * z * z + 1.0) / 6.0
+
+
+def log_e_record(rec: Record, bar: float, sign: int, rho2: Optional[float] = None) -> float:
+    """log e-value for "the average is above (sign +1) / below (-1) zero",
+    with the bar's skew correction."""
+    if rec.n < 2 or not math.isfinite(rec.sd) or rec.sd <= 0:
+        return 0.0
+    rho2 = mixing_rho2(bar) if rho2 is None else rho2
+    s = sign * rec.total / rec.sd - skew_shift(rec.skew, rec.n, bar, rho2, sign)
+    return log_e_standardized(rec.n, s, rho2)
+
+
+def range_of(rec: Record, bar: float, rho2: Optional[float] = None) -> Tuple[float, float]:
+    """The anytime-valid range for the average at level 1 - 2 / bar: where the
+    one-sided e-value against that average reaches ``bar``, widened on the
+    side the skew argues against."""
+    if rec.n < 2 or not math.isfinite(rec.sd):
+        return float("-inf"), float("inf")
+    rho2 = mixing_rho2(bar) if rho2 is None else rho2
+    b = boundary(rec.n, bar, rho2)
+    up = b + skew_shift(rec.skew, rec.n, bar, rho2, +1)
+    down = b + skew_shift(rec.skew, rec.n, bar, rho2, -1)
+    return rec.mean - up * rec.sd / rec.n, rec.mean + down * rec.sd / rec.n
+
+
 def ebh(log_e: Mapping[str, float], q: float = Q, total: Optional[int] = None) -> Set[str]:
     """e-BH: the keys selected at false discovery rate ``q`` (Wang & Ramdas
     2022), valid under any dependence. ``total`` is the size of the whole
@@ -130,15 +213,17 @@ def ebh(log_e: Mapping[str, float], q: float = Q, total: Optional[int] = None) -
     return {key for key, _ in ranked[:chosen]}
 
 
-def trades_needed(mean: float, sd: float, n: int, bar: float, rho2: float) -> Optional[int]:
-    """More trades until the range would clear zero if the average stays what
-    it is now; 0 when it already does, None when the average is not positive
-    or the answer is out of reach."""
-    if not (mean > 0 and math.isfinite(sd) and sd > 0):
+def trades_needed(rec: Record, bar: float, rho2: Optional[float] = None) -> Optional[int]:
+    """More trades until the range would clear zero if the average, spread
+    and skew stay what they are now; 0 when it already does, None when the
+    average is not positive or the answer is out of reach."""
+    mean, sd, n = rec.mean, rec.sd, rec.n
+    if not (n >= 2 and mean > 0 and math.isfinite(sd) and sd > 0):
         return None
+    rho2 = mixing_rho2(bar) if rho2 is None else rho2
 
     def clears(m: int) -> bool:
-        return mean * m / sd > boundary(m, bar, rho2)
+        return mean * m / sd > boundary(m, bar, rho2) + skew_shift(rec.skew, m, bar, rho2, +1)
 
     if clears(n):
         return 0
@@ -156,14 +241,13 @@ def trades_needed(mean: float, sd: float, n: int, bar: float, rho2: float) -> Op
     return hi - n
 
 
-def max_versions_passing(n: int, total: float, sd: float, *, strategies: int = 1,
-                         cap: int = 1_000_000) -> int:
+def max_versions_passing(rec: Record, *, strategies: int = 1, cap: int = 1_000_000) -> int:
     """The largest number of versions tried for which this record would still
     pass on its own (e >= 40 N with the mixture tuned for that bar); 0 when it
     does not pass even as the only version."""
     def passes(m: int) -> bool:
         bar = BASE_BAR * max(m, strategies)
-        return log_e_one_sided(n, total, sd, mixing_rho2(bar), +1) >= math.log(bar)
+        return log_e_record(rec, bar, +1) >= math.log(bar)
 
     if not passes(1):
         return 0

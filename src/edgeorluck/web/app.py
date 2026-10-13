@@ -36,6 +36,7 @@ from flask import Flask, Response, jsonify, request, send_from_directory
 from .. import samples
 from ..judge import CHANGELOG, ENGINE_VERSION, analyze, make_settings
 from ..readers import ReadResult, read_any
+from ..report import to_markdown
 from ..schema import schema
 from .ledger import Ledger
 
@@ -249,6 +250,7 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
         else:
             for card in result.get("strategies", []):
                 card["prediction"] = None
+        result["markdown"] = to_markdown(result)
         result["sample"] = sample_id
         result["track_record"] = book.track_record()
         result["privacy"] = PRIVACY
