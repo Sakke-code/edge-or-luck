@@ -1,0 +1,1114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>edge or luck</title>
+<meta name="description" content="Drop your trade history and find out if your strategy has a real edge or just got lucky. Honest, open source, and your file is never stored.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12.5' fill='%23F3F7F4' stroke='%2316294A' stroke-width='2.6'/%3E%3Cpath d='M8.5 20.5 13 16.5l3 2.4 7-8.4' fill='none' stroke='%2316294A' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<style>
+@font-face{font-family:"Plex";src:url(/assets/fonts/ibm-plex-sans-latin-400-normal.woff2) format("woff2");font-weight:400;font-style:normal;font-display:swap}
+@font-face{font-family:"Plex";src:url(/assets/fonts/ibm-plex-sans-latin-400-italic.woff2) format("woff2");font-weight:400;font-style:italic;font-display:swap}
+@font-face{font-family:"Plex";src:url(/assets/fonts/ibm-plex-sans-latin-500-normal.woff2) format("woff2");font-weight:500;font-style:normal;font-display:swap}
+@font-face{font-family:"Plex";src:url(/assets/fonts/ibm-plex-sans-latin-600-normal.woff2) format("woff2");font-weight:600;font-style:normal;font-display:swap}
+@font-face{font-family:"Plex";src:url(/assets/fonts/ibm-plex-sans-latin-700-normal.woff2) format("woff2");font-weight:700;font-style:normal;font-display:swap}
+@font-face{font-family:"Kalam";src:url(/assets/fonts/kalam-latin-400-normal.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"Kalam";src:url(/assets/fonts/kalam-latin-700-normal.woff2) format("woff2");font-weight:700;font-display:swap}
+
+/* ---- Tokens. Light = engineering paper, dark = blueprint. ---- */
+:root{
+  color-scheme:light;
+  --paper:#F3F7F4;
+  --paper-raised:#F8FBF9;
+  --grid-minor:#E2ECE7;
+  --grid-major:#CFE0D8;
+  --ink:#16294A;
+  --ink-2:#425270;
+  --ink-3:#6B7A8F;
+  --pencil:rgba(92,104,118,.17);
+  --pencil-2:#7F8995;
+  --green:#18774A;
+  --amber:#9A5B00;
+  --red:#C21F37;
+  --violet:#5A41A8;
+  --slate:#56657A;
+  --marker:rgba(255,219,77,.6);
+  --margin-line:rgba(194,31,55,.32);
+  --focus:#2050D8;
+  --rule:rgba(22,41,74,.16);
+  --hand:"Kalam","Segoe Print","Bradley Hand",cursive;
+  --text:"Plex","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --paper:#0B2448;
+    --paper-raised:#0F2C55;
+    --grid-minor:rgba(140,185,255,.07);
+    --grid-major:rgba(140,185,255,.15);
+    --ink:#EDF3FC;
+    --ink-2:#B7C7E0;
+    --ink-3:#8EA3C4;
+    --pencil:rgba(178,204,246,.17);
+    --pencil-2:#9DB2D5;
+    --green:#6EE3A4;
+    --amber:#FFC75A;
+    --red:#FF8590;
+    --violet:#CBB9FF;
+    --slate:#AAB9D0;
+    --marker:rgba(255,211,84,.26);
+    --margin-line:rgba(255,133,144,.34);
+    --focus:#FFD25A;
+    --rule:rgba(237,243,252,.18);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --paper:#0B2448;
+  --paper-raised:#0F2C55;
+  --grid-minor:rgba(140,185,255,.07);
+  --grid-major:rgba(140,185,255,.15);
+  --ink:#EDF3FC;
+  --ink-2:#B7C7E0;
+  --ink-3:#8EA3C4;
+  --pencil:rgba(178,204,246,.17);
+  --pencil-2:#9DB2D5;
+  --green:#6EE3A4;
+  --amber:#FFC75A;
+  --red:#FF8590;
+  --violet:#CBB9FF;
+  --slate:#AAB9D0;
+  --marker:rgba(255,211,84,.26);
+  --margin-line:rgba(255,133,144,.34);
+  --focus:#FFD25A;
+  --rule:rgba(237,243,252,.18);
+}
+
+/* ---- Base ---- */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{
+  margin:0;
+  background-color:var(--paper);
+  background-image:
+    linear-gradient(var(--grid-major) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-major) 1px,transparent 1px),
+    linear-gradient(var(--grid-minor) 1px,transparent 1px),
+    linear-gradient(90deg,var(--grid-minor) 1px,transparent 1px);
+  background-size:120px 120px,120px 120px,24px 24px,24px 24px;
+  color:var(--ink);
+  font-family:var(--text);
+  font-size:18px;
+  line-height:1.55;
+  font-variant-numeric:tabular-nums;
+  overflow-x:hidden;
+}
+a{color:inherit;text-decoration-thickness:1px;text-underline-offset:.2em}
+a:hover{text-decoration-thickness:2px}
+button,input{font:inherit;color:inherit}
+:focus-visible{outline:2.5px solid var(--focus);outline-offset:3px;border-radius:3px}
+.wrap{width:100%;max-width:1240px;margin-inline:auto;padding-inline:clamp(16px,4vw,48px)}
+.visually-hidden{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.hand{font-family:var(--hand)}
+[hidden]{display:none!important}
+
+/* ---- Header ---- */
+.top{position:relative;z-index:3}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;height:76px;gap:16px}
+.brand{display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:20px;letter-spacing:-.01em;text-decoration:none}
+.brand svg{width:30px;height:30px;flex:none}
+.nav{display:flex;align-items:center;gap:clamp(12px,2.2vw,28px);font-size:16px;color:var(--ink-2)}
+.nav a{text-decoration:none}
+.nav a:hover{color:var(--ink);text-decoration:underline}
+.theme{display:inline-flex;align-items:center;gap:7px;background:none;border:1px solid var(--rule);border-radius:999px;padding:5px 12px 5px 9px;cursor:pointer;color:var(--ink-2);font-size:15px}
+.theme:hover{color:var(--ink);border-color:var(--ink-3)}
+.theme svg{width:16px;height:16px}
+@media (max-width:760px){.nav .opt{display:none}}
+
+/* ---- Hero ---- */
+.hero{position:relative;padding-top:clamp(20px,6vh,72px);padding-bottom:40px}
+.hero-art{position:absolute;top:-76px;right:0;width:min(64vw,980px);height:calc(100% + 76px);pointer-events:none;
+  -webkit-mask-image:linear-gradient(to right,transparent 0,#000 16%);mask-image:linear-gradient(to right,transparent 0,#000 16%)}
+.hero-art canvas{display:block;width:100%;height:100%}
+.hero-copy{position:relative;z-index:2;max-width:600px}
+h1{font-weight:700;font-size:clamp(44px,6.2vw,88px);line-height:.98;letter-spacing:-.03em;margin:0 0 26px;width:max-content;max-width:calc(100vw - 2 * clamp(16px,4vw,48px))}
+h1 .line{display:block;white-space:nowrap}
+.lede{font-size:clamp(19px,1.6vw,22px);line-height:1.45;color:var(--ink-2);margin:0 0 34px;max-width:36ch}
+.note{position:absolute;z-index:2;font-family:var(--hand);font-size:22px;line-height:1.15;color:var(--ink);opacity:0;transition:opacity .6s ease;pointer-events:none;white-space:nowrap}
+.note.luck{color:var(--pencil-2);font-size:19px;white-space:normal;width:210px;text-align:right}
+.notes-on .note{opacity:1}
+.note svg{position:absolute;overflow:visible}
+
+/* drop zone */
+.drop{position:relative;display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;padding:22px 24px;
+  border:1.5px dashed var(--ink-3);border-radius:6px;background:color-mix(in srgb,var(--paper) 82%,transparent);cursor:pointer;
+  transition:border-color .15s,background-color .15s}
+.drop:hover{border-color:var(--ink)}
+.drop.over{border-color:var(--ink);border-style:solid;background:color-mix(in srgb,var(--marker) 60%,var(--paper))}
+.drop .tray{width:52px;height:52px;flex:none;color:var(--ink)}
+.drop strong{display:block;font-size:20px;font-weight:600;letter-spacing:-.01em}
+.drop .pick{color:var(--ink);text-decoration:underline;text-underline-offset:.2em;font-weight:500}
+.drop small{display:block;margin-top:4px;font-size:15px;color:var(--ink-3);line-height:1.45}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.drop.busy{cursor:progress}
+.drop.busy .idle{display:none}
+.drop .working{display:none;align-items:center;gap:12px;font-size:18px}
+.drop.busy .working{display:flex}
+.scribble path{stroke-dasharray:120;stroke-dashoffset:120;animation:scrib 1.1s ease-in-out infinite}
+@keyframes scrib{0%{stroke-dashoffset:120}55%{stroke-dashoffset:0}100%{stroke-dashoffset:-120}}
+@media (prefers-reduced-motion:reduce){.scribble path{animation:none;stroke-dashoffset:0}}
+.error{margin:14px 0 0;color:var(--red);font-size:16px;line-height:1.45;max-width:56ch}
+.error strong{font-weight:600}
+
+/* samples */
+.samples{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 18px;margin-top:20px;font-size:16px;color:var(--ink-3)}
+.samples .lead{margin-right:2px}
+.sample{background:none;border:0;padding:8px 0;cursor:pointer;font-family:var(--hand);font-size:21px;line-height:1.1;color:var(--ink);
+  text-decoration:underline;text-decoration-color:var(--ink-3);text-decoration-thickness:1.5px;text-underline-offset:.22em;min-height:40px}
+.sample:hover{text-decoration-color:var(--ink);text-decoration-thickness:2.5px}
+.sample[aria-pressed="true"]{background:linear-gradient(transparent 52%,var(--marker) 52%,var(--marker) 92%,transparent 92%)}
+
+/* promises */
+.promises{position:relative;z-index:2;list-style:none;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 28px;margin:clamp(48px,9vh,96px) auto 0;padding-top:22px;
+  border-top:1px solid var(--rule);font-size:16px;line-height:1.45;color:var(--ink-2)}
+.promises li{display:grid;grid-template-columns:22px 1fr;gap:10px;align-items:start}
+.promises svg{width:22px;height:20px;margin-top:1px;color:var(--green)}
+.promises b{color:var(--ink);font-weight:600}
+
+/* ---- Results ---- */
+.result{padding-top:56px;padding-bottom:40px;scroll-margin-top:12px}
+.result-head{display:grid;grid-template-columns:200px 1fr;gap:0}
+.result-head > div{grid-column:2}
+.result-head h2{font-size:clamp(32px,4vw,52px);line-height:1.04;letter-spacing:-.025em;margin:0 0 14px;max-width:20ch;text-wrap:balance}
+.result-head p{margin:0 0 22px;max-width:62ch;color:var(--ink-2)}
+.actions{display:flex;flex-wrap:wrap;gap:10px}
+.btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:9px 18px;border-radius:6px;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);
+  font-weight:500;font-size:16px;cursor:pointer;text-decoration:none}
+.btn:hover{filter:brightness(1.12)}
+.btn.quiet{background:transparent;color:var(--ink);border-color:var(--rule)}
+.btn.quiet:hover{border-color:var(--ink)}
+.btn svg{width:18px;height:18px}
+.compare-box{margin-top:16px;max-width:620px}
+.compare-box .drop{padding:16px 18px}
+.compare-box p{font-size:16px;color:var(--ink-2);margin:0 0 10px}
+
+.sheets{position:relative;margin-top:44px}
+.sheets::before{content:"";position:absolute;left:184px;top:0;bottom:0;width:1.5px;background:var(--margin-line)}
+.sheet{display:grid;grid-template-columns:200px minmax(0,1fr);padding:34px 0 40px;border-top:1px solid var(--rule)}
+.sheet:last-child{border-bottom:1px solid var(--rule)}
+.margin{padding-right:30px;display:flex;justify-content:flex-end}
+.grade{position:relative;display:inline-block;padding:10px 16px 12px;font-family:var(--hand);font-weight:700;font-size:23px;line-height:1.05;text-align:center;color:var(--tone);max-width:150px}
+.grade svg{position:absolute;inset:-2px -8px;width:calc(100% + 16px);height:calc(100% + 4px);overflow:visible}
+.grade path{fill:none;stroke:var(--tone);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.grade.draw path{animation:ring .7s ease-out both}
+@keyframes ring{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.grade.draw path{animation:none}}
+.tone-real_edge{--tone:var(--green)}
+.tone-cant_tell{--tone:var(--amber)}
+.tone-no_edge{--tone:var(--slate)}
+.tone-losing{--tone:var(--red)}
+.tone-faded{--tone:var(--violet)}
+.tone-too_early{--tone:var(--slate)}
+.tone-consistent{--tone:var(--green)}
+.tone-worse_than_backtest{--tone:var(--red)}
+
+.body{min-width:0;max-width:820px}
+.name{margin:0;font-size:22px;font-weight:600;letter-spacing:-.01em;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}
+.name span{font-size:15px;font-weight:400;color:var(--ink-3);letter-spacing:0}
+.headline{margin:10px 0 12px;font-size:clamp(23px,2.3vw,30px);line-height:1.22;font-weight:500;letter-spacing:-.015em;max-width:30ch}
+.plain{margin:0;max-width:62ch;color:var(--ink-2)}
+.why{margin:10px 0 0;font-family:var(--hand);font-size:20px;line-height:1.35;color:var(--tone);max-width:60ch}
+.why::before{content:"why: ";font-weight:700}
+.callout{margin:22px 0 0;padding:14px 18px;border-left:3px solid var(--red);background:color-mix(in srgb,var(--red) 7%,transparent);max-width:62ch;font-size:17px}
+.callout b{font-weight:600}
+
+.chart{position:relative;margin:28px 0 8px;height:clamp(220px,26vw,300px)}
+.chart canvas{display:block;width:100%;height:100%}
+.chart .note{opacity:1;font-size:19px}
+.chart .note.luck{font-size:17px;width:auto;white-space:nowrap}
+.legend{display:flex;flex-wrap:wrap;gap:6px 22px;margin:0;font-size:15px;color:var(--ink-3)}
+.legend i{display:inline-block;vertical-align:middle;margin-right:7px;width:22px;height:0;border-top:2.5px solid var(--ink)}
+.legend i.p{border-top:1.5px solid var(--pencil-2);opacity:.75}
+
+.figures{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:18px 26px;margin:26px 0 0;padding:18px 0 0;border-top:1px dashed var(--rule)}
+.figures div{min-width:0}
+.figures dt{font-size:14px;color:var(--ink-3);margin-bottom:2px}
+.figures dd{margin:0;font-size:23px;font-weight:600;letter-spacing:-.01em;line-height:1.15}
+.figures dd small{display:block;font-size:14px;font-weight:400;color:var(--ink-3);letter-spacing:0;margin-top:3px}
+.bench{margin:18px 0 0;max-width:62ch;font-size:17px}
+.bench span{display:block;font-family:var(--hand);font-size:18px;color:var(--ink-3);margin-top:2px}
+
+.next{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;align-items:start;margin:30px 0 0;max-width:68ch}
+.next svg{width:52px;height:26px;margin-top:6px;color:var(--ink)}
+.next p{margin:0}
+.next .label{font-weight:600;margin-right:6px}
+.next mark{background:linear-gradient(transparent 8%,var(--marker) 8%,var(--marker) 92%,transparent 92%);color:inherit;padding:0 2px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.next .whyline{margin-top:6px;font-size:16px;color:var(--ink-3)}
+
+.ask{margin:24px 0 0;padding:16px 18px;border:1.5px solid var(--rule);border-radius:6px;max-width:68ch;background:color-mix(in srgb,var(--paper-raised) 70%,transparent)}
+.ask label{display:block;font-weight:500;margin-bottom:10px}
+.ask .row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.ask input{width:110px;min-height:44px;padding:8px 12px;border:1.5px solid var(--ink-3);border-radius:6px;background:var(--paper);font-size:17px}
+.ask .whyline{margin:10px 0 0;font-size:15px;color:var(--ink-3)}
+
+.checks{list-style:none;margin:28px 0 0;padding:0;max-width:68ch}
+.checks li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:10px 0;border-top:1px dashed var(--rule)}
+.checks li:first-child{border-top:0}
+.checks svg{width:22px;height:20px;margin-top:3px}
+.checks .pass svg{color:var(--green)}
+.checks .warn svg{color:var(--amber)}
+.checks .fail svg{color:var(--red)}
+.checks p{margin:0}
+.checks .fix{font-size:16px;color:var(--ink-2);margin-top:2px}
+.checks details{margin-top:3px;font-size:15px;color:var(--ink-3)}
+.checks summary{cursor:pointer;width:max-content;font-size:15px;color:var(--ink-2);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:.2em;list-style:none}
+.checks summary::-webkit-details-marker{display:none}
+.checks details[open] summary{margin-bottom:3px}
+
+.audit{margin:26px 0 0;max-width:72ch;padding:16px 18px;border:1.5px dashed var(--amber);border-radius:6px}
+.audit p{margin:0 0 10px;font-weight:500}
+.audit pre{margin:0 0 12px;white-space:pre-wrap;font-family:var(--text);font-size:15px;line-height:1.5;color:var(--ink-2);max-height:220px;overflow:auto}
+
+.extras{list-style:none;margin:24px 0 0;padding:0;max-width:68ch;font-size:16px;color:var(--ink-2)}
+.extras li{padding-left:20px;position:relative;margin-top:6px}
+.extras li::before{content:"";position:absolute;left:2px;top:.68em;width:9px;height:1.5px;background:var(--ink-3)}
+.fingerprint{margin:22px 0 0;font-size:14px;color:var(--ink-3)}
+
+.pairs{display:grid;grid-template-columns:200px minmax(0,1fr);padding:30px 0 0}
+.pairs h3{grid-column:2;margin:0 0 6px;font-size:20px}
+.pairs p{grid-column:2;margin:0;max-width:62ch;color:var(--ink-2)}
+.privacy{display:grid;grid-template-columns:200px minmax(0,1fr);margin:28px 0 0;font-size:15px;color:var(--ink-3)}
+.privacy span{grid-column:2;max-width:62ch}
+
+/* ---- Sections below ---- */
+.band{padding:clamp(72px,11vh,120px) 0 0}
+.band h2{font-size:clamp(30px,3.6vw,46px);line-height:1.06;letter-spacing:-.025em;margin:0 0 14px;max-width:22ch}
+.band .intro{margin:0 0 36px;max-width:58ch;color:var(--ink-2)}
+.steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:36px}
+.steps li{counter-increment:step}
+.steps svg{display:block;width:100%;max-width:220px;height:110px;margin-bottom:14px;color:var(--ink)}
+.steps h3{margin:0 0 6px;font-size:21px;line-height:1.25;letter-spacing:-.01em}
+.steps h3::before{content:counter(step) ". ";color:var(--ink-3);font-weight:500}
+.steps p{margin:0;color:var(--ink-2);font-size:17px;max-width:34ch}
+.maths{margin-top:36px;max-width:72ch}
+.maths summary{cursor:pointer;font-weight:500;width:max-content}
+.maths div{color:var(--ink-2);font-size:17px}
+.maths p{margin:12px 0 0}
+
+.proof{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:48px;align-items:start}
+.proof ul{list-style:none;margin:0;padding:0}
+.proof li{display:grid;grid-template-columns:22px 1fr;gap:12px;padding:14px 0;border-top:1px dashed var(--rule);font-size:18px}
+.proof li:first-child{border-top:0;padding-top:0}
+.proof svg{width:22px;height:20px;margin-top:3px;color:var(--green)}
+.proof aside{font-size:17px;color:var(--ink-2);padding:18px 20px;border:1.5px solid var(--rule);border-radius:6px;background:color-mix(in srgb,var(--paper-raised) 70%,transparent)}
+.proof aside h3{margin:0 0 6px;font-size:18px;color:var(--ink)}
+.proof aside p{margin:0}
+
+.limits{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 48px;max-width:1000px}
+.limits li{padding-left:30px;position:relative}
+.limits li::before{content:"";position:absolute;left:0;top:.5em;width:16px;height:16px;border:1.5px solid var(--ink-3);border-radius:50%}
+.limits b{display:block;font-weight:600;margin-bottom:2px}
+.limits span{color:var(--ink-2);font-size:17px}
+
+.ai{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:48px;align-items:start}
+.ai h2{font-size:clamp(26px,2.8vw,36px)}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:-1.5px;position:relative;z-index:1}
+.tab{background:none;border:1.5px solid transparent;border-bottom:0;border-radius:6px 6px 0 0;padding:8px 14px;cursor:pointer;font-size:15px;color:var(--ink-2)}
+.tab[aria-selected="true"]{border-color:var(--rule);background:var(--paper-raised);color:var(--ink);font-weight:500}
+.panel{border:1.5px solid var(--rule);border-radius:0 6px 6px 6px;background:var(--paper-raised);padding:18px 18px 14px}
+.panel p{margin:0 0 10px;font-size:16px;color:var(--ink-2)}
+.panel pre{margin:0 0 12px;padding:12px 14px;border-radius:4px;background:color-mix(in srgb,var(--ink) 6%,transparent);overflow:auto;font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:14px;line-height:1.55;white-space:pre}
+.copy{background:none;border:1.5px solid var(--rule);border-radius:6px;padding:6px 12px;min-height:38px;cursor:pointer;font-size:15px}
+.copy:hover{border-color:var(--ink)}
+
+footer{margin-top:clamp(80px,12vh,140px);padding:30px 0 48px;border-top:1px solid var(--rule);font-size:15px;color:var(--ink-3)}
+footer .wrap{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:24px 48px}
+footer p{margin:0 0 8px;max-width:62ch}
+footer b{color:var(--ink-2);font-weight:600}
+
+/* ---- Small screens ---- */
+@media (max-width:900px){
+  .hero{padding-top:0}
+  .hero-art{position:relative;top:0;width:auto;height:250px;margin:0 0 6px;-webkit-mask-image:none;mask-image:none}
+  h1{width:auto;font-size:clamp(40px,10.5vw,64px)}
+  h1 .line{display:inline;white-space:normal}
+  .promises{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .result-head,.sheet,.pairs,.privacy{grid-template-columns:minmax(0,1fr)}
+  .result-head > div,.pairs h3,.pairs p,.privacy span{grid-column:1}
+  .sheets::before{display:none}
+  .margin{justify-content:flex-start;padding:0 0 14px}
+  .steps{grid-template-columns:minmax(0,1fr);gap:30px}
+  .proof,.ai{grid-template-columns:minmax(0,1fr);gap:28px}
+  .limits{grid-template-columns:minmax(0,1fr)}
+  footer .wrap{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:520px){
+  body{font-size:17px}
+  .promises{grid-template-columns:minmax(0,1fr)}
+  .drop{grid-template-columns:minmax(0,1fr);padding:18px}
+  .drop .tray{display:none}
+  .note{font-size:18px}
+  .note.luck{font-size:16px;width:150px}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="edge or luck, home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.6 20.4c1.4-1.2 2.9-2.6 4.3-3.8.9.7 1.9 1.6 2.9 2.3 2.3-2.6 4.6-5.6 6.8-8.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      edge or luck
+    </a>
+    <nav class="nav" aria-label="Page">
+      <a class="opt" href="#how">How it judges</a>
+      <a class="opt" href="#proof">How often it's wrong</a>
+      <a class="opt" href="#ai">For AI assistants</a>
+      <a href="https://github.com/edge-or-luck/edge-or-luck" rel="noopener">GitHub</a>
+      <button class="theme" id="theme" type="button" aria-label="Switch to blueprint (dark) look">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.8a6.2 6.2 0 0 1 0 12.4z" fill="currentColor"/></svg>
+        <span id="themeLabel">Blueprint</span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero" id="top">
+  <div class="hero-art" id="heroArt" aria-hidden="true">
+    <canvas id="heroCanvas"></canvas>
+    <span class="note you" id="noteYou">your trades
+      <svg width="40" height="30" style="right:-40px;top:8px" viewBox="0 0 40 30"><path d="M2 6c12 1 22 6 32 16m-9 .5 9-.3 1-8.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </span>
+    <span class="note luck" id="noteLuck">the same trades, with a coin deciding each win or loss</span>
+  </div>
+  <div class="wrap">
+    <div class="hero-copy">
+      <h1><span class="line">Is your strategy</span> <span class="line">real, or just lucky?</span></h1>
+      <p class="lede">Drop your trade history. In a few seconds you get an honest answer, and the reason why.</p>
+
+      <div class="drop" id="drop">
+        <svg class="tray" viewBox="0 0 52 52" aria-hidden="true"><path d="M10 30.5v9.2c0 1.6 1.2 2.8 2.8 2.8h26.4c1.6 0 2.8-1.2 2.8-2.8v-9.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M26 34.5V9.8m-9 8.4 9-8.9 9 8.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div>
+          <div class="idle">
+            <strong>Drop your trade file here</strong>
+            <span class="pick">or choose a file</span>
+            <small>A CSV or Excel export from TradingView, your exchange or a spreadsheet. Several files are judged as several strategies.</small>
+          </div>
+          <div class="working" role="status">
+            <svg class="scribble" width="44" height="20" viewBox="0 0 44 20" aria-hidden="true"><path d="M2 14c5-9 8 2 12-4s6 5 10-1 7 4 10-2 5 3 8-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <span id="workingText">Judging your trades</span>
+          </div>
+        </div>
+        <input type="file" id="file" multiple accept=".csv,.tsv,.txt,.xlsx,.xls,.json" aria-label="Choose trade files">
+      </div>
+      <p class="error" id="error" role="alert" hidden></p>
+
+      <div class="samples" id="samples" hidden>
+        <span class="lead">No file at hand? Try one:</span>
+      </div>
+    </div>
+  </div>
+
+  <ul class="promises wrap" aria-label="Why you can trust the answer">
+    <li id="promiseRate" hidden><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="promiseRateText"></span></li>
+    <li><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Your file is never stored.</b> It is read in memory and dropped.</span></li>
+    <li><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Same file, same answer.</b> Every time, for everyone.</span></li>
+    <li><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Open source.</b> You can check every line of the maths.</span></li>
+  </ul>
+</section>
+
+<section class="result wrap" id="result" aria-live="polite" hidden>
+  <div class="result-head">
+    <div>
+      <h2 id="resHeadline"></h2>
+      <p id="resText"></p>
+      <div class="actions">
+        <button class="btn" id="copyAI" type="button"><svg viewBox="0 0 18 18" aria-hidden="true"><rect x="5.5" y="5.5" width="9.5" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 5.5V4a1.5 1.5 0 0 0-1.5-1.5H4.5A1.5 1.5 0 0 0 3 4v7a1.5 1.5 0 0 0 1.5 1.5h1" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>Copy the result for your AI</span></button>
+        <button class="btn quiet" id="compareBtn" type="button">Compare with my backtest</button>
+        <button class="btn quiet" id="again" type="button">Judge another file</button>
+      </div>
+      <div class="compare-box" id="compareBox" hidden>
+        <p>Drop the backtest of the same strategy. We'll check if your live trades do what the backtest promised.</p>
+        <div class="drop" id="dropBack">
+          <svg class="tray" viewBox="0 0 52 52" aria-hidden="true"><path d="M10 30.5v9.2c0 1.6 1.2 2.8 2.8 2.8h26.4c1.6 0 2.8-1.2 2.8-2.8v-9.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M26 34.5V9.8m-9 8.4 9-8.9 9 8.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <div>
+            <div class="idle"><strong>Drop your backtest file here</strong><span class="pick">or choose a file</span></div>
+            <div class="working" role="status"><span>Comparing</span></div>
+          </div>
+          <input type="file" id="fileBack" multiple accept=".csv,.tsv,.txt,.xlsx,.xls,.json" aria-label="Choose backtest files">
+        </div>
+        <p class="error" id="errorBack" role="alert" hidden></p>
+      </div>
+    </div>
+  </div>
+  <div class="sheets" id="sheets"></div>
+  <div class="pairs" id="pairs" hidden><h3>These move together</h3></div>
+  <p class="privacy"><span id="privacy"></span></p>
+</section>
+
+<section class="band wrap" id="how" aria-labelledby="howTitle">
+  <h2 id="howTitle">How it judges</h2>
+  <p class="intro">Luck can make almost any short record look good. So we ask one question: how often would pure luck do as well with your own trades?</p>
+  <ol class="steps">
+    <li>
+      <svg viewBox="0 0 220 110" aria-hidden="true">
+        <ellipse cx="70" cy="62" rx="30" ry="30" fill="none" stroke="currentColor" stroke-width="2"/>
+        <ellipse cx="70" cy="62" rx="21" ry="21" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 4"/>
+        <path d="M62 62h16M70 54v16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <ellipse cx="150" cy="40" rx="30" ry="9" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M120 40v5c0 5 13.4 9 30 9s30-4 30-9v-5" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path d="M104 80c14 8 30 6 44-6m-9-.2 9-.8.3 8.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+      </svg>
+      <h3>We flip a coin for each of your trades.</h3>
+      <p>Same trades, same sizes, same order. Only whether each one wins or loses is left to chance.</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 220 110" aria-hidden="true" id="stepFan"></svg>
+      <h3>We do it a thousand times.</h3>
+      <p>That draws everything luck alone could have done with your trades. Then we see where your real line lands.</p>
+    </li>
+    <li>
+      <svg viewBox="0 0 220 110" aria-hidden="true">
+        <path d="M14 70h192" stroke="currentColor" stroke-width="1.4" stroke-dasharray="5 5" opacity=".6"/>
+        <path d="M18 88c20-4 38-14 58-12s34-22 54-30 40-20 62-26" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M168 34c4 3 7 7 9 11 5-10 11-18 19-24" fill="none" stroke="var(--green)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        <text x="16" y="62" font-family="Kalam, cursive" font-size="15" fill="currentColor" opacity=".7">the bar luck rarely reaches</text>
+      </svg>
+      <h3>We say “real” only when luck almost never does as well.</h3>
+      <p>And we raise the bar for every other version you tried, because trying many makes one look good by chance.</p>
+    </li>
+  </ol>
+  <details class="maths">
+    <summary>How we know (the maths)</summary>
+    <div>
+      <p>The range shown for your average trade is an anytime-valid confidence sequence (Waudby-Smith and Ramdas). It stays honest even if you check after every trade, so watching it does not fool you.</p>
+      <p>The strength of the evidence is an e-value. When you upload several strategies, or tell us how many versions you tried, we control false discoveries with the e-BH procedure (Wang and Ramdas) at 10%. Versions you didn't show count as zero evidence.</p>
+      <p>The coin-flip picture keeps your exact trades and randomises only their signs. It shows what luck does with your trade sizes, which is what matters.</p>
+    </div>
+  </details>
+</section>
+
+<section class="band wrap" id="proof" aria-labelledby="proofTitle">
+  <h2 id="proofTitle">How often it's wrong</h2>
+  <p class="intro">A referee should show its own mistakes. These numbers come from the test suite in the repository, and you can run it yourself.</p>
+  <div class="proof">
+    <ul id="proofList">
+      <li><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>The validation numbers load here.</span></li>
+    </ul>
+    <aside>
+      <h3>Its own record</h3>
+      <p id="trackRecord">Every verdict comes with a call on your next 30 trades. When you come back with them, the call is graded, and the grades are public here.</p>
+    </aside>
+  </div>
+</section>
+
+<section class="band wrap" aria-labelledby="limitsTitle">
+  <h2 id="limitsTitle">What it can't tell you</h2>
+  <p class="intro">An honest answer includes its limits.</p>
+  <ul class="limits">
+    <li><b>It can't see your code.</b><span>If your backtest peeks at future prices or skips fees, the trades look better than they were. When a record looks too good, we flag it and give you a prompt to have your code checked.</span></li>
+    <li><b>It can't promise the future.</b><span>A real edge can stop working. We check if yours has faded, and you can come back to re-check.</span></li>
+    <li><b>It needs at least 30 closed trades.</b><span>Below that, luck can make almost any record. You'll get “too early” instead of a guess.</span></li>
+    <li><b>It treats trades as separate events.</b><span>Trades that depend on each other, like many open at once, can make the evidence look a little stronger than it is.</span></li>
+  </ul>
+</section>
+
+<section class="band wrap" id="ai" aria-labelledby="aiTitle">
+  <div class="ai">
+    <div>
+      <h2 id="aiTitle">Also works inside your AI assistant</h2>
+      <p class="intro">If an AI writes your bot, it can run the same judge on your backtest and give you the same honest answer, with the reasons. Add it once.</p>
+    </div>
+    <div>
+      <div class="tabs" role="tablist" aria-label="Assistant">
+        <button class="tab" role="tab" aria-selected="true" data-tab="python">Python</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="claude">Claude Code</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="codex">Codex</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="cursor">Cursor</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="chatgpt">ChatGPT</button>
+      </div>
+      <div class="panel" role="tabpanel" id="panel"></div>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <p><b>Not financial advice.</b> edge or luck judges past results. It doesn't tell you what to trade or how much.</p>
+      <p>Your files are read in memory and never stored. We keep only an anonymous fingerprint of each strategy and our call on it, so we can grade ourselves when it comes back.</p>
+    </div>
+    <div>
+      <p>Open source under the MIT licence. <a href="https://github.com/edge-or-luck/edge-or-luck" rel="noopener">Source on GitHub</a></p>
+      <p id="engineVersion"></p>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- theme ---------- */
+  var root = document.documentElement;
+  function storedTheme() { try { return localStorage.getItem("eol-theme"); } catch (e) { return null; } }
+  function isDark() {
+    var t = root.getAttribute("data-theme");
+    if (t) return t === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+  function syncThemeButton() {
+    var dark = isDark();
+    $("themeLabel").textContent = dark ? "Paper" : "Blueprint";
+    $("theme").setAttribute("aria-label", dark ? "Switch to paper (light) look" : "Switch to blueprint (dark) look");
+  }
+  var t0 = storedTheme();
+  if (t0 === "dark" || t0 === "light") root.setAttribute("data-theme", t0);
+  syncThemeButton();
+  $("theme").addEventListener("click", function () {
+    var next = isDark() ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("eol-theme", next); } catch (e) {}
+    syncThemeButton();
+    redrawAll();
+  });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () { syncThemeButton(); redrawAll(); });
+
+  function cssVar(name) { return getComputedStyle(root).getPropertyValue(name).trim(); }
+
+  /* ---------- small helpers ---------- */
+  function rng(seed) {
+    var s = seed >>> 0 || 1;
+    return function () {
+      s = (s + 0x6D2B79F5) | 0;
+      var t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function hash(str) { var h = 2166136261; for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function svgEl(tag, attrs) { var e = document.createElementNS("http://www.w3.org/2000/svg", tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+  function num(v) { return typeof v === "number" && isFinite(v); }
+  function fmt(v, unit, signed) {
+    if (!num(v)) return "–";
+    var sign = signed === false ? "" : (v > 0 ? "+" : v < 0 ? "−" : "");
+    var a = Math.abs(v);
+    if (unit === "%") return sign + a.toFixed(a >= 100 ? 0 : 2).replace(/\.00$/, "") + "%";
+    var s = a.toLocaleString("en-US", { minimumFractionDigits: a < 100 ? 2 : 0, maximumFractionDigits: 2 });
+    return sign + s + (unit && unit !== "units" ? " " + unit : "");
+  }
+  function pct(v) { if (!num(v)) return "–"; if (v <= 1) v *= 100; return Math.round(v) + "%"; }
+  function dateRange(a, b) {
+    if (!a || !b) return "";
+    var o = { month: "short", day: "numeric", year: "numeric" };
+    try { return new Date(a + "T00:00:00").toLocaleDateString("en-US", o) + " to " + new Date(b + "T00:00:00").toLocaleDateString("en-US", o); }
+    catch (e) { return a + " to " + b; }
+  }
+  var MARK = {
+    pass: "M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15",
+    warn: "M11 2.6c-.2 4.2-.1 8-.3 11.2M10.7 17.6l.2.2",
+    fail: "M4 3.5c4.6 4.4 9.3 8.8 14 13.2M17.6 3.2C13 7.8 8.6 12.4 4.2 17"
+  };
+  function mark(status) {
+    var s = svgEl("svg", { viewBox: "0 0 22 20", "aria-hidden": "true" });
+    s.appendChild(svgEl("path", { d: MARK[status] || MARK.warn, fill: "none", stroke: "currentColor", "stroke-width": "2.3", "stroke-linecap": "round", "stroke-linejoin": "round" }));
+    return s;
+  }
+  function ringPath(w, h, seed) {
+    var r = rng(seed), cx = w / 2, cy = h / 2, rx = w / 2, ry = h / 2;
+    var start = -2.5 + r() * 0.5, turn = 2 * Math.PI * (1.1 + r() * 0.07), phase = r() * 6, d = "";
+    for (var i = 0; i <= 72; i++) {
+      var t = i / 72, a = start + t * turn;
+      var wob = 1 + 0.04 * Math.sin(t * 7 + phase) + (t > 0.86 ? (t - 0.86) * 0.35 : 0);
+      d += (i ? "L" : "M") + (cx + Math.cos(a) * rx * wob).toFixed(1) + " " + (cy + Math.sin(a) * ry * (wob * 0.97 + 0.02 * Math.sin(t * 13 + phase))).toFixed(1);
+    }
+    return d;
+  }
+
+  /* ---------- drawing: pencil luck, ink you ---------- */
+  var drawers = [];
+  function redrawAll() { drawers.forEach(function (f) { f(true); }); }
+  var resizeT;
+  window.addEventListener("resize", function () { clearTimeout(resizeT); resizeT = setTimeout(redrawAll, 120); });
+
+  function setupCanvas(canvas) {
+    var rect = canvas.getBoundingClientRect(), dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = Math.max(1, Math.round(rect.width * dpr));
+    canvas.height = Math.max(1, Math.round(rect.height * dpr));
+    var ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx: ctx, w: rect.width, h: rect.height };
+  }
+  function bounds(paths) {
+    var lo = Infinity, hi = -Infinity;
+    paths.forEach(function (p) { for (var i = 0; i < p.length; i++) { if (p[i] < lo) lo = p[i]; if (p[i] > hi) hi = p[i]; } });
+    if (lo === hi) { lo -= 1; hi += 1; }
+    return [lo, hi];
+  }
+  function strokePath(ctx, pts, upto) {
+    var n = Math.max(2, Math.min(pts.length, Math.ceil(upto)));
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (var i = 1; i < n; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+    ctx.stroke();
+  }
+  // Draws a fan of luck paths in pencil and the trader's line in ink.
+  // box = {l, r, t, b} paddings in px. Returns screen points for notes.
+  function drawFan(canvas, you, fan, box, progress) {
+    var c = setupCanvas(canvas), ctx = c.ctx;
+    ctx.clearRect(0, 0, c.w, c.h);
+    var all = fan.concat([you]), b = bounds(all);
+    var x0 = box.l, x1 = c.w - box.r, y0 = box.t, y1 = c.h - box.b;
+    var sx = function (i, n) { return x0 + (x1 - x0) * (i / (n - 1)); };
+    var sy = function (v) { return y1 - (y1 - y0) * ((v - b[0]) / (b[1] - b[0])); };
+    var toPts = function (p, jit) {
+      var r = rng(jit), out = [];
+      for (var i = 0; i < p.length; i++) out.push([sx(i, p.length), sy(p[i]) + (jit ? (r() - 0.5) * 0.6 : 0)]);
+      return out;
+    };
+    var pFan = progress == null ? 1 : Math.min(1, progress / 0.62);
+    var pYou = progress == null ? 1 : Math.max(0, (progress - 0.55) / 0.45);
+    // zero line
+    if (b[0] < 0 && b[1] > 0) {
+      ctx.save(); ctx.setLineDash([5, 6]); ctx.strokeStyle = cssVar("--ink-3"); ctx.globalAlpha = 0.55; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x0, sy(0)); ctx.lineTo(x1, sy(0)); ctx.stroke(); ctx.restore();
+    }
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.strokeStyle = cssVar("--pencil"); ctx.lineWidth = 1.1;
+    var fanEnds = [];
+    fan.forEach(function (p, k) {
+      var pts = toPts(p, k + 1);
+      strokePath(ctx, pts, pFan * pts.length);
+      fanEnds.push(pts[pts.length - 1][1]);
+    });
+    var youPts = toPts(you, 0), endPt = youPts[youPts.length - 1];
+    if (pYou > 0) {
+      ctx.strokeStyle = cssVar("--ink"); ctx.lineWidth = 2.6;
+      strokePath(ctx, youPts, pYou * youPts.length);
+      if (pYou >= 1) {
+        ctx.fillStyle = cssVar("--ink");
+        ctx.beginPath(); ctx.arc(endPt[0], endPt[1], 4.2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    fanEnds.sort(function (a, b2) { return a - b2; });
+    var mid = fanEnds.length ? fanEnds[Math.floor(fanEnds.length / 2)] : c.h / 2;
+    var low = fanEnds.length ? fanEnds[Math.floor(fanEnds.length * 0.9)] : c.h / 2;
+    return { you: endPt, fanMid: [x1, mid], fanLow: [x1, low], w: c.w, h: c.h, y0: sy(0) };
+  }
+
+  /* ---------- hero ---------- */
+  var hero = (function () {
+    var r = rng(20261013), n = 220, x = [];
+    for (var i = 0; i < n; i++) { var g = (r() + r() + r() + r() - 2) * 1.73; x.push(0.46 + g * 2.1); }
+    function cum(arr) { var s = 0, out = [0]; arr.forEach(function (v) { s += v; out.push(s); }); return out; }
+    function thin(p, k) { var out = []; for (var i = 0; i < p.length; i += k) out.push(p[i]); if (out[out.length - 1] !== p[p.length - 1]) out.push(p[p.length - 1]); return out; }
+    var you = thin(cum(x), 2), fan = [];
+    for (var j = 0; j < 150; j++) { var rr = rng(9000 + j); fan.push(thin(cum(x.map(function (v) { return rr() < 0.5 ? -Math.abs(v) : Math.abs(v); })), 2)); }
+    return { you: you, fan: fan };
+  })();
+  var heroArt = $("heroArt"), heroCanvas = $("heroCanvas");
+  function heroBox() {
+    if (window.innerWidth <= 900) return { l: 16, r: 120, t: 44, b: 30 };
+    // The fan starts just right of the drop zone, so no pencil runs under the text.
+    var art = heroArt.getBoundingClientRect(), dz = $("drop").getBoundingClientRect();
+    var l = Math.max(60, dz.right - art.left + 56);
+    return { l: l, r: 120, t: 150, b: 150 };
+  }
+  function placeHeroNotes(pts) {
+    var you = $("noteYou"), luck = $("noteLuck");
+    var small = window.innerWidth <= 900;
+    you.style.left = (pts.you[0] - (small ? 128 : 150)) + "px";
+    you.style.top = (pts.you[1] - (small ? 34 : 40)) + "px";
+    // Under the fan, right-aligned to its end, never past the page edge.
+    var w = small ? 150 : 210;
+    luck.style.left = Math.max(8, pts.fanLow[0] - w + (small ? 4 : 10)) + "px";
+    luck.style.top = Math.min(pts.fanLow[1] + (small ? 16 : 22), pts.h - (small ? 50 : 76)) + "px";
+  }
+  function drawHero(still) {
+    if (still || reduce) {
+      var p = drawFan(heroCanvas, hero.you, hero.fan, heroBox());
+      placeHeroNotes(p); heroArt.classList.add("notes-on");
+      return;
+    }
+    var start = null, dur = 2600;
+    function frame(ts) {
+      if (start === null) start = ts;
+      var t = Math.min(1, (ts - start) / dur), e = 1 - Math.pow(1 - t, 2.2);
+      var p = drawFan(heroCanvas, hero.you, hero.fan, heroBox(), e);
+      if (t < 1) requestAnimationFrame(frame);
+      else { placeHeroNotes(p); heroArt.classList.add("notes-on"); }
+    }
+    requestAnimationFrame(frame);
+  }
+  drawers.push(function () { drawHero(true); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { drawHero(false); });
+  else drawHero(false);
+
+  /* step 2 mini fan (static svg) */
+  (function () {
+    var s = $("stepFan"), r = rng(77);
+    for (var k = 0; k < 9; k++) {
+      var d = "M14 62", y = 62;
+      for (var i = 1; i <= 12; i++) { y += (r() - 0.5) * 14; d += " L" + (14 + i * 16) + " " + y.toFixed(1); }
+      s.appendChild(svgEl("path", { d: d, fill: "none", stroke: "currentColor", "stroke-width": "1.1", opacity: ".35", "stroke-linejoin": "round" }));
+    }
+    s.appendChild(svgEl("path", { d: "M14 62 L30 60 L46 63 L62 54 L78 56 L94 46 L110 48 L126 38 L142 40 L158 30 L174 26 L190 18 L206 14", fill: "none", stroke: "currentColor", "stroke-width": "2.6", "stroke-linecap": "round", "stroke-linejoin": "round" }));
+    s.appendChild(svgEl("circle", { cx: "206", cy: "14", r: "3.6", fill: "currentColor" }));
+  })();
+
+  /* ---------- samples ---------- */
+  var samplesBox = $("samples");
+  fetch("/api/samples").then(function (r) { return r.json(); }).then(function (j) {
+    var list = (j && j.samples) || [];
+    if (!list.length) return;
+    list.forEach(function (s) {
+      var b = el("button", "sample", (s.title || s.label || s.id).replace(/^./, function (c) { return c.toLowerCase(); }));
+      b.type = "button"; b.setAttribute("aria-pressed", "false"); b.dataset.sample = s.id;
+      if (s.blurb) b.title = s.blurb;
+      b.addEventListener("click", function () {
+        samplesBox.querySelectorAll(".sample").forEach(function (o) { o.setAttribute("aria-pressed", "false"); });
+        b.setAttribute("aria-pressed", "true");
+        judge({ kind: "sample", sample: s.id }, {});
+      });
+      samplesBox.appendChild(b);
+    });
+    samplesBox.hidden = false;
+  }).catch(function () {});
+
+  /* ---------- judging ---------- */
+  var last = null, lastOpts = {}, lastReport = null;
+  var drop = $("drop"), fileInput = $("file");
+  function busy(on, text) {
+    drop.classList.toggle("busy", on);
+    if (text) $("workingText").textContent = text;
+  }
+  function showError(box, data) {
+    var e = $(box);
+    e.textContent = "";
+    var strong = el("strong", null, (data && data.error) || "We couldn't read that.");
+    e.appendChild(strong);
+    var why = (data && data.why) || "Use a file with one closed trade per row and a profit or loss column.";
+    e.appendChild(document.createTextNode(" " + why));
+    e.hidden = false;
+  }
+  function judge(req, opts) {
+    last = req; lastOpts = opts || {};
+    $("error").hidden = true; $("errorBack").hidden = true;
+    var count = req.files ? req.files.length : 0;
+    busy(true, req.kind === "sample" ? "Judging the sample" : (count > 1 ? "Judging " + count + " files" : "Judging your trades"));
+    var init;
+    if (req.kind === "sample") {
+      var body = { sample: req.sample };
+      if (opts.variants_tried) body.variants_tried = opts.variants_tried;
+      if (num(opts.benchmark_return_pct)) body.benchmark_return_pct = opts.benchmark_return_pct;
+      init = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
+    } else {
+      var fd = new FormData();
+      req.files.forEach(function (f) { fd.append("files", f, f.name); });
+      (req.backtest || []).forEach(function (f) { fd.append("backtest", f, f.name); });
+      if (opts.variants_tried) fd.append("variants_tried", String(opts.variants_tried));
+      if (num(opts.benchmark_return_pct)) fd.append("benchmark_return_pct", String(opts.benchmark_return_pct));
+      init = { method: "POST", body: fd };
+    }
+    return fetch("/api/judge", init).then(function (r) {
+      return r.json().catch(function () { return { error: "The server sent something we couldn't read." }; }).then(function (j) { return { ok: r.ok, j: j }; });
+    }).then(function (res) {
+      busy(false);
+      if (!res.ok || res.j.error) { showError(req.backtest ? "errorBack" : "error", res.j); if (req.backtest) { $("dropBack").classList.remove("busy"); } return; }
+      lastReport = res.j;
+      render(res.j);
+    }).catch(function () {
+      busy(false);
+      showError("error", { error: "We couldn't reach the judge.", why: "Check your connection and try again." });
+    });
+  }
+  function wireDrop(zone, input, onFiles) {
+    ["dragenter", "dragover"].forEach(function (ev) { zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.add("over"); }); });
+    ["dragleave", "drop"].forEach(function (ev) { zone.addEventListener(ev, function (e) { e.preventDefault(); zone.classList.remove("over"); }); });
+    zone.addEventListener("drop", function (e) { var fs = Array.prototype.slice.call(e.dataTransfer.files || []); if (fs.length) onFiles(fs); });
+    input.addEventListener("change", function () { var fs = Array.prototype.slice.call(input.files || []); if (fs.length) onFiles(fs); input.value = ""; });
+  }
+  wireDrop(drop, fileInput, function (fs) {
+    samplesBox.querySelectorAll(".sample").forEach(function (o) { o.setAttribute("aria-pressed", "false"); });
+    judge({ kind: "files", files: fs }, {});
+  });
+  wireDrop($("dropBack"), $("fileBack"), function (fs) {
+    if (!last || last.kind !== "files") return;
+    $("dropBack").classList.add("busy");
+    judge({ kind: "files", files: last.files, backtest: fs }, lastOpts);
+  });
+
+  /* ---------- rendering ---------- */
+  var VERDICT_WORDS = { real_edge: "Real edge", cant_tell: "Can't tell yet", no_edge: "No edge", losing: "Losing", faded: "Faded", too_early: "Too early" };
+
+  function render(rep) {
+    var res = $("result");
+    res.hidden = false;
+    $("dropBack").classList.remove("busy");
+    var sum = rep.summary || {};
+    $("resHeadline").textContent = sum.headline || "Here is what we found.";
+    $("resText").textContent = sum.text || "";
+    $("compareBtn").hidden = !(last && last.kind === "files");
+    $("compareBox").hidden = true;
+    drawers = drawers.slice(0, 1);
+    var sheets = $("sheets");
+    sheets.textContent = "";
+    (rep.strategies || []).forEach(function (card, i) { sheets.appendChild(sheet(card, i)); });
+    var pairs = (rep.portfolio && rep.portfolio.pairs) || [];
+    var pb = $("pairs");
+    pb.querySelectorAll("p").forEach(function (p) { p.remove(); });
+    pairs.forEach(function (p) { pb.appendChild(el("p", null, p.sentence)); });
+    pb.hidden = !pairs.length;
+    $("privacy").textContent = rep.privacy || "";
+    requestAnimationFrame(function () {
+      redrawAll();
+      res.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      sheets.querySelectorAll(".grade").forEach(function (g) { sizeRing(g); });
+    });
+  }
+
+  function sizeRing(g) {
+    var svg = g.querySelector("svg"), path = svg.querySelector("path");
+    var w = g.offsetWidth + 16, h = g.offsetHeight + 4;
+    svg.setAttribute("viewBox", "0 0 " + w + " " + h);
+    path.setAttribute("d", ringPath(w - 6, h - 6, hash(g.textContent)).replace(/([ML])([\d.-]+) ([\d.-]+)/g, function (m, c, x, y) { return c + (parseFloat(x) + 3).toFixed(1) + " " + (parseFloat(y) + 3).toFixed(1); }));
+    var len = path.getTotalLength();
+    path.style.strokeDasharray = len;
+    path.style.setProperty("--len", len);
+    g.classList.remove("draw"); void g.offsetWidth; g.classList.add("draw");
+  }
+
+  function sheet(c, idx) {
+    var v = c.verdict || {}, code = v.code || "too_early", unit = c.unit;
+    var art = el("article", "sheet tone-" + code);
+    var margin = el("div", "margin");
+    var grade = el("div", "grade", v.label || VERDICT_WORDS[code] || code);
+    grade.appendChild(svgEl("svg", { "aria-hidden": "true" })).appendChild(svgEl("path", {}));
+    margin.appendChild(grade);
+    art.appendChild(margin);
+
+    var body = el("div", "body");
+    var h = el("h3", "name", c.name || "Your strategy");
+    var meta = [];
+    if (num(c.n)) meta.push(c.n.toLocaleString("en-US") + " trades");
+    var dr = dateRange(c.first, c.last); if (dr) meta.push(dr);
+    if (meta.length) h.appendChild(el("span", null, meta.join(", ")));
+    body.appendChild(h);
+    body.appendChild(el("p", "headline", v.headline || v.sentence || ""));
+    if (v.plain) body.appendChild(el("p", "plain", v.plain));
+    if (v.why) body.appendChild(el("p", "why", v.why));
+
+    if (c.money && c.money.disagree && c.money.sentence) {
+      var co = el("p", "callout"); co.appendChild(el("b", null, "Look at the money, not the percent. ")); co.appendChild(document.createTextNode(c.money.sentence));
+      body.appendChild(co);
+    }
+
+    if (c.chart && c.chart.you && c.chart.you.length > 1) {
+      var fig = el("figure", "chart");
+      var cv = el("canvas"); cv.setAttribute("role", "img");
+      cv.setAttribute("aria-label", "Your result over time, drawn over " + ((c.luck && c.luck.coin_flips) || 1000) + " coin-flip versions of the same trades.");
+      fig.appendChild(cv);
+      var nYou = el("span", "note", "you"), nLuck = el("span", "note luck", "luck");
+      fig.appendChild(nYou); fig.appendChild(nLuck);
+      body.appendChild(fig);
+      var fan = c.chart.fan || [];
+      var draw = function () {
+        var p = drawFan(cv, c.chart.you, fan, { l: 4, r: 64, t: 18, b: 18 });
+        nYou.style.left = (p.you[0] + 10) + "px"; nYou.style.top = (p.you[1] - 14) + "px";
+        nLuck.style.left = (p.fanMid[0] + 10) + "px"; nLuck.style.top = (Math.min(p.fanMid[1] + (Math.abs(p.fanMid[1] - p.you[1]) < 26 ? 24 : -12), p.h - 24)) + "px";
+      };
+      drawers.push(draw);
+      var lg = el("p", "legend");
+      var a = el("span"); a.appendChild(el("i")); a.appendChild(document.createTextNode("Your trades, added up"));
+      var b2 = el("span"); b2.appendChild(el("i", "p")); b2.appendChild(document.createTextNode("The same trades with a coin deciding each win or loss"));
+      lg.appendChild(a); lg.appendChild(b2);
+      body.appendChild(lg);
+      if (c.luck && c.luck.sentence) body.appendChild(el("p", "plain", c.luck.sentence)).style.marginTop = "8px";
+    }
+
+    var st = c.stats || {}, ed = c.edge || {};
+    var figs = [];
+    var total = c.money && num(c.money.total) ? fmt(c.money.total, c.money.unit) : (num(st.total) ? fmt(st.total, unit) : null);
+    if (total) figs.push(["Total result", total, c.money && num(c.money.percent_mean) ? "average trade " + fmt(c.money.percent_mean, "%") : null]);
+    if (num(ed.mean)) figs.push(["Per trade", fmt(ed.mean, unit), num(ed.lower) && num(ed.upper) ? "range " + fmt(ed.lower, unit) + " to " + fmt(ed.upper, unit) : null]);
+    if (num(st.win_rate)) figs.push(["Trades that won", pct(st.win_rate), null]);
+    if (num(st.max_drawdown)) figs.push(["Worst drop", fmt(-Math.abs(st.max_drawdown), unit), null]);
+    if (c.luck && num(c.luck.one_in)) figs.push(["Luck does this well", "1 in " + c.luck.one_in.toLocaleString("en-US"), null]);
+    if (figs.length) {
+      var dl = el("dl", "figures");
+      figs.forEach(function (f) { var d = el("div"); d.appendChild(el("dt", null, f[0])); var dd = el("dd", null, f[1]); if (f[2]) dd.appendChild(el("small", null, f[2])); d.appendChild(dd); dl.appendChild(d); });
+      body.appendChild(dl);
+    }
+    if (c.benchmark && c.benchmark.sentence) {
+      var bp = el("p", "bench", c.benchmark.sentence);
+      if (c.benchmark.why) bp.appendChild(el("span", null, c.benchmark.why));
+      body.appendChild(bp);
+    }
+    if (c.compare && (c.compare.headline || c.compare.sentence)) {
+      var cp = el("div", "ask tone-" + (c.compare.code || ""));
+      cp.appendChild(el("label", null, "Live compared with your backtest"));
+      cp.appendChild(el("p", null, c.compare.headline || c.compare.sentence)).style.margin = "0";
+      if (c.compare.plain) cp.appendChild(el("p", "whyline", c.compare.plain));
+      if (c.compare.why) cp.appendChild(el("p", "whyline", "Why: " + c.compare.why));
+      body.appendChild(cp);
+    }
+
+    if (c.next_step && c.next_step.text) {
+      var nx = el("div", "next");
+      var arrow = svgEl("svg", { viewBox: "0 0 52 26", "aria-hidden": "true" });
+      arrow.appendChild(svgEl("path", { d: "M2 15c12-4 25-6 44-3m-9-8.5c3.7 2.8 6.7 5.6 9.3 8.4-3.2 2.4-6.3 5.3-9 8.6", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" }));
+      nx.appendChild(arrow);
+      var nd = el("div"), np = el("p");
+      np.appendChild(el("span", "label", "Next step:"));
+      np.appendChild(el("mark", null, c.next_step.text));
+      nd.appendChild(np);
+      if (c.next_step.why) nd.appendChild(el("p", "whyline", "Why: " + c.next_step.why));
+      nx.appendChild(nd);
+      body.appendChild(nx);
+    }
+
+    (c.ask_the_user || []).forEach(function (q, qi) {
+      var f = el("form", "ask");
+      var id = "q" + idx + "_" + qi;
+      var lab = el("label", null, q.question); lab.setAttribute("for", id); f.appendChild(lab);
+      if (q.field === "variants_tried" || q.field === "benchmark_return_pct") {
+        var row = el("div", "row");
+        var inp = el("input"); inp.id = id; inp.type = "number"; inp.inputMode = "decimal";
+        if (q.field === "variants_tried") { inp.min = "1"; inp.step = "1"; inp.placeholder = "e.g. 20"; }
+        else { inp.step = "any"; inp.placeholder = "e.g. 34"; }
+        row.appendChild(inp);
+        var go = el("button", "btn", "Check again"); go.type = "submit"; row.appendChild(go);
+        f.appendChild(row);
+        f.addEventListener("submit", function (e) {
+          e.preventDefault();
+          var val = parseFloat(inp.value);
+          if (!num(val)) { inp.focus(); return; }
+          var o = Object.assign({}, lastOpts); o[q.field] = q.field === "variants_tried" ? Math.max(1, Math.round(val)) : val;
+          window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+          judge(last, o);
+        });
+      }
+      if (q.why) f.appendChild(el("p", "whyline", "Why we ask: " + q.why));
+      body.appendChild(f);
+    });
+
+    if (c.checks && c.checks.length) {
+      var ul = el("ul", "checks");
+      ul.setAttribute("aria-label", "Checks");
+      c.checks.forEach(function (k) {
+        var li = el("li", k.status || "warn");
+        li.appendChild(mark(k.status));
+        var d = el("div");
+        var label = k.status === "pass" ? "Passed: " : k.status === "fail" ? "Failed: " : "Watch out: ";
+        var p = el("p"); p.appendChild(el("span", "visually-hidden", label)); p.appendChild(document.createTextNode(k.text || ""));
+        d.appendChild(p);
+        if (k.fix) d.appendChild(el("p", "fix", "Fix: " + k.fix));
+        if (k.why) { var det = el("details"); det.appendChild(el("summary", null, "Why it matters")); det.appendChild(el("p", null, k.why)); d.appendChild(det); }
+        li.appendChild(d); ul.appendChild(li);
+      });
+      body.appendChild(ul);
+    } else if (c.warnings && c.warnings.length) {
+      var ul2 = el("ul", "checks");
+      c.warnings.forEach(function (w) { var li = el("li", "warn"); li.appendChild(mark("warn")); li.appendChild(el("p", null, w)); ul2.appendChild(li); });
+      body.appendChild(ul2);
+    }
+
+    if (c.ai_audit_prompt) {
+      var au = el("div", "audit");
+      au.appendChild(el("p", null, "This looks too good. Paste this into your AI to have the bot's code checked:"));
+      au.appendChild(el("pre", null, c.ai_audit_prompt));
+      var cb = el("button", "copy", "Copy the prompt"); cb.type = "button";
+      cb.addEventListener("click", function () { copyText(c.ai_audit_prompt, cb, "Copied"); });
+      au.appendChild(cb);
+      body.appendChild(au);
+    }
+
+    var extras = [];
+    if (c.what_would_change_it) extras.push(c.what_would_change_it);
+    if (c.drawdown && c.drawdown.sentence) extras.push(c.drawdown.sentence);
+    if (c.recent && c.recent.sentence) extras.push(c.recent.sentence);
+    if (c.prediction && c.prediction.sentence) extras.push(c.prediction.sentence);
+    if (extras.length) { var ex = el("ul", "extras"); extras.forEach(function (t) { ex.appendChild(el("li", null, t)); }); body.appendChild(ex); }
+    if (c.fingerprint) body.appendChild(el("p", "fingerprint", "Fingerprint " + c.fingerprint + ". The same file always gets this answer."));
+
+    art.appendChild(body);
+    return art;
+  }
+
+  /* ---------- actions ---------- */
+  function copyText(text, btn, done) {
+    var label = btn.querySelector("span") || btn, before = label.textContent;
+    var ok = function () { label.textContent = done; setTimeout(function () { label.textContent = before; }, 1800); };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(ok, fallback); else fallback();
+    function fallback() {
+      var ta = el("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0"; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); ok(); } catch (e) {} document.body.removeChild(ta);
+    }
+  }
+  function markdownOf(rep) {
+    if (rep.markdown) return rep.markdown;
+    var out = ["# edge or luck", "", (rep.summary && rep.summary.headline) || ""];
+    (rep.strategies || []).forEach(function (c) {
+      var v = c.verdict || {};
+      out.push("", "## " + (c.name || "Strategy") + ": " + (v.label || v.code), v.headline || v.sentence || "");
+      if (v.why) out.push("Why: " + v.why);
+      if (c.next_step) out.push("Next step: " + c.next_step.text);
+      (c.checks || []).forEach(function (k) { out.push("- [" + k.status + "] " + k.text); });
+    });
+    out.push("", "Not financial advice. Judged by edge or luck.");
+    return out.join("\n");
+  }
+  $("copyAI").addEventListener("click", function () { if (lastReport) copyText(markdownOf(lastReport), $("copyAI"), "Copied"); });
+  $("again").addEventListener("click", function () { window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" }); setTimeout(function () { fileInput.focus(); }, reduce ? 0 : 400); });
+  $("compareBtn").addEventListener("click", function () { var b = $("compareBox"); b.hidden = !b.hidden; if (!b.hidden) $("fileBack").focus(); });
+
+  /* ---------- proof, record, version ---------- */
+  fetch("/api/validation").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    if (!j) return;
+    var s = j.sentences || [];
+    if (s.length) {
+      var ul = $("proofList"); ul.textContent = "";
+      s.forEach(function (t) { var li = el("li"); li.appendChild(mark("pass")); li.appendChild(el("span", null, t)); ul.appendChild(li); });
+    }
+    var fr = j.false_real_edge;
+    if (fr && num(fr.rate) && num(fr.strategies)) {
+      var per = fr.rate < 0.01 ? Math.max(1, Math.round(fr.rate * 1000)) + " in 1,000" : Math.round(fr.rate * 100) + " in 100";
+      var txt = $("promiseRateText"); txt.textContent = "";
+      txt.appendChild(el("b", null, "Wrong " + per + " times.")); txt.appendChild(document.createTextNode(" Tested on " + fr.strategies.toLocaleString("en-US") + " strategies that had no edge."));
+      $("promiseRate").hidden = false;
+    }
+  }).catch(function () {});
+  fetch("/api/track-record").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.sentence) $("trackRecord").textContent = j.sentence; }).catch(function () {});
+  fetch("/api/engine").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.version) $("engineVersion").textContent = "Judge version " + j.version + "."; }).catch(function () {});
+
+  /* ---------- assistant tabs ---------- */
+  var SNIPS = {
+    python: { p: "Install it, then add one line after any backtest.", code: "pip install edgeorluck\n\nimport edgeorluck\nstats = bt.run()                      # backtesting.py, vectorbt, freqtrade or a trade list\nprint(edgeorluck.judge(stats).to_markdown())" },
+    claude: { p: "Run this once in your terminal. Claude Code can then judge any trade file you point it at.", code: "claude mcp add edge-or-luck -- uvx --from \"edgeorluck[mcp]\" edgeorluck-mcp" },
+    codex: { p: "Add this to ~/.codex/config.toml.", code: "[mcp_servers.edge-or-luck]\ncommand = \"uvx\"\nargs = [\"--from\", \"edgeorluck[mcp]\", \"edgeorluck-mcp\"]" },
+    cursor: { p: "Add this to .cursor/mcp.json in your project.", code: "{\n  \"mcpServers\": {\n    \"edge-or-luck\": {\n      \"command\": \"uvx\",\n      \"args\": [\"--from\", \"edgeorluck[mcp]\", \"edgeorluck-mcp\"]\n    }\n  }\n}" },
+    chatgpt: { p: "Upload the one-file judge together with your trade file, then paste this message.", code: "I uploaded edgeorluck_single.py and my trades file.\nRun: import edgeorluck_single as e; print(e.judge('<my file>').to_markdown())\nThen explain the verdict to me in plain words, including the why and the next step." }
+  };
+  var panel = $("panel");
+  function showTab(key) {
+    document.querySelectorAll(".tab").forEach(function (t) { t.setAttribute("aria-selected", t.dataset.tab === key ? "true" : "false"); });
+    var s = SNIPS[key]; panel.textContent = "";
+    panel.appendChild(el("p", null, s.p));
+    panel.appendChild(el("pre", null, s.code));
+    var b = el("button", "copy", "Copy"); b.type = "button";
+    b.addEventListener("click", function () { copyText(s.code, b, "Copied"); });
+    panel.appendChild(b);
+    if (key === "chatgpt") { var a = el("a", null, "Download the one-file judge"); a.href = "/assets/edgeorluck_single.py"; a.setAttribute("download", ""); a.style.marginLeft = "14px"; a.style.fontSize = "15px"; panel.appendChild(a); }
+  }
+  document.querySelectorAll(".tab").forEach(function (t) { t.addEventListener("click", function () { showTab(t.dataset.tab); }); });
+  showTab("python");
+})();
+</script>
+</body>
+</html>

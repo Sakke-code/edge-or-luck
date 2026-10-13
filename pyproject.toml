@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "edgeorluck"
+dynamic = ["version"]
+description = "Is a trading strategy's record a real edge, or luck? An honest, reproducible judge for traders and their AI assistants."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "edge or luck" }]
+keywords = ["trading", "backtest", "statistics", "e-values", "multiple-testing", "mcp", "overfitting"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Intended Audience :: Financial and Insurance Industry",
+  "Topic :: Office/Business :: Financial :: Investment",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+dependencies = ["numpy>=1.23", "pandas>=1.5"]
+
+[project.optional-dependencies]
+web = ["flask>=2.2", "waitress>=2.1"]
+mcp = ["mcp>=1.2"]
+xlsx = ["openpyxl>=3.0"]
+all = ["flask>=2.2", "waitress>=2.1", "mcp>=1.2", "openpyxl>=3.0"]
+dev = ["pytest>=7", "jsonschema>=4", "flask>=2.2", "waitress>=2.1", "mcp>=1.2", "openpyxl>=3.0"]
+
+[project.scripts]
+edgeorluck = "edgeorluck.cli:main"
+edgeorluck-mcp = "edgeorluck.mcp_server:main"
+
+[project.urls]
+Homepage = "https://github.com/edge-or-luck/edge-or-luck"
+Source = "https://github.com/edge-or-luck/edge-or-luck"
+
+[tool.setuptools.dynamic]
+version = { attr = "edgeorluck.judge.ENGINE_VERSION" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+edgeorluck = ["llms.txt", "web/static/*", "web/static/assets/*", "web/static/assets/**/*", "data/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
