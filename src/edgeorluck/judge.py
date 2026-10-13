@@ -598,8 +598,10 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
     scale = max(abs(m.get("adj_lower") or 0.0), abs(m.get("adj_upper") or 0.0), abs(mean))
     rng_text = f"{fmt(m.get('adj_lower'), unit, ref=scale)} to {fmt(m.get('adj_upper'), unit, ref=scale)}"
     per = f"{fmt(mean, unit)} per trade"
+    judged_all = strategies == len(read.strategies)
     tried = (f" when you tried {versions} versions" if versions and versions > 1 else
-             f" across your {strategies} strategies" if strategies > 1 else "")
+             (f" across your {strategies} strategies" if judged_all else
+              f" across your {strategies} strategies with {MIN_TRADES} or more trades") if strategies > 1 else "")
     only_version = code == "real_edge" and versions is None and strategies == 1
     split_day = day(st.times[-faded_window]) if (faded and st.times) else None
     if code == "too_early":

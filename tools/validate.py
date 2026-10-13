@@ -266,8 +266,9 @@ def write(results: Dict, quick: bool) -> None:
         "",
         "### What the corrections buy",
         "",
-        "Before validation, three shapes broke the target. The same records with the corrections switched off "
-        "(no widening for autocorrelation, no skew-raised bar, no five-losses rule):",
+        "Before these corrections, skewed and martingale records broke the target on a single look, and "
+        "autocorrelated records broke it when checked again and again (section 2). The same records with the "
+        "corrections switched off (no widening for autocorrelation, no skew-raised bar, no five-losses rule):",
         "",
         "| Trades look like | 30 trades | 100 trades | 300 trades |",
         "|---|---|---|---|",
@@ -375,7 +376,14 @@ def headline(results: Dict) -> Dict:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--quick", action="store_true")
+    parser.add_argument("--render", action="store_true", help="rewrite VALIDATION.md from the saved JSON")
     args = parser.parse_args()
+    saved = ROOT / "src" / "edgeorluck" / "data" / "validation.json"
+    if args.render:
+        results = json.loads(saved.read_text(encoding="utf-8"))
+        write(results, bool(results.get("quick")))
+        print("rewrote VALIDATION.md from", saved.relative_to(ROOT))
+        return 0
     reps = 60 if args.quick else 2000
     started = time.time()
     results: Dict = {"engine_version": edgeorluck.__version__, "date": date.today().isoformat(),
