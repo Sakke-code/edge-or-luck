@@ -136,7 +136,7 @@ h1{font-weight:700;font-size:clamp(44px,6.2vw,88px);line-height:.98;letter-spaci
 h1 .line{display:block;white-space:nowrap}
 .lede{font-size:clamp(19px,1.6vw,22px);line-height:1.45;color:var(--ink-2);margin:0 0 34px;max-width:36ch}
 .note{position:absolute;z-index:2;font-family:var(--hand);font-size:22px;line-height:1.15;color:var(--ink);opacity:0;transition:opacity .6s ease;pointer-events:none;white-space:nowrap}
-.note.luck{color:var(--pencil-2);font-size:19px;white-space:normal;width:210px;text-align:right}
+.note.luck{color:var(--pencil-2);font-size:19px;white-space:normal;width:250px;text-align:right}
 .notes-on .note{opacity:1}
 .note svg{position:absolute;overflow:visible}
 
@@ -189,6 +189,13 @@ h1 .line{display:block;white-space:nowrap}
 .btn.quiet{background:transparent;color:var(--ink);border-color:var(--rule)}
 .btn.quiet:hover{border-color:var(--ink)}
 .btn svg{width:18px;height:18px}
+.index{list-style:none;margin:0 0 24px;padding:0;max-width:640px;border-top:1px solid var(--rule)}
+.index li{border-bottom:1px solid var(--rule)}
+.index a{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:baseline;padding:9px 2px;text-decoration:none}
+.index a:hover .n{text-decoration:underline}
+.index .n{font-weight:500}
+.index .v{font-family:var(--hand);font-weight:700;font-size:19px;color:var(--tone)}
+#asks .ask{margin:0 0 22px}
 .compare-box{margin-top:16px;max-width:620px}
 .compare-box .drop{padding:16px 18px}
 .compare-box p{font-size:16px;color:var(--ink-2);margin:0 0 10px}
@@ -197,7 +204,7 @@ h1 .line{display:block;white-space:nowrap}
 .sheets::before{content:"";position:absolute;left:184px;top:0;bottom:0;width:1.5px;background:var(--margin-line)}
 .sheet{display:grid;grid-template-columns:200px minmax(0,1fr);padding:34px 0 40px;border-top:1px solid var(--rule)}
 .sheet:last-child{border-bottom:1px solid var(--rule)}
-.margin{padding-right:30px;display:flex;justify-content:flex-end}
+.margin{padding-right:30px;display:flex;justify-content:flex-end;align-items:flex-start}
 .grade{position:relative;display:inline-block;padding:10px 16px 12px;font-family:var(--hand);font-weight:700;font-size:23px;line-height:1.05;text-align:center;color:var(--tone);max-width:150px}
 .grade svg{position:absolute;inset:-2px -8px;width:calc(100% + 16px);height:calc(100% + 4px);overflow:visible}
 .grade path{fill:none;stroke:var(--tone);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
@@ -282,7 +289,7 @@ h1 .line{display:block;white-space:nowrap}
 .privacy span{grid-column:2;max-width:62ch}
 
 /* ---- Sections below ---- */
-.band{padding:clamp(72px,11vh,120px) 0 0}
+.band{padding-top:clamp(72px,11vh,120px)}
 .band h2{font-size:clamp(30px,3.6vw,46px);line-height:1.06;letter-spacing:-.025em;margin:0 0 14px;max-width:22ch}
 .band .intro{margin:0 0 36px;max-width:58ch;color:var(--ink-2)}
 .steps{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:36px}
@@ -424,6 +431,8 @@ footer b{color:var(--ink-2);font-weight:600}
     <div>
       <h2 id="resHeadline"></h2>
       <p id="resText"></p>
+      <ul class="index" id="index" hidden></ul>
+      <div id="asks"></div>
       <div class="actions">
         <button class="btn" id="copyAI" type="button"><svg viewBox="0 0 18 18" aria-hidden="true"><rect x="5.5" y="5.5" width="9.5" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 5.5V4a1.5 1.5 0 0 0-1.5-1.5H4.5A1.5 1.5 0 0 0 3 4v7a1.5 1.5 0 0 0 1.5 1.5h1" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>Copy the result for your AI</span></button>
         <button class="btn quiet" id="compareBtn" type="button">Compare with my backtest</button>
@@ -454,12 +463,15 @@ footer b{color:var(--ink-2);font-weight:600}
   <ol class="steps">
     <li>
       <svg viewBox="0 0 220 110" aria-hidden="true">
-        <ellipse cx="70" cy="62" rx="30" ry="30" fill="none" stroke="currentColor" stroke-width="2"/>
-        <ellipse cx="70" cy="62" rx="21" ry="21" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 4"/>
-        <path d="M62 62h16M70 54v16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <ellipse cx="150" cy="40" rx="30" ry="9" fill="none" stroke="currentColor" stroke-width="2"/>
-        <path d="M120 40v5c0 5 13.4 9 30 9s30-4 30-9v-5" fill="none" stroke="currentColor" stroke-width="2"/>
-        <path d="M104 80c14 8 30 6 44-6m-9-.2 9-.8.3 8.8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity=".7"/>
+        <circle cx="48" cy="64" r="27" fill="none" stroke="currentColor" stroke-width="2.2"/>
+        <circle cx="48" cy="64" r="20" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".55"/>
+        <path d="M39 64h18M48 55v18" stroke="var(--green)" stroke-width="2.6" stroke-linecap="round"/>
+        <circle cx="170" cy="64" r="27" fill="none" stroke="currentColor" stroke-width="2.2"/>
+        <circle cx="170" cy="64" r="20" fill="none" stroke="currentColor" stroke-width="1.1" opacity=".55"/>
+        <path d="M161 64h18" stroke="var(--red)" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M80 40c16-18 42-18 58 0m-8.5-7.6 8.8 7.9-11 3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".75"/>
+        <path d="M138 90c-16 16-42 16-58 0m8.5 7.6-8.8-7.9 11-3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".75"/>
+        <text x="109" y="70" text-anchor="middle" font-family="Kalam, cursive" font-size="15" fill="currentColor" opacity=".75">or</text>
       </svg>
       <h3>We flip a coin for each of your trades.</h3>
       <p>Same trades, same sizes, same order. Only whether each one wins or loses is left to chance.</p>
@@ -471,10 +483,10 @@ footer b{color:var(--ink-2);font-weight:600}
     </li>
     <li>
       <svg viewBox="0 0 220 110" aria-hidden="true">
-        <path d="M14 70h192" stroke="currentColor" stroke-width="1.4" stroke-dasharray="5 5" opacity=".6"/>
-        <path d="M18 88c20-4 38-14 58-12s34-22 54-30 40-20 62-26" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
-        <path d="M168 34c4 3 7 7 9 11 5-10 11-18 19-24" fill="none" stroke="var(--green)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
-        <text x="16" y="62" font-family="Kalam, cursive" font-size="15" fill="currentColor" opacity=".7">the bar luck rarely reaches</text>
+        <path d="M14 58h192" stroke="currentColor" stroke-width="1.4" stroke-dasharray="5 5" opacity=".6"/>
+        <text x="16" y="80" font-family="Kalam, cursive" font-size="15" fill="currentColor" opacity=".7">the bar luck rarely reaches</text>
+        <path d="M18 100c26-6 44-18 70-26s40-24 60-40 30-20 48-26" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M172 26c4 3 7 7 9 11 5-10 11-18 19-24" fill="none" stroke="var(--green)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <h3>We say “real” only when luck almost never does as well.</h3>
       <p>And we raise the bar for every other version you tried, because trying many makes one look good by chance.</p>
@@ -726,7 +738,7 @@ footer b{color:var(--ink-2);font-weight:600}
     you.style.left = (pts.you[0] - (small ? 128 : 150)) + "px";
     you.style.top = (pts.you[1] - (small ? 34 : 40)) + "px";
     // Under the fan, right-aligned to its end, never past the page edge.
-    var w = small ? 150 : 210;
+    var w = small ? 150 : 250;
     luck.style.left = Math.max(8, pts.fanLow[0] - w + (small ? 4 : 10)) + "px";
     luck.style.top = Math.min(pts.fanLow[1] + (small ? 16 : 22), pts.h - (small ? 50 : 76)) + "px";
   }
@@ -857,9 +869,30 @@ footer b{color:var(--ink-2);font-weight:600}
     $("compareBtn").hidden = !(last && last.kind === "files");
     $("compareBox").hidden = true;
     drawers = drawers.slice(0, 1);
+    var cards = rep.strategies || [];
+    // Several strategies: one index to scan, and each question asked once.
+    var index = $("index"); index.textContent = "";
+    index.hidden = cards.length < 2;
+    if (cards.length > 1) cards.forEach(function (c, i) {
+      var v = c.verdict || {}, li = el("li", "tone-" + (v.code || "too_early")), a = el("a");
+      a.href = "#s-" + i;
+      a.appendChild(el("span", "n", c.name || "Strategy " + (i + 1)));
+      a.appendChild(el("span", "v", v.label || VERDICT_WORDS[v.code] || ""));
+      li.appendChild(a); index.appendChild(li);
+    });
+    sharedAsks = cards.length > 1;
+    var asks = $("asks"); asks.textContent = "";
+    if (sharedAsks) {
+      var seen = {};
+      cards.forEach(function (c) { (c.ask_the_user || []).forEach(function (q) {
+        var key = q.field || q.question;
+        if (seen[key]) return; seen[key] = true;
+        asks.appendChild(askForm(q, "qa_" + Object.keys(seen).length));
+      }); });
+    }
     var sheets = $("sheets");
     sheets.textContent = "";
-    (rep.strategies || []).forEach(function (card, i) { sheets.appendChild(sheet(card, i)); });
+    cards.forEach(function (card, i) { sheets.appendChild(sheet(card, i)); });
     var pairs = (rep.portfolio && rep.portfolio.pairs) || [];
     var pb = $("pairs");
     pb.querySelectorAll("p").forEach(function (p) { p.remove(); });
@@ -884,9 +917,36 @@ footer b{color:var(--ink-2);font-weight:600}
     g.classList.remove("draw"); void g.offsetWidth; g.classList.add("draw");
   }
 
+  // A question the trader can answer in place; numeric fields re-judge.
+  function askForm(q, id) {
+    var f = el("form", "ask");
+    var lab = el("label", null, q.question); lab.setAttribute("for", id); f.appendChild(lab);
+    if (q.field === "variants_tried" || q.field === "benchmark_return_pct") {
+      var row = el("div", "row");
+      var inp = el("input"); inp.id = id; inp.type = "number"; inp.inputMode = "decimal";
+      if (q.field === "variants_tried") { inp.min = "1"; inp.step = "1"; inp.placeholder = "e.g. 20"; }
+      else { inp.step = "any"; inp.placeholder = "e.g. 34"; }
+      if (num(lastOpts[q.field])) inp.value = lastOpts[q.field];
+      row.appendChild(inp);
+      var go = el("button", "btn", "Check again"); go.type = "submit"; row.appendChild(go);
+      f.appendChild(row);
+      f.addEventListener("submit", function (e) {
+        e.preventDefault();
+        var val = parseFloat(inp.value);
+        if (!num(val)) { inp.focus(); return; }
+        var o = Object.assign({}, lastOpts); o[q.field] = q.field === "variants_tried" ? Math.max(1, Math.round(val)) : val;
+        judge(last, o);
+      });
+    }
+    if (q.why) f.appendChild(el("p", "whyline", "Why we ask: " + q.why));
+    return f;
+  }
+  var sharedAsks = false;
+
   function sheet(c, idx) {
     var v = c.verdict || {}, code = v.code || "too_early", unit = c.unit;
     var art = el("article", "sheet tone-" + code);
+    art.id = "s-" + idx;
     var margin = el("div", "margin");
     var grade = el("div", "grade", v.label || VERDICT_WORDS[code] || code);
     grade.appendChild(svgEl("svg", { "aria-hidden": "true" })).appendChild(svgEl("path", {}));
@@ -973,30 +1033,7 @@ footer b{color:var(--ink-2);font-weight:600}
       body.appendChild(nx);
     }
 
-    (c.ask_the_user || []).forEach(function (q, qi) {
-      var f = el("form", "ask");
-      var id = "q" + idx + "_" + qi;
-      var lab = el("label", null, q.question); lab.setAttribute("for", id); f.appendChild(lab);
-      if (q.field === "variants_tried" || q.field === "benchmark_return_pct") {
-        var row = el("div", "row");
-        var inp = el("input"); inp.id = id; inp.type = "number"; inp.inputMode = "decimal";
-        if (q.field === "variants_tried") { inp.min = "1"; inp.step = "1"; inp.placeholder = "e.g. 20"; }
-        else { inp.step = "any"; inp.placeholder = "e.g. 34"; }
-        row.appendChild(inp);
-        var go = el("button", "btn", "Check again"); go.type = "submit"; row.appendChild(go);
-        f.appendChild(row);
-        f.addEventListener("submit", function (e) {
-          e.preventDefault();
-          var val = parseFloat(inp.value);
-          if (!num(val)) { inp.focus(); return; }
-          var o = Object.assign({}, lastOpts); o[q.field] = q.field === "variants_tried" ? Math.max(1, Math.round(val)) : val;
-          window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
-          judge(last, o);
-        });
-      }
-      if (q.why) f.appendChild(el("p", "whyline", "Why we ask: " + q.why));
-      body.appendChild(f);
-    });
+    if (!sharedAsks) (c.ask_the_user || []).forEach(function (q, qi) { body.appendChild(askForm(q, "q" + idx + "_" + qi)); });
 
     if (c.checks && c.checks.length) {
       var ul = el("ul", "checks");
@@ -1078,9 +1115,10 @@ footer b{color:var(--ink-2);font-weight:600}
     }
     var fr = j.false_real_edge;
     if (fr && num(fr.rate) && num(fr.strategies)) {
-      var per = fr.rate < 0.01 ? Math.max(1, Math.round(fr.rate * 1000)) + " in 1,000" : Math.round(fr.rate * 100) + " in 100";
+      var per = fr.rate < 0.01 ? Math.max(1, Math.round(fr.rate * 1000)) + " times in 1,000" : Math.round(fr.rate * 100) + " times in 100";
       var txt = $("promiseRateText"); txt.textContent = "";
-      txt.appendChild(el("b", null, "Wrong " + per + " times.")); txt.appendChild(document.createTextNode(" Tested on " + fr.strategies.toLocaleString("en-US") + " strategies that had no edge."));
+      txt.appendChild(el("b", null, "Calls pure luck “real” " + per + "."));
+      txt.appendChild(document.createTextNode(" Measured on " + fr.strategies.toLocaleString("en-US") + " strategies with no edge."));
       $("promiseRate").hidden = false;
     }
   }).catch(function () {});
@@ -1089,7 +1127,7 @@ footer b{color:var(--ink-2);font-weight:600}
 
   /* ---------- assistant tabs ---------- */
   var SNIPS = {
-    python: { p: "Install it, then add one line after any backtest.", code: "pip install edgeorluck\n\nimport edgeorluck\nstats = bt.run()                      # backtesting.py, vectorbt, freqtrade or a trade list\nprint(edgeorluck.judge(stats).to_markdown())" },
+    python: { p: "Install it, then add one line after any backtest. It reads backtesting.py, vectorbt and freqtrade results, or a plain list of trades.", code: "pip install edgeorluck\n\nimport edgeorluck\nstats = bt.run()\nprint(edgeorluck.judge(stats).to_markdown())" },
     claude: { p: "Run this once in your terminal. Claude Code can then judge any trade file you point it at.", code: "claude mcp add edge-or-luck -- uvx --from \"edgeorluck[mcp]\" edgeorluck-mcp" },
     codex: { p: "Add this to ~/.codex/config.toml.", code: "[mcp_servers.edge-or-luck]\ncommand = \"uvx\"\nargs = [\"--from\", \"edgeorluck[mcp]\", \"edgeorluck-mcp\"]" },
     cursor: { p: "Add this to .cursor/mcp.json in your project.", code: "{\n  \"mcpServers\": {\n    \"edge-or-luck\": {\n      \"command\": \"uvx\",\n      \"args\": [\"--from\", \"edgeorluck[mcp]\", \"edgeorluck-mcp\"]\n    }\n  }\n}" },

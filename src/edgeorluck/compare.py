@@ -29,7 +29,7 @@ Z_BACKTEST = 2.2414             # one side at 1.25% for the backtest side
 DRAW_CELLS = 2_000_000
 
 
-def _sd(x: np.ndarray) -> float:
+def _live_sd(x: np.ndarray) -> float:
     if len(x) < 2:
         return float("nan")
     sd = float(np.std(x, ddof=1))
@@ -85,7 +85,7 @@ def compare_runs(live_read: ReadResult, backtest_read: ReadResult) -> Dict[str, 
                     plain="A backtest needs at least 30 trades to say what to expect.",
                     next_step={"text": "Run the backtest over a longer period, then compare again.",
                                "why": "A short backtest promises very little."})
-    sd_l, sd_b = _sd(x), _sd(y)
+    sd_l, sd_b = _live_sd(x), _live_sd(y)
     h_live = half_width(n, sd_l, BAR) if n >= 2 else math.inf
     h_bt = Z_BACKTEST * sd_b / math.sqrt(nb)
     diff = mean_l - mean_b

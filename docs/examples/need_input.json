@@ -1,0 +1,93 @@
+{
+ "schema_version": "1.0",
+ "engine_version": "2.0.0",
+ "status": "need_input",
+ "input_fingerprint": null,
+ "verdict": null,
+ "next_step": {
+  "text": "Send the closed trades in one of the forms below.",
+  "why": "The judge needs one result per closed trade."
+ },
+ "numbers": null,
+ "checks": [],
+ "what_would_change_it": [],
+ "ai_audit_prompt": null,
+ "ask_the_user": [
+  {
+   "id": "export",
+   "field": null,
+   "question": "Can you export the closed trades? In TradingView: Strategy Tester, then 'List of trades', then export. On an exchange: spot trade history (fills), as CSV.",
+   "why": "The judge needs one result per closed trade.",
+   "answer_with": "data=<file path, CSV text or list of results>",
+   "impact": "high"
+  }
+ ],
+ "need": {
+  "problem": "We couldn't find a profit/P&L column, or buy/sell fills. Columns we saw: a, b.",
+  "needs": "One row per closed trade with its result (money or %), ideally with the close date. Or one row per fill with time, pair, side (buy/sell), price, quantity and fee. Or a plain list of results per trade.",
+  "columns_seen": [
+   "a",
+   "b"
+  ],
+  "question_for_trader": "Can you export the closed trades? In TradingView: Strategy Tester, then 'List of trades', then export. On an exchange: spot trade history (fills), as CSV."
+ },
+ "summary": {
+  "headline": "We couldn't judge this yet.",
+  "text": "We couldn't find a profit/P&L column, or buy/sell fills.",
+  "counts": {},
+  "strategies": 0,
+  "trades": 0
+ },
+ "strategies": [],
+ "portfolio": {
+  "pairs": []
+ },
+ "compare": null,
+ "input": {
+  "format": "unknown",
+  "rows": 0,
+  "columns_seen": [
+   "a",
+   "b"
+  ],
+  "columns_used": {},
+  "warnings": []
+ },
+ "settings": {
+  "variants_tried": null,
+  "benchmark_return_pct": null,
+  "fees_included": null,
+  "source": null,
+  "unit": null,
+  "kind": null,
+  "q": 0.05,
+  "confidence": 0.95,
+  "min_trades": 30,
+  "t_star": 100
+ },
+ "warnings": [],
+ "for_the_assistant": [
+  "Tell the trader what is missing (need.problem) and relay need.question_for_trader.",
+  "Don't guess a verdict without the trades."
+ ],
+ "reply_draft": "I couldn't read trades from that yet: We couldn't find a profit/P&L column, or buy/sell fills. Can you export the closed trades? In TradingView: Strategy Tester, then 'List of trades', then export. On an exchange: spot trade history (fills), as CSV.",
+ "how_we_know": [],
+ "limitations": [
+  "Trades are treated as independent; neighbouring trades that move together are allowed for (Newey-West), but trades driven by the same market moves still count more than they should.",
+  "The ranges and e-values use a normal approximation with an estimated spread: valid as trades accumulate, not exactly at every small sample.",
+  "The comparison with buying and holding is rough: it assumes the price moved at a steady pace.",
+  "It judges the trades it is given. It can't see a bug in the backtest, only signs of one."
+ ],
+ "sample": null,
+ "track_record": {
+  "predictions": 0,
+  "graded": 0,
+  "brier": null,
+  "coin_flip_brier": 0.25,
+  "shrinkage": 200.0,
+  "learning_from": 50,
+  "calibration": [],
+  "sentence": "We have made 0 forecasts and graded none yet. Each is graded when its trader comes back with 30 more trades."
+ },
+ "privacy": "Your file is read in memory and never stored. For each strategy with 30 or more trades we keep only: a one-way fingerprint of its first 30 trades and of the whole list, the number of trades, the unit, our forecast for its next 30 trades, and the time. If you come back with 30 more trades, we also keep whether those trades ended up or down, to grade the forecast. No trades, no file, no IP address (the rate limiter holds addresses in memory for one minute)."
+}

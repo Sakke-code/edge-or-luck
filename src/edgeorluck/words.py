@@ -8,12 +8,22 @@ import numpy as np
 import pandas as pd
 
 
-def fmt(value: Optional[float], unit: str, signed: bool = True) -> str:
-    """+12.30 USDT, -0.42%, +1,234; "n/a" when missing."""
+def fmt(value: Optional[float], unit: str, signed: bool = True, ref: Optional[float] = None) -> str:
+    """+12.30 USDT, -0.42%, +1,234; "n/a" when missing. ``ref`` sets the
+    precision from a related number (a range is shown at its own scale)."""
     if value is None or not isinstance(value, (int, float, np.floating, np.integer)) or not math.isfinite(value):
         return "n/a"
     v = float(value)
     a = abs(v)
+    if ref is not None and math.isfinite(ref) and abs(ref) > a:
+        scale = abs(ref)
+        digits = 0 if scale >= 100 else 2 if scale >= 1 else max(2, min(6, 2 - int(math.floor(math.log10(scale)))))
+        body = f"{a:,.{digits}f}"
+        if body.strip("0.,") == "" and a > 0:
+            return fmt(value, unit, signed)          # don't round a sign away: show it at its own scale
+        sign = ("+" if v > 0 else "-" if v < 0 else "") if signed else ("-" if v < 0 else "")
+        text = sign + body
+        return text + "%" if unit == "%" else text if unit in ("money", "", None) else f"{text} {unit}"
     if a >= 100:
         body = f"{a:,.0f}"
     elif a >= 1 or a == 0:

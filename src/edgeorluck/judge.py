@@ -32,6 +32,7 @@ import pandas as pd
 
 from .evidence import (ALPHA, BASE_BAR, Q, T_STAR, ebh, half_width, log_e_one_sided, max_versions_passing,
                        mixing_rho2, normal_tail, serial_factor, trades_needed, wilson_bounds_count, z_equivalent)
+from .compare import compare_runs
 from .readers import ReadResult, Trades, number, read_any
 from .words import count, day, fmt, iso_day, join_and, one_in, rnd, round_list, share
 
@@ -453,7 +454,8 @@ def _red_flags(st: Trades, m: Dict[str, Any]) -> List[Dict[str, Any]]:
     return flags
 
 
-def _audit_prompt(flags: List[Dict[str, Any]], st: Trades, positive_backtest: bool) -> Optional[str]:
+def _audit_prompt(flags: List[Dict[str, Any]], st: Trades, positive_backtest: bool,
+                  losing: bool = False) -> Optional[str]:
     if not flags and not positive_backtest:
         return None
     keys: List[str] = []
@@ -466,9 +468,13 @@ def _audit_prompt(flags: List[Dict[str, Any]], st: Trades, positive_backtest: bo
             keys.append(item)
     reasons = "; ".join(f["text"] for f in flags) if flags else \
         "the record passed, and I want to be sure the test itself is honest"
+    intro = ("I am not a programmer. Please audit my trading bot's code: its results look better than real "
+             "trading usually is, and I want to know if a bug causes that.")
+    if losing:
+        intro = ("I am not a programmer. Please audit my trading bot's code: many small wins are being erased by a "
+                 "few big losses, and I want to know which rules cause that.")
     lines = [
-        "I am not a programmer. Please audit my trading bot's code for bugs that make a backtest look better than "
-        "real trading would be.",
+        intro,
         f"Why I am asking: an independent check of my trades said: {reasons}",
         "Check each of these, in this order:",
     ]
@@ -592,7 +598,8 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
     money_card = _money_card(st, x, unit, pct, shadow)
 
     # the verdict in words
-    rng_text = f"{fmt(m.get('adj_lower'), unit)} to {fmt(m.get('adj_upper'), unit)}"
+    scale = max(abs(m.get("adj_lower") or 0.0), abs(m.get("adj_upper") or 0.0), abs(mean))
+    rng_text = f"{fmt(m.get('adj_lower'), unit, ref=scale)} to {fmt(m.get('adj_upper'), unit, ref=scale)}"
     per = f"{fmt(mean, unit)} per trade"
     tried = (f" when you tried {versions} versions" if versions and versions > 1 else
              f" across your {strategies} strategies" if strategies > 1 else "")
@@ -688,7 +695,9 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
         "drawdown": {"max": worst_dd, "current": current_dd, "trades_since_peak": since_peak,
                      "odds_pct": dd_odds},
         "coin_flip": {k: v for k, v in coin.items() if k != "sentence"},
-        "evidence": {"e_value": e_up if n >= MIN_TRADES else None, "bar": bar, "passes": bool(passes_up),
+        "evidence": {"e_value": e_up if n >= MIN_TRADES else None,
+                     "e_value_below": math.exp(min(m["log_e_down"], 700)) if n >= MIN_TRADES else None,
+                     "bar": bar, "passes": bool(passes_up), "passes_below": bool(down and mean < 0),
                      "versions_or_strategies": family, "serial_factor": m["serial_factor"]},
         "adjusted": ({"versions_tried": versions, "strategies": strategies,
                       "range": [m.get("adj_lower"), m.get("adj_upper")], "bar": bar, "passes": bool(passes_up)}
@@ -711,7 +720,7 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
     changes += _changes(code, n, mean, unit, m, needed, survives, versions, settings, benchmark, faded_window,
                         market_adjusted, total)
     positive_backtest = code == "real_edge" and source != "live"
-    audit = _audit_prompt(flags, st, positive_backtest)
+    audit = _audit_prompt(flags, st, positive_backtest, losing=code in ("losing", "no_edge"))
     next_step = _next_step(code, n, needed, settings, source, flags, versions, strategies, fees, read, split_day)
     card.update(
         verdict=verdict, next_step=next_step, numbers=rnd(numbers), checks=checks, ask_the_user=questions,
@@ -972,7 +981,7 @@ def _checks(st, read, settings, n, code, mean, unit, fees, top3, drawdown, recen
         out.append(_check("live_results", "pass", "These are live results.",
                           "Live trades include real fills and fees, so they are the most honest record."))
     for flag in flags:
-        out.append(_check(f"too_good:{flag['code']}", "warn", flag["text"], flag["why"],
+        out.append(_check(f"red_flag:{flag['code']}", "warn", flag["text"], flag["why"],
                           "Ask your AI to audit the code with the audit prompt below."))
     for w in read.warnings:
         out.append(_check("data", "warn", w, "Rows we could not read are not in the verdict."))
@@ -1065,7 +1074,13 @@ def _changes(code, n, mean, unit, m, needed, survives, versions, settings, bench
 def _next_step(code, n, needed, settings, source, flags, versions, strategies, fees, read,
                split_day) -> Dict[str, str]:
     fees_known = settings.fees_included
-    if flags:
+    loss_shape = {"small_wins_big_losses", "averaging_down"}
+    if flags and code in ("losing", "no_edge") and {f["code"] for f in flags} & loss_shape:
+        return {"text": "Ask your AI to check how the bot handles losing trades: the stop, averaging down and "
+                        "position size. The audit prompt lists what to look for.",
+                "why": "A few big losses are erasing many small wins. That comes from how losing trades are "
+                       "handled, and it can be fixed."}
+    if flags and code not in ("losing", "no_edge"):
         return {"text": "Before trusting this, ask your AI to audit the bot's code with the audit prompt, then "
                         "re-check the new trades.",
                 "why": "Records this good are usually a bug in the test, not money waiting to be made."}
@@ -1244,7 +1259,6 @@ def analyze(read: ReadResult, settings: Settings, *, details: bool = True,
     pairs = _pairs(strategies) if len(strategies) > 1 else []
     compare = None
     if backtest is not None:
-        from .compare import compare_runs
         compare = compare_runs(read, backtest)
         if len(cards) == 1:
             cards[0]["compare"] = compare
