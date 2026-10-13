@@ -180,7 +180,7 @@ h1 .line{display:block;white-space:nowrap}
 .result{padding-top:56px;padding-bottom:40px;scroll-margin-top:12px}
 .result-head{display:grid;grid-template-columns:200px 1fr;gap:0}
 .result-head > div{grid-column:2}
-.result-head h2{font-size:clamp(32px,4vw,52px);line-height:1.04;letter-spacing:-.025em;margin:0 0 14px;max-width:20ch;text-wrap:balance}
+.result-head h2{font-size:clamp(30px,3.5vw,46px);line-height:1.08;letter-spacing:-.025em;margin:0 0 14px;max-width:24ch;text-wrap:balance}
 .result-head p{margin:0 0 22px;max-width:62ch;color:var(--ink-2)}
 .actions{display:flex;flex-wrap:wrap;gap:10px}
 .btn{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:9px 18px;border-radius:6px;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);
@@ -211,6 +211,11 @@ h1 .line{display:block;white-space:nowrap}
 .grade.draw path{animation:ring .7s ease-out both}
 @keyframes ring{from{stroke-dashoffset:var(--len)}to{stroke-dashoffset:0}}
 @media (prefers-reduced-motion:reduce){.grade.draw path{animation:none}}
+.tone-good{--tone:var(--green)}
+.tone-warn{--tone:var(--amber)}
+.tone-muted{--tone:var(--slate)}
+.tone-bad{--tone:var(--red)}
+.tone-faded{--tone:var(--violet)}
 .tone-real_edge{--tone:var(--green)}
 .tone-cant_tell{--tone:var(--amber)}
 .tone-no_edge{--tone:var(--slate)}
@@ -259,6 +264,43 @@ h1 .line{display:block;white-space:nowrap}
 .ask input{width:110px;min-height:44px;padding:8px 12px;border:1.5px solid var(--ink-3);border-radius:6px;background:var(--paper);font-size:17px}
 .ask .whyline{margin:10px 0 0;font-size:15px;color:var(--ink-3)}
 
+.qs{margin:26px 0 0;padding:18px 20px 20px;border:1.5px solid var(--rule);border-radius:6px;max-width:72ch;background:color-mix(in srgb,var(--paper-raised) 70%,transparent)}
+#asks .qs{margin:0 0 22px}
+.qs h3{margin:0 0 4px;font-size:19px;letter-spacing:-.01em}
+.qs > p{margin:0 0 6px;font-size:15px;color:var(--ink-3)}
+.q{padding:14px 0 0;margin:12px 0 0;border-top:1px dashed var(--rule)}
+.q:first-of-type{border-top:0;margin-top:4px}
+.q .ql{display:block;font-weight:500;margin-bottom:8px}
+.q .whyline{margin:6px 0 0;font-size:15px;color:var(--ink-3)}
+.q input[type=number]{width:120px;min-height:44px;padding:8px 12px;border:1.5px solid var(--ink-3);border-radius:6px;background:var(--paper);font-size:17px}
+.choices{display:flex;flex-wrap:wrap;gap:8px}
+.choices label{position:relative;display:inline-flex;align-items:center;min-height:42px;padding:7px 16px;border:1.5px solid var(--rule);border-radius:6px;cursor:pointer;font-size:16px}
+.choices input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.choices label:has(input:checked){border-color:var(--ink);background:color-mix(in srgb,var(--marker) 70%,transparent)}
+.choices label:has(input:focus-visible){outline:2.5px solid var(--focus);outline-offset:2px}
+.qs .go{margin-top:18px}
+.streak{margin:26px 0 0;padding:14px 18px;border-left:3px solid var(--tone);max-width:68ch;background:color-mix(in srgb,var(--tone) 6%,transparent)}
+.streak h4{margin:0 0 4px;font-size:17px}
+.streak p{margin:0}
+.streak .whyline{margin-top:6px;font-size:15px;color:var(--ink-3)}
+.changes{margin:24px 0 0;max-width:68ch}
+.changes h4{margin:0 0 4px;font-size:17px}
+.changes ul{margin:0;padding:0;list-style:none}
+.changes li{position:relative;padding-left:20px;margin-top:5px;color:var(--ink-2);font-size:16px}
+.changes li::before{content:"";position:absolute;left:2px;top:.68em;width:9px;height:1.5px;background:var(--ink-3)}
+.vs{margin:28px 0 0;padding:18px 20px;border:1.5px solid var(--tone);border-radius:6px;max-width:72ch}
+.vs .top{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 16px;margin-bottom:6px}
+.vs h4{margin:0;font-size:17px}
+.vs .lab{font-family:var(--hand);font-weight:700;font-size:21px;color:var(--tone)}
+.vs .hl{margin:0 0 6px;font-size:19px;font-weight:500;line-height:1.35}
+.vs p{margin:0 0 6px}
+.vs .whyline{font-size:15px;color:var(--ink-3)}
+.vs .next{margin-top:12px}
+.need strong{display:block;margin-bottom:4px}
+.need span{display:block;color:var(--ink-2);margin-top:6px}
+.extra-samples{margin:6px 0 0;font-size:15px;color:var(--ink-3)}
+.extra-samples .sample{font-size:18px;min-height:36px;padding:4px 0}
+.private-tag{font-family:var(--text);font-size:13px;color:var(--ink-3);margin-left:4px}
 .checks{list-style:none;margin:28px 0 0;padding:0;max-width:68ch}
 .checks li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;padding:10px 0;border-top:1px dashed var(--rule)}
 .checks li:first-child{border-top:0}
@@ -507,7 +549,7 @@ footer b{color:var(--ink-2);font-weight:600}
   <p class="intro">A referee should show its own mistakes. These numbers come from the test suite in the repository, and you can run it yourself.</p>
   <div class="proof">
     <ul id="proofList">
-      <li><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>The validation numbers load here.</span></li>
+      <li><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>The measured error rates appear here once the test suite has run on this version.</span></li>
     </ul>
     <aside>
       <h3>Its own record</h3>
@@ -611,8 +653,9 @@ footer b{color:var(--ink-2);font-weight:600}
     if (!num(v)) return "–";
     var sign = signed === false ? "" : (v > 0 ? "+" : v < 0 ? "−" : "");
     var a = Math.abs(v);
-    if (unit === "%") return sign + a.toFixed(a >= 100 ? 0 : 2).replace(/\.00$/, "") + "%";
-    var s = a.toLocaleString("en-US", { minimumFractionDigits: a < 100 ? 2 : 0, maximumFractionDigits: 2 });
+    if (unit === "%") return sign + (a > 0 && a < 0.01 ? String(+a.toPrecision(2)) : a.toFixed(a >= 100 ? 0 : 2).replace(/\.00$/, "")) + "%";
+    var s = a > 0 && a < 0.01 ? String(+a.toPrecision(2))
+      : a.toLocaleString("en-US", { minimumFractionDigits: a < 100 ? 2 : 0, maximumFractionDigits: 2 });
     return sign + s + (unit && unit !== "units" ? " " + unit : "");
   }
   function pct(v) { if (!num(v)) return "–"; if (v <= 1) v *= 100; return Math.round(v) + "%"; }
@@ -776,21 +819,30 @@ footer b{color:var(--ink-2);font-weight:600}
 
   /* ---------- samples ---------- */
   var samplesBox = $("samples");
-  fetch("/api/samples").then(function (r) { return r.json(); }).then(function (j) {
-    var list = (j && j.samples) || [];
-    if (!list.length) return;
-    list.forEach(function (s) {
-      var b = el("button", "sample", (s.title || s.label || s.id).replace(/^./, function (c) { return c.toLowerCase(); }));
-      b.type = "button"; b.setAttribute("aria-pressed", "false"); b.dataset.sample = s.id;
-      if (s.blurb) b.title = s.blurb;
-      b.addEventListener("click", function () {
-        samplesBox.querySelectorAll(".sample").forEach(function (o) { o.setAttribute("aria-pressed", "false"); });
-        b.setAttribute("aria-pressed", "true");
-        judge({ kind: "sample", sample: s.id }, {});
-      });
-      samplesBox.appendChild(b);
+  function sampleButton(s) {
+    var b = el("button", "sample", (s.title || s.label || s.id).replace(/^./, function (c) { return c.toLowerCase(); }));
+    b.type = "button"; b.setAttribute("aria-pressed", "false"); b.dataset.sample = s.id;
+    if (s.blurb) b.title = s.blurb;
+    b.addEventListener("click", function () {
+      document.querySelectorAll(".sample").forEach(function (o) { o.setAttribute("aria-pressed", "false"); });
+      b.setAttribute("aria-pressed", "true");
+      judge({ kind: "sample", sample: s.id }, {});
     });
-    samplesBox.hidden = false;
+    return b;
+  }
+  fetch("/api/samples").then(function (r) { return r.json(); }).then(function (j) {
+    var list = Array.isArray(j) ? j : (j && j.samples) || [];
+    var main = list.filter(function (s) { return !s.group || s.group === "main"; });
+    var extra = list.filter(function (s) { return s.group === "extra"; });
+    var mine = list.filter(function (s) { return s.group === "private"; });
+    main.forEach(function (s) { samplesBox.appendChild(sampleButton(s)); });
+    mine.forEach(function (s) { var b = sampleButton(s); b.appendChild(el("span", "private-tag", "only on this computer")); samplesBox.appendChild(b); });
+    if (extra.length) {
+      var p = el("p", "extra-samples", "Also try ");
+      extra.forEach(function (s, i) { if (i) p.appendChild(document.createTextNode(i === extra.length - 1 ? " or " : ", ")); p.appendChild(sampleButton(s)); });
+      samplesBox.parentNode.insertBefore(p, samplesBox.nextSibling);
+    }
+    samplesBox.hidden = !(main.length || mine.length);
   }).catch(function () {});
 
   /* ---------- judging ---------- */
@@ -801,14 +853,23 @@ footer b{color:var(--ink-2);font-weight:600}
     if (text) $("workingText").textContent = text;
   }
   function showError(box, data) {
-    var e = $(box);
+    var e = $(box), need = data && data.need;
     e.textContent = "";
-    var strong = el("strong", null, (data && data.error) || "We couldn't read that.");
-    e.appendChild(strong);
-    var why = (data && data.why) || "Use a file with one closed trade per row and a profit or loss column.";
-    e.appendChild(document.createTextNode(" " + why));
+    if (need && need.problem) {
+      // The judge couldn't read the file: say what it saw and how to export the right one.
+      e.classList.add("need");
+      e.appendChild(el("strong", null, need.problem));
+      if (need.needs) e.appendChild(el("span", null, "What works: " + need.needs));
+      if (need.question_for_trader) e.appendChild(el("span", null, need.question_for_trader));
+    } else {
+      e.classList.remove("need");
+      e.appendChild(el("strong", null, (data && data.error) || "We couldn't read that."));
+      var why = (data && data.why) || "Use a file with one closed trade per row and a profit or loss column.";
+      e.appendChild(document.createTextNode(" " + why));
+    }
     e.hidden = false;
   }
+  var FIELDS = ["variants_tried", "benchmark_return_pct", "fees_included", "source", "unit"];
   function judge(req, opts) {
     last = req; lastOpts = opts || {};
     $("error").hidden = true; $("errorBack").hidden = true;
@@ -817,22 +878,21 @@ footer b{color:var(--ink-2);font-weight:600}
     var init;
     if (req.kind === "sample") {
       var body = { sample: req.sample };
-      if (opts.variants_tried) body.variants_tried = opts.variants_tried;
-      if (num(opts.benchmark_return_pct)) body.benchmark_return_pct = opts.benchmark_return_pct;
+      FIELDS.forEach(function (k) { if (opts[k] != null && opts[k] !== "") body[k] = opts[k]; });
       init = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
     } else {
       var fd = new FormData();
       req.files.forEach(function (f) { fd.append("files", f, f.name); });
       (req.backtest || []).forEach(function (f) { fd.append("backtest", f, f.name); });
-      if (opts.variants_tried) fd.append("variants_tried", String(opts.variants_tried));
-      if (num(opts.benchmark_return_pct)) fd.append("benchmark_return_pct", String(opts.benchmark_return_pct));
+      FIELDS.forEach(function (k) { if (opts[k] != null && opts[k] !== "") fd.append(k, String(opts[k])); });
       init = { method: "POST", body: fd };
     }
     return fetch("/api/judge", init).then(function (r) {
       return r.json().catch(function () { return { error: "The server sent something we couldn't read." }; }).then(function (j) { return { ok: r.ok, j: j }; });
     }).then(function (res) {
       busy(false);
-      if (!res.ok || res.j.error) { showError(req.backtest ? "errorBack" : "error", res.j); if (req.backtest) { $("dropBack").classList.remove("busy"); } return; }
+      $("dropBack").classList.remove("busy");
+      if (!res.ok || res.j.error || res.j.status === "need_input") { showError(req.backtest ? "errorBack" : "error", res.j); return; }
       lastReport = res.j;
       render(res.j);
     }).catch(function () {
@@ -874,21 +934,20 @@ footer b{color:var(--ink-2);font-weight:600}
     var index = $("index"); index.textContent = "";
     index.hidden = cards.length < 2;
     if (cards.length > 1) cards.forEach(function (c, i) {
-      var v = c.verdict || {}, li = el("li", "tone-" + (v.code || "too_early")), a = el("a");
+      var v = c.verdict || {}, li = el("li", toneClass(v)), a = el("a");
       a.href = "#s-" + i;
       a.appendChild(el("span", "n", c.name || "Strategy " + (i + 1)));
       a.appendChild(el("span", "v", v.label || VERDICT_WORDS[v.code] || ""));
       li.appendChild(a); index.appendChild(li);
     });
     sharedAsks = cards.length > 1;
+    soloSheet = cards.length === 1;
     var asks = $("asks"); asks.textContent = "";
     if (sharedAsks) {
-      var seen = {};
-      cards.forEach(function (c) { (c.ask_the_user || []).forEach(function (q) {
-        var key = q.field || q.question;
-        if (seen[key]) return; seen[key] = true;
-        asks.appendChild(askForm(q, "qa_" + Object.keys(seen).length));
-      }); });
+      var all = [];
+      cards.forEach(function (c) { all = all.concat(c.ask_the_user || []); });
+      var box = questionsBox(all, "qa");
+      if (box) asks.appendChild(box);
     }
     var sheets = $("sheets");
     sheets.textContent = "";
@@ -917,35 +976,73 @@ footer b{color:var(--ink-2);font-weight:600}
     g.classList.remove("draw"); void g.offsetWidth; g.classList.add("draw");
   }
 
-  // A question the trader can answer in place; numeric fields re-judge.
-  function askForm(q, id) {
-    var f = el("form", "ask");
-    var lab = el("label", null, q.question); lab.setAttribute("for", id); f.appendChild(lab);
-    if (q.field === "variants_tried" || q.field === "benchmark_return_pct") {
-      var row = el("div", "row");
-      var inp = el("input"); inp.id = id; inp.type = "number"; inp.inputMode = "decimal";
-      if (q.field === "variants_tried") { inp.min = "1"; inp.step = "1"; inp.placeholder = "e.g. 20"; }
-      else { inp.step = "any"; inp.placeholder = "e.g. 34"; }
-      if (num(lastOpts[q.field])) inp.value = lastOpts[q.field];
-      row.appendChild(inp);
-      var go = el("button", "btn", "Check again"); go.type = "submit"; row.appendChild(go);
-      f.appendChild(row);
-      f.addEventListener("submit", function (e) {
-        e.preventDefault();
-        var val = parseFloat(inp.value);
-        if (!num(val)) { inp.focus(); return; }
-        var o = Object.assign({}, lastOpts); o[q.field] = q.field === "variants_tried" ? Math.max(1, Math.round(val)) : val;
-        judge(last, o);
-      });
-    }
-    if (q.why) f.appendChild(el("p", "whyline", "Why we ask: " + q.why));
+  var TONES = { good: 1, warn: 1, muted: 1, bad: 1, faded: 1 };
+  function toneClass(v) { return "tone-" + (v && TONES[v.tone] ? v.tone : (v && v.code) || "too_early"); }
+
+  // The judge's open questions, answered in place. One "Check again" re-judges
+  // with every answer given; the answer_with hint decides the control.
+  var CHOICE_WORDS = { "true": "Yes", "false": "No", backtest: "Backtest", paper: "Paper trading", live: "Live, real money" };
+  function questionsBox(list, prefix) {
+    var seen = {}, qs = [];
+    list.forEach(function (q) { var k = q.field || q.question; if (!seen[k] && !(q.field && lastOpts[q.field] != null)) { seen[k] = 1; qs.push(q); } });
+    if (!qs.length) return null;
+    var rank = { high: 0, medium: 1, low: 2 };
+    qs.sort(function (a, b) { return (rank[a.impact] || 1) - (rank[b.impact] || 1); });
+    var f = el("form", "qs");
+    f.appendChild(el("h3", null, qs.length === 1 ? "One question sharpens this verdict" : "A few answers sharpen this verdict"));
+    f.appendChild(el("p", null, "Answer what you know and leave the rest empty."));
+    var getters = [];
+    qs.forEach(function (q, i) {
+      var id = prefix + "_" + i, wrap = el("div", "q");
+      var hint = (q.answer_with || "").split("=")[1] || "";
+      var opts = /^<.*>$/.test(hint) ? null : hint.split("|").filter(Boolean);
+      if (opts && opts.length > 1) {
+        var g = el("fieldset", "choices"); g.style.border = "0"; g.style.padding = "0"; g.style.margin = "0";
+        var lg = el("legend", "ql", q.question); g.appendChild(lg);
+        opts.forEach(function (o) {
+          var lab = el("label"), r = el("input");
+          r.type = "radio"; r.name = id; r.value = o;
+          lab.appendChild(r); lab.appendChild(document.createTextNode(CHOICE_WORDS[o] || o));
+          g.appendChild(lab);
+        });
+        wrap.appendChild(g);
+        getters.push(function () {
+          var c = f.querySelector('input[name="' + id + '"]:checked');
+          if (!c) return null;
+          return [q.field, c.value === "true" ? true : c.value === "false" ? false : c.value];
+        });
+      } else {
+        var lab2 = el("label", "ql", q.question); lab2.setAttribute("for", id); wrap.appendChild(lab2);
+        var inp = el("input"); inp.id = id; inp.type = "number"; inp.inputMode = "decimal"; inp.step = "any";
+        if (q.field === "variants_tried") { inp.min = "1"; inp.step = "1"; inp.placeholder = "e.g. 20"; }
+        else inp.placeholder = "e.g. 34";
+        wrap.appendChild(inp);
+        getters.push(function () {
+          var v = parseFloat(inp.value);
+          if (!num(v)) return null;
+          return [q.field, q.field === "variants_tried" ? Math.max(1, Math.round(v)) : v];
+        });
+      }
+      if (q.why) wrap.appendChild(el("p", "whyline", "Why we ask: " + q.why));
+      f.appendChild(wrap);
+    });
+    var go = el("button", "btn go", "Check again"); go.type = "submit"; f.appendChild(go);
+    f.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var o = Object.assign({}, lastOpts), any = false;
+      getters.forEach(function (g) { var kv = g(); if (kv && kv[0]) { o[kv[0]] = kv[1]; any = true; } });
+      if (!any) { var first = f.querySelector("input"); if (first) first.focus(); return; }
+      judge(last, o);
+    });
     return f;
   }
-  var sharedAsks = false;
+  var sharedAsks = false, soloSheet = false;
+  // Checks that only repeat an open question are left to the question box.
+  var CHECK_ASKS = { versions_tried: "variants_tried", fees: "fees_included", source: "source", benchmark: "benchmark_return_pct" };
 
   function sheet(c, idx) {
     var v = c.verdict || {}, code = v.code || "too_early", unit = c.unit;
-    var art = el("article", "sheet tone-" + code);
+    var art = el("article", "sheet " + toneClass(v));
     art.id = "s-" + idx;
     var margin = el("div", "margin");
     var grade = el("div", "grade", v.label || VERDICT_WORDS[code] || code);
@@ -960,14 +1057,25 @@ footer b{color:var(--ink-2);font-weight:600}
     var dr = dateRange(c.first, c.last); if (dr) meta.push(dr);
     if (meta.length) h.appendChild(el("span", null, meta.join(", ")));
     body.appendChild(h);
-    body.appendChild(el("p", "headline", v.headline || v.sentence || ""));
-    if (v.plain) body.appendChild(el("p", "plain", v.plain));
-    if (v.why) body.appendChild(el("p", "why", v.why));
+    // Each sentence is said once on the page; later places that would repeat it stay quiet.
+    var said = {};
+    function say(t) { if (t) said[t.trim()] = 1; }
+    function saidAlready(t) { if (!t) return false; t = t.trim(); for (var k in said) if (k.indexOf(t) >= 0) return true; return false; }
+    var headline = v.headline || v.sentence || "";
+    var sum = (lastReport && lastReport.summary) || {};
+    if (!(soloSheet && headline === sum.headline)) body.appendChild(el("p", "headline", headline));
+    say(headline);
+    var plain = v.plain || "", moneyCall = c.money && c.money.disagree && c.money.sentence;
+    // The money warning gets its own callout, so the explanation doesn't say it first.
+    if (moneyCall && plain.indexOf(c.money.sentence) >= 0) plain = plain.replace(c.money.sentence, "").trim();
+    if (plain) { body.appendChild(el("p", "plain", plain)); say(plain); }
+    if (v.why) { body.appendChild(el("p", "why", v.why)); say(v.why); }
 
-    if (c.money && c.money.disagree && c.money.sentence) {
+    if (moneyCall) {
       var co = el("p", "callout"); co.appendChild(el("b", null, "Look at the money, not the percent. ")); co.appendChild(document.createTextNode(c.money.sentence));
       body.appendChild(co);
     }
+    if (c.money) say(c.money.sentence);
 
     if (c.chart && c.chart.you && c.chart.you.length > 1) {
       var fig = el("figure", "chart");
@@ -989,17 +1097,24 @@ footer b{color:var(--ink-2);font-weight:600}
       var b2 = el("span"); b2.appendChild(el("i", "p")); b2.appendChild(document.createTextNode("The same trades with a coin deciding each win or loss"));
       lg.appendChild(a); lg.appendChild(b2);
       body.appendChild(lg);
-      if (c.luck && c.luck.sentence) body.appendChild(el("p", "plain", c.luck.sentence)).style.marginTop = "8px";
+      if (c.luck && c.luck.sentence && !saidAlready(c.luck.sentence)) { body.appendChild(el("p", "plain", c.luck.sentence)).style.marginTop = "8px"; say(c.luck.sentence); }
     }
 
-    var st = c.stats || {}, ed = c.edge || {};
+    var st = c.stats || {}, ed = c.edge || {}, nb = c.numbers || {};
     var figs = [];
-    var total = c.money && num(c.money.total) ? fmt(c.money.total, c.money.unit) : (num(st.total) ? fmt(st.total, unit) : null);
-    if (total) figs.push(["Total result", total, c.money && num(c.money.percent_mean) ? "average trade " + fmt(c.money.percent_mean, "%") : null]);
-    if (num(ed.mean)) figs.push(["Per trade", fmt(ed.mean, unit), num(ed.lower) && num(ed.upper) ? "range " + fmt(ed.lower, unit) + " to " + fmt(ed.upper, unit) : null]);
-    if (num(st.win_rate)) figs.push(["Trades that won", pct(st.win_rate), null]);
-    if (num(st.max_drawdown)) figs.push(["Worst drop", fmt(-Math.abs(st.max_drawdown), unit), null]);
-    if (c.luck && num(c.luck.one_in)) figs.push(["Luck does this well", "1 in " + c.luck.one_in.toLocaleString("en-US"), null]);
+    var mpt = nb.mean_per_trade || {}, rng95 = mpt.range_95 || [ed.lower, ed.upper];
+    var mean = num(mpt.value) ? mpt.value : ed.mean;
+    var tot = num(nb.total) ? nb.total : st.total;
+    var total = c.money && num(c.money.total) ? fmt(c.money.total, c.money.unit) : (num(tot) ? fmt(tot, unit) : null);
+    if (total) figs.push(["Total result", total, c.money && num(c.money.total) && num(c.money.percent_mean) ? "average trade " + fmt(c.money.percent_mean, "%") : null]);
+    if (num(mean)) figs.push(["Per trade", fmt(mean, unit), num(rng95[0]) && num(rng95[1]) ? "likely " + fmt(rng95[0], unit) + " to " + fmt(rng95[1], unit) : null]);
+    var wr = nb.win_rate && num(nb.win_rate.value) ? nb.win_rate.value : st.win_rate;
+    if (num(wr)) figs.push(["Trades that won", pct(wr), null]);
+    var dd = nb.drawdown && num(nb.drawdown.max) ? nb.drawdown.max : st.max_drawdown;
+    if (num(dd)) figs.push(["Worst drop", fmt(-Math.abs(dd), unit), null]);
+    var cf = nb.coin_flip;
+    if (cf && num(cf.ended_higher) && num(cf.copies)) figs.push(["Coin-flip copies that beat you", cf.ended_higher.toLocaleString("en-US") + " of " + cf.copies.toLocaleString("en-US"), null]);
+    else if (c.luck && num(c.luck.one_in)) figs.push(["Luck does this well", "1 in " + c.luck.one_in.toLocaleString("en-US"), null]);
     if (figs.length) {
       var dl = el("dl", "figures");
       figs.forEach(function (f) { var d = el("div"); d.appendChild(el("dt", null, f[0])); var dd = el("dd", null, f[1]); if (f[2]) dd.appendChild(el("small", null, f[2])); d.appendChild(dd); dl.appendChild(d); });
@@ -1010,35 +1125,54 @@ footer b{color:var(--ink-2);font-weight:600}
       if (c.benchmark.why) bp.appendChild(el("span", null, c.benchmark.why));
       body.appendChild(bp);
     }
-    if (c.compare && (c.compare.headline || c.compare.sentence)) {
-      var cp = el("div", "ask tone-" + (c.compare.code || ""));
-      cp.appendChild(el("label", null, "Live compared with your backtest"));
-      cp.appendChild(el("p", null, c.compare.headline || c.compare.sentence)).style.margin = "0";
-      if (c.compare.plain) cp.appendChild(el("p", "whyline", c.compare.plain));
-      if (c.compare.why) cp.appendChild(el("p", "whyline", "Why: " + c.compare.why));
-      body.appendChild(cp);
+    var cmp = c.compare || (lastReport && (lastReport.strategies || []).length === 1 ? lastReport.compare : null);
+    if (cmp && (cmp.headline || cmp.sentence)) {
+      var vs = el("div", "vs " + toneClass(cmp)), top = el("div", "top");
+      top.appendChild(el("h4", null, "Live compared with your backtest"));
+      if (cmp.label) top.appendChild(el("span", "lab", cmp.label));
+      vs.appendChild(top);
+      vs.appendChild(el("p", "hl", cmp.headline || cmp.sentence));
+      if (cmp.plain) vs.appendChild(el("p", null, cmp.plain));
+      if (cmp.why) vs.appendChild(el("p", "whyline", "Why it matters: " + cmp.why));
+      if (cmp.next_step && cmp.next_step.text) vs.appendChild(nextStep(cmp.next_step));
+      body.appendChild(vs);
     }
 
-    if (c.next_step && c.next_step.text) {
-      var nx = el("div", "next");
-      var arrow = svgEl("svg", { viewBox: "0 0 52 26", "aria-hidden": "true" });
-      arrow.appendChild(svgEl("path", { d: "M2 15c12-4 25-6 44-3m-9-8.5c3.7 2.8 6.7 5.6 9.3 8.4-3.2 2.4-6.3 5.3-9 8.6", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" }));
-      nx.appendChild(arrow);
-      var nd = el("div"), np = el("p");
-      np.appendChild(el("span", "label", "Next step:"));
-      np.appendChild(el("mark", null, c.next_step.text));
-      nd.appendChild(np);
-      if (c.next_step.why) nd.appendChild(el("p", "whyline", "Why: " + c.next_step.why));
-      nx.appendChild(nd);
-      body.appendChild(nx);
+    if (c.next_step && c.next_step.text) body.appendChild(nextStep(c.next_step));
+
+    // "Is it broken, or just a bad streak?" — the recent trades against the strategy's own record.
+    if (c.recent && c.recent.sentence) {
+      // "Normal for it" is neutral news: normal for a losing strategy is still losing.
+      var rd = c.recent.reading, tone = { likely_broken: "bad", unusual: "warn", bad_streak: "warn", hot: "warn" }[rd] || "muted";
+      var sk = el("div", "streak tone-" + tone);
+      sk.appendChild(el("h4", null, rd === "hot" ? "Running hotter than usual" : "Is it broken, or just a bad streak?"));
+      sk.appendChild(el("p", null, c.recent.sentence));
+      say(c.recent.sentence);
+      if (c.recent.why) sk.appendChild(el("p", "whyline", "Why it matters: " + c.recent.why));
+      body.appendChild(sk);
     }
 
-    if (!sharedAsks) (c.ask_the_user || []).forEach(function (q, qi) { body.appendChild(askForm(q, "q" + idx + "_" + qi)); });
+    if (!sharedAsks) { var qb = questionsBox(c.ask_the_user || [], "q" + idx); if (qb) body.appendChild(qb); }
 
-    if (c.checks && c.checks.length) {
+    var changes = Array.isArray(c.what_would_change_it) ? c.what_would_change_it : (c.what_would_change_it ? [{ text: c.what_would_change_it }] : []);
+    if (changes.length) {
+      var chg = el("div", "changes"), cl = el("ul");
+      chg.appendChild(el("h4", null, "What would change this verdict"));
+      changes.forEach(function (w) { if (w && (w.text || typeof w === "string")) cl.appendChild(el("li", null, w.text || w)); });
+      chg.appendChild(cl);
+      body.appendChild(chg);
+    }
+
+    var asked = {};
+    (c.ask_the_user || []).forEach(function (q) { if (q.field) asked[q.field] = 1; });
+    if (sharedAsks && lastReport) (lastReport.strategies || []).forEach(function (s) { (s.ask_the_user || []).forEach(function (q) { if (q.field) asked[q.field] = 1; }); });
+    var checks = (c.checks || []).filter(function (k) {
+      return !(k.status !== "pass" && CHECK_ASKS[k.code] && asked[CHECK_ASKS[k.code]]) && !saidAlready(k.text);
+    });
+    if (checks.length) {
       var ul = el("ul", "checks");
       ul.setAttribute("aria-label", "Checks");
-      c.checks.forEach(function (k) {
+      checks.forEach(function (k) {
         var li = el("li", k.status || "warn");
         li.appendChild(mark(k.status));
         var d = el("div");
@@ -1058,7 +1192,7 @@ footer b{color:var(--ink-2);font-weight:600}
 
     if (c.ai_audit_prompt) {
       var au = el("div", "audit");
-      au.appendChild(el("p", null, "This looks too good. Paste this into your AI to have the bot's code checked:"));
+      au.appendChild(el("p", null, "Have the bot's code checked. Paste this into your AI:"));
       au.appendChild(el("pre", null, c.ai_audit_prompt));
       var cb = el("button", "copy", "Copy the prompt"); cb.type = "button";
       cb.addEventListener("click", function () { copyText(c.ai_audit_prompt, cb, "Copied"); });
@@ -1067,15 +1201,27 @@ footer b{color:var(--ink-2);font-weight:600}
     }
 
     var extras = [];
-    if (c.what_would_change_it) extras.push(c.what_would_change_it);
-    if (c.drawdown && c.drawdown.sentence) extras.push(c.drawdown.sentence);
-    if (c.recent && c.recent.sentence) extras.push(c.recent.sentence);
+    if (c.drawdown && c.drawdown.sentence && !saidAlready(c.drawdown.sentence)) extras.push(c.drawdown.sentence);
     if (c.prediction && c.prediction.sentence) extras.push(c.prediction.sentence);
     if (extras.length) { var ex = el("ul", "extras"); extras.forEach(function (t) { ex.appendChild(el("li", null, t)); }); body.appendChild(ex); }
     if (c.fingerprint) body.appendChild(el("p", "fingerprint", "Fingerprint " + c.fingerprint + ". The same file always gets this answer."));
 
     art.appendChild(body);
     return art;
+  }
+
+  function nextStep(ns) {
+    var nx = el("div", "next");
+    var arrow = svgEl("svg", { viewBox: "0 0 52 26", "aria-hidden": "true" });
+    arrow.appendChild(svgEl("path", { d: "M2 15c12-4 25-6 44-3m-9-8.5c3.7 2.8 6.7 5.6 9.3 8.4-3.2 2.4-6.3 5.3-9 8.6", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" }));
+    nx.appendChild(arrow);
+    var nd = el("div"), np = el("p");
+    np.appendChild(el("span", "label", "Next step:"));
+    np.appendChild(el("mark", null, ns.text));
+    nd.appendChild(np);
+    if (ns.why) nd.appendChild(el("p", "whyline", "Why: " + ns.why));
+    nx.appendChild(nd);
+    return nx;
   }
 
   /* ---------- actions ---------- */
