@@ -539,7 +539,8 @@ footer b{color:var(--ink-2);font-weight:600}
     <summary>How we know (the maths)</summary>
     <div>
       <p>The range shown for your average trade is an anytime-valid confidence sequence (Waudby-Smith and Ramdas). It stays honest even if you check after every trade, so watching it does not fool you.</p>
-      <p>The strength of the evidence is an e-value. When you upload several strategies, or tell us how many versions you tried, we control false discoveries with the e-BH procedure (Wang and Ramdas) at 10%. Versions you didn't show count as zero evidence.</p>
+      <p>The strength of the evidence is an e-value. When you upload several strategies, or tell us how many versions you tried, we control false discoveries with the e-BH procedure (Wang and Ramdas) at 5%. Versions you didn't show count as zero evidence.</p>
+      <p>Two corrections guard the cases that fool simple tests. When trades move together, the spread is widened. When losses are rarer but bigger than wins, the bar for “real” is raised (Hall's Edgeworth correction), and nothing is called real before five losing trades.</p>
       <p>The coin-flip picture keeps your exact trades and randomises only their signs. It shows what luck does with your trade sizes, which is what matters.</p>
     </div>
   </details>
@@ -567,7 +568,7 @@ footer b{color:var(--ink-2);font-weight:600}
   <ul class="limits">
     <li><b>It can't see your code.</b><span>If your backtest peeks at future prices or skips fees, the trades look better than they were. When a record looks too good, we flag it and give you a prompt to have your code checked.</span></li>
     <li><b>It can't promise the future.</b><span>A real edge can stop working. We check if yours has faded, and you can come back to re-check.</span></li>
-    <li><b>It needs at least 30 closed trades.</b><span>Below that, luck can make almost any record. You'll get “too early” instead of a guess.</span></li>
+    <li><b>It needs at least 30 closed trades, and five losing ones.</b><span>Below that, luck can make almost any record, and an unseen loss could be any size. You'll get “too early” or “can't tell” instead of a guess.</span></li>
     <li><b>It treats trades as separate events.</b><span>Trades that depend on each other, like many open at once, can make the evidence look a little stronger than it is.</span></li>
   </ul>
 </section>
