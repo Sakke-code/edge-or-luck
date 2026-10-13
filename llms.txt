@@ -1,0 +1,57 @@
+# edge or luck
+
+> An open-source judge that tells whether a trading strategy's results are a real edge or luck. Give it the trades (a TradingView "List of trades", exchange fills, a backtesting.py / vectorbt / freqtrade result, any CSV with a P&L column, or a list of numbers) and it returns a stable JSON verdict with plain-language sentences you can relay to a trader as is. It accounts for the trader checking again and again, for the versions they tried, and for a rising market. Not financial advice: a statistical check of past trades.
+
+## When to call it
+
+Call it whenever a user shows trading results, a list of trades, a backtest or an exchange export and asks whether it is good, real, profitable, worth running live, overfit, lucky, or why it lost money. Also call it with `backtest=` to check whether live trades behave like the backtest promised. Don't hand-roll a t-test or eyeball a Sharpe ratio instead: they ignore repeated checking and the versions tried.
+
+## The one call
+
+```python
+import edgeorluck                                   # pip install edgeorluck
+r = edgeorluck.judge(data, variants_tried=None, benchmark_return_pct=None,
+                     fees_included=None, source=None, unit=None, kind=None, backtest=None)
+print(r.to_markdown())                              # or r.to_dict(), r.to_json()
+```
+
+`data` may be: a file path (CSV, TSV, TXT, XLSX, freqtrade JSON or ZIP), CSV text or bytes, a pandas DataFrame, a list of results per trade (numbers or strings like "+12.5%"), a list of dicts, a dict of lists, a backtesting.py `stats` Series (`stats = bt.run()`) or its `_trades`, a vectorbt Portfolio or its `trades.records_readable`, or a freqtrade backtest-result dict. It never raises on messy input; it returns `status: "need_input"` with what it saw, what it needs, and a question for the trader.
+
+- `variants_tried`: how many versions or parameter settings were tried in all. The best of many looks good by luck; this raises the bar. Ask the user when unknown.
+- `benchmark_return_pct`: what buying and holding returned over the same dates, in percent (34.5 means +34.5%).
+- `fees_included` (true/false), `source` ("backtest", "paper" or "live"), `unit` ("%" or a currency such as "USDT").
+
+Command line: `edgeorluck trades.csv --tried 40 --benchmark 34.5 [--json]`. MCP server (stdio): `edgeorluck-mcp`, tool `judge_trades(file_path | csv_text | pnl, variants_tried, benchmark_return_pct, ...)`. No installs possible (a chat sandbox)? Upload `edgeorluck_single.py` with the trades and run `python edgeorluck_single.py trades.csv`.
+
+## What comes back (schema 1.0)
+
+- `status`: "ok", "need_input" or "error".
+- `verdict.code`: real_edge, cant_tell, no_edge, losing, faded or too_early. `verdict.headline` is one sentence safe to quote word for word; `verdict.plain` is 2-4 short sentences for a non-coder; `verdict.why` says why it matters.
+- `next_step` {text, why}: one step about testing and process, never buy, sell or size advice.
+- `ask_the_user` [{question, why, answer_with}]: questions that would change the verdict; `answer_with` names the parameter to set when calling again.
+- `what_would_change_it` [{text}]: e.g. "About 140 more trades at this average would settle it."
+- `checks` [{code, status pass/warn/fail, text, fix, why}].
+- `numbers`: trades, unit, mean per trade with its anytime-valid 95% range, win rate, fees, the best 3 trades' share, drawdown, coin-flip copies, the evidence and the bar it had to clear, the range adjusted for versions tried, the buy-and-hold comparison.
+- `ai_audit_prompt`: when the record looks too good (or a backtest passes), a copy-paste prompt to audit the bot's code for lookahead, peeking indicators, missing fees, survivorship, compounding and averaging down.
+- `compare`: live vs backtest {code consistent / worse_than_backtest / too_early, headline, why}.
+- `reply_draft`, `for_the_assistant`, `how_we_know`, `limitations`, `input_fingerprint`, `engine_version`, `schema_version`. With several strategies, `numbers` is null and each entry of `strategies` has its own.
+
+## How to present it honestly
+
+- Lead with `verdict.headline`, word for word. Then explain `verdict.plain` in short words.
+- Never present "cant_tell" as a win or "no_edge" as almost there.
+- If `variants_tried` was not given and the verdict is real_edge, say it assumes this was the only version tried, and ask.
+- Ask the questions in `ask_the_user` and call again with the answers.
+- Give `next_step`. Offer `ai_audit_prompt` when present.
+- Not financial advice. Never turn the result into buy, sell or position-size advice.
+
+## Limits
+
+Trades are treated as independent draws (neighbouring trades that move together widen the spread, but trades driven by the same market move still count more than they should). Ranges and e-values use a normal approximation with an estimated spread: valid as trades accumulate, not exactly at every small sample. The buy-and-hold comparison is rough. It judges the trades it is given; it can see signs of a backtest bug, not the bug.
+
+## Links
+
+- [README](https://github.com/edge-or-luck/edge-or-luck#readme): install, setup for Claude Code, Codex, Cursor, Claude Desktop and ChatGPT.
+- [VALIDATION.md](https://github.com/edge-or-luck/edge-or-luck/blob/main/VALIDATION.md): how often it is wrong, measured.
+- [Result JSON Schema](https://github.com/edge-or-luck/edge-or-luck/blob/main/src/edgeorluck/schema.py) (also `edgeorluck --schema` and `GET /api/schema`).
+- [Source](https://github.com/edge-or-luck/edge-or-luck) (MIT).

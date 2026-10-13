@@ -80,7 +80,7 @@ def round_trips(rows: List[Dict[str, Any]], number) -> Tuple[pd.DataFrame, List[
     nan). ``number`` turns a cell into a float. Returns the trades as a frame
     in the canonical columns, warnings, and facts about the fills."""
     warnings: List[str] = []
-    facts: Dict[str, Any] = {"fills": len(rows), "pairs": [], "quotes": [], "third_coin_fees": 0,
+    facts: Dict[str, Any] = {"fills": 0, "pairs": [], "quotes": [], "third_coin_fees": 0,
                              "unmatched_sells": 0, "open_positions": []}
     by_pair: Dict[str, List[Dict[str, Any]]] = {}
     for i, r in enumerate(rows):
@@ -108,6 +108,7 @@ def round_trips(rows: List[Dict[str, Any]], number) -> Tuple[pd.DataFrame, List[
                     qty = total / price
                 else:
                     continue
+            facts["fills"] += 1
             fee, coin = f.get("fee", float("nan")), (f.get("fee_coin") or "").upper()
             fee = abs(fee) if math.isfinite(fee) else 0.0
             fee_in_base = fee if coin and coin == base else 0.0

@@ -96,15 +96,15 @@
   },
   {
    "code": "more_trades",
-   "text": "Mean-revert SOL: About 11,275 more trades at this average (+0.0653% each) would settle it."
+   "text": "Mean-revert SOL: About 11,000 more trades at this average (+0.0653% each) would settle it."
   },
   {
    "code": "versions",
-   "text": "Breakout BTC: If you tried more than 116,540 versions, it would no longer count as real."
+   "text": "Breakout BTC: If you tried more than 14,165 versions, it would no longer count as real."
   },
   {
    "code": "more_trades",
-   "text": "Trend ETH: About 5,373 more trades at this average (+0.0977% each) would settle it."
+   "text": "Trend ETH: About 6,500 more trades at this average (+0.0977% each) would settle it."
   }
  ],
  "ai_audit_prompt": "I am not a programmer. Please audit my trading bot's code: its results look better than real trading usually is, and I want to know if a bug causes that.\nWhy I am asking: an independent check of my trades said: the record passed, and I want to be sure the test itself is honest\nCheck each of these, in this order:\n1. Lookahead: does it decide on a bar's close and then fill at that same close or earlier? A signal only exists after its bar closes, so the trade must happen on the next bar.\n2. Indicators that peek at the future: repainting, request.security with lookahead on, pivots or zigzags that confirm bars later, centered averages, shift(-1), or scaling with numbers from the whole data set.\n3. Fees and slippage: are trading fees charged on both the buy and the sell, plus a little slippage?\n4. Survivorship: was the coin or stock list picked today (ones that still exist, or went up) and then tested on the past?\n5. Compounding size: does the position size grow with the account, so a few late trades decide the whole result?\n6. Averaging down or martingale: does it buy more when a position is losing, or raise the size after a loss? Is there a hard stop that always fires?\nFor each one: show me the exact line of code, explain the problem in simple words, and fix it.\nThen run the backtest again with the fixes and give me the new list of trades as a CSV file, so I can check it again.",
@@ -121,13 +121,14 @@
  "how_we_know": [
   "The range is an anytime-valid 95% range (a confidence sequence; Waudby-Smith, Arbour, Sinha, Kennedy & Ramdas 2021; Howard, Ramdas, McAuliffe & Sekhon 2021): it stays valid however often you check, unlike a normal confidence interval read every day.",
   "Each strategy gets one-sided normal-mixture e-values for 'the average is above zero' and 'below zero'. Every version tried and every strategy shown is one family; e-BH (Wang & Ramdas 2022) selects at a 5% false discovery rate. Versions tried but not shown count as e = 0, which is valid under any dependence. One strategy alone needs e >= 40; with N versions it needs e >= 40 N, exactly where its Bonferroni-adjusted 95% range clears zero.",
-  "The spread is the sample standard deviation, widened by a Newey-West long-run variance factor when neighbouring trades move together (never narrowed).",
+  "The spread is the sample standard deviation, widened when neighbouring trades move together: by the larger of a Newey-West long-run variance factor and a bias-corrected AR(1) factor (never narrowed).",
+  "When losses are rarer but bigger than wins (negative skew), the bar for 'above zero' is raised by the Edgeworth term of a studentized mean (Hall 1987), and the range is widened on that side; the same for 'below zero' and positive skew. Skew never lowers a bar.",
   "Coin-flip copies flip the sign of each trade at random: same trades, same sizes, zero edge by construction.",
   "'Faded' needs the earlier trades to pass on their own and the latest 30 or 60 trades to be worse than 99.75% of stretches resampled from the earlier trades.",
-  "News scalper: e-value 45.6 against a bar of 160 (does not pass); spread widened x1.13 for neighbouring trades.",
-  "Mean-revert SOL: e-value 0.327 against a bar of 160 (does not pass); spread widened x1.06 for neighbouring trades.",
-  "Breakout BTC: e-value 5.60e+06 against a bar of 160 (passes); spread widened x1.09 for neighbouring trades.",
-  "Trend ETH: e-value 0.426 against a bar of 160 (does not pass); spread widened x1.00 for neighbouring trades."
+  "News scalper: e-value 42.9 against a bar of 160 (does not pass); spread widened x1.13 for neighbouring trades.",
+  "Mean-revert SOL: e-value 0.32 against a bar of 160 (does not pass); spread widened x1.06 for neighbouring trades.",
+  "Breakout BTC: e-value 8.96e+05 against a bar of 160 (passes); spread widened x1.15 for neighbouring trades.",
+  "Trend ETH: e-value 0.369 against a bar of 160 (does not pass); spread widened x1.08 for neighbouring trades."
  ],
  "limitations": [
   "Trades are treated as independent; neighbouring trades that move together are allowed for (Newey-West), but trades driven by the same market moves still count more than they should.",
@@ -6822,34 +6823,34 @@
     "unit": "%",
     "first_trade": "2025-01-06",
     "last_trade": "2025-11-01",
-    "total": 147.0,
+    "total": 146.989,
     "mean_per_trade": {
-     "value": 0.4083,
+     "value": 0.408303,
      "range_95": [
-      0.009972,
-      0.8066
+      0.0080292,
+      0.806634
      ],
      "range_kind": "anytime-valid 95%"
     },
     "percent_per_trade": null,
     "win_rate": {
-     "value": 0.5694,
+     "value": 0.569444,
      "range_95": [
-      0.5178,
-      0.6196
+      0.517827,
+      0.619596
      ]
     },
-    "profit_factor": 1.623,
+    "profit_factor": 1.62344,
     "best_trade": 6.024,
     "worst_trade": -5.839,
     "fees": null,
     "top_3": {
-     "share_of_profit": 0.1181,
-     "mean_without": 0.3631
+     "share_of_profit": 0.118131,
+     "mean_without": 0.363095
     },
     "drawdown": {
-     "max": 69.74,
-     "current": 64.92,
+     "max": 69.737,
+     "current": 64.917,
      "trades_since_peak": 64,
      "odds_pct": 0.0
     },
@@ -6858,23 +6859,24 @@
      "ended_higher": 0,
      "share": 0.0,
      "needed_at_most": 0,
-     "needed_one_in": 5555
+     "needed_one_in": 5991
     },
     "evidence": {
-     "e_value": 45.59,
-     "e_value_below": 0.03812,
+     "e_value": 42.8851,
+     "e_value_below": 0.0381152,
      "bar": 160.0,
      "passes": false,
      "passes_below": false,
      "versions_or_strategies": 4,
-     "serial_factor": 1.283
+     "serial_factor": 1.28257,
+     "skew": -0.0849089
     },
     "adjusted": {
      "versions_tried": null,
      "strategies": 4,
      "range": [
-      -0.04893,
-      0.8655
+      -0.05146,
+      0.865537
      ],
      "bar": 160.0,
      "passes": false
@@ -6973,7 +6975,7 @@
    "money": {
     "total": null,
     "unit": "%",
-    "percent_mean": 0.4083,
+    "percent_mean": 0.408303,
     "disagree": false,
     "judged_in": "%",
     "sentence": "Your results are in percent per trade. We can't see the money amounts.",
@@ -6982,29 +6984,29 @@
    "benchmark": null,
    "compare": null,
    "edge": {
-    "mean": 0.4083,
-    "lower": 0.009972,
-    "upper": 0.8066,
-    "adjusted_lower": -0.04893,
-    "adjusted_upper": 0.8655
+    "mean": 0.408303,
+    "lower": 0.0080292,
+    "upper": 0.806634,
+    "adjusted_lower": -0.05146,
+    "adjusted_upper": 0.865537
    },
    "luck": {
-    "one_in": 45,
+    "one_in": 42,
     "coin_flips": 1000,
     "coin_flips_above": 0,
-    "sentence": "In 1,000 coin-flip copies of your own trades, 0 ended higher than you. That alone might look convincing, but a pass here needs none (rarer than about 1 in 5,555), because you can check again at any time and you have 4 strategies."
+    "sentence": "In 1,000 coin-flip copies of your own trades, 0 ended higher than you. That alone might look convincing, but a pass here needs none (rarer than about 1 in 6,000), because you can check again at any time and you have 4 strategies."
    },
    "stats": {
-    "win_rate": 0.5694,
-    "profit_factor": 1.623,
-    "total": 147.0,
+    "win_rate": 0.569444,
+    "profit_factor": 1.62344,
+    "total": 146.989,
     "best": 6.024,
     "worst": -5.839,
-    "max_drawdown": 69.74
+    "max_drawdown": 69.737
    },
    "drawdown": {
-    "depth": 64.92,
-    "max": 69.74,
+    "depth": 64.917,
+    "max": 69.737,
     "trades_since_peak": 64,
     "happens_pct": 0.0,
     "reading": "alarming",
@@ -7013,12 +7015,12 @@
    "recent": {
     "n": 30,
     "window": 30,
-    "total": -15.52,
-    "mean": -0.5172,
-    "earlier_mean": 0.4924,
-    "deepest_drop": 20.34,
-    "odds_drop": 0.0094,
-    "odds_total_this_low": 0.00505,
+    "total": -15.517,
+    "mean": -0.517233,
+    "earlier_mean": 0.492442,
+    "deepest_drop": 20.337,
+    "odds_drop": 0.00939953,
+    "odds_total_this_low": 0.00504975,
     "reading": "unusual",
     "sentence": "Your last 30 trades: -15.52% in total, with a drop of 20.34% inside them. If nothing changed, a drop that deep within 30 trades happens only about 1 in 110 times for this strategy. That is unusual: check whether something changed.",
     "why": "A losing stretch feels like the strategy broke. Often it is just a normal streak, and the odds tell which."
@@ -13685,12 +13687,12 @@
     "label": "Can't tell yet",
     "tone": "warn",
     "headline": "Can't tell yet: +0.0653% per trade so far, but luck often makes records like this across your 4 strategies.",
-    "plain": "It made +0.0653% per trade over 260 trades. That looks good, but luck alone makes a record this good too often across your 4 strategies. The likely range is -0.321% to +0.452% per trade, and that includes zero. About 11,275 more trades at this average would settle it.",
+    "plain": "It made +0.0653% per trade over 260 trades. That looks good, but luck alone makes a record this good too often across your 4 strategies. The likely range is -0.324% to +0.452% per trade, and that includes zero. About 11,000 more trades at this average would settle it.",
     "why": "A good-looking record can come from luck. If it is luck, it stops working when real money goes in.",
     "sentence": "Can't tell yet: +0.0653% per trade so far, but luck often makes records like this across your 4 strategies."
    },
    "next_step": {
-    "text": "Keep it on paper until about 11,275 more trades, then check again.",
+    "text": "Keep it on paper until about 11,000 more trades, then check again.",
     "why": "Paper trades cost nothing and add the evidence this record is missing."
    },
    "numbers": {
@@ -13698,33 +13700,33 @@
     "unit": "%",
     "first_trade": "2025-01-06",
     "last_trade": "2025-11-01",
-    "total": 16.98,
+    "total": 16.975,
     "mean_per_trade": {
-     "value": 0.06529,
+     "value": 0.0652885,
      "range_95": [
-      -0.2709,
-      0.4014
+      -0.272678,
+      0.401445
      ],
      "range_kind": "anytime-valid 95%"
     },
     "percent_per_trade": null,
     "win_rate": {
-     "value": 0.5077,
+     "value": 0.507692,
      "range_95": [
-      0.4473,
-      0.5679
+      0.447254,
+      0.567906
      ]
     },
-    "profit_factor": 1.103,
+    "profit_factor": 1.10307,
     "best_trade": 5.501,
     "worst_trade": -4.241,
     "fees": null,
     "top_3": {
-     "share_of_profit": 0.7504,
-     "mean_without": 0.01649
+     "share_of_profit": 0.750398,
+     "mean_without": 0.0164864
     },
     "drawdown": {
-     "max": 20.82,
+     "max": 20.823,
      "current": 9.314,
      "trades_since_peak": 67,
      "odds_pct": 99.5
@@ -13734,30 +13736,31 @@
      "ended_higher": 258,
      "share": 0.258,
      "needed_at_most": 0,
-     "needed_one_in": 5000
+     "needed_one_in": 5429
     },
     "evidence": {
-     "e_value": 0.3274,
-     "e_value_below": 0.1265,
+     "e_value": 0.32017,
+     "e_value_below": 0.126514,
      "bar": 160.0,
      "passes": false,
      "passes_below": false,
      "versions_or_strategies": 4,
-     "serial_factor": 1.126
+     "serial_factor": 1.12557,
+     "skew": -0.0803927
     },
     "adjusted": {
      "versions_tried": null,
      "strategies": 4,
      "range": [
-      -0.3215,
-      0.452
+      -0.323823,
+      0.452034
      ],
      "bar": 160.0,
      "passes": false
     },
     "benchmark": null,
     "market_adjusted": null,
-    "trades_needed": 11275,
+    "trades_needed": 11000,
     "versions_it_survives": null
    },
    "checks": [
@@ -13834,7 +13837,7 @@
    "what_would_change_it": [
     {
      "code": "more_trades",
-     "text": "About 11,275 more trades at this average (+0.0653% each) would settle it."
+     "text": "About 11,000 more trades at this average (+0.0653% each) would settle it."
     },
     {
      "code": "costs",
@@ -13850,7 +13853,7 @@
    "money": {
     "total": null,
     "unit": "%",
-    "percent_mean": 0.06529,
+    "percent_mean": 0.0652885,
     "disagree": false,
     "judged_in": "%",
     "sentence": "Your results are in percent per trade. We can't see the money amounts.",
@@ -13859,29 +13862,29 @@
    "benchmark": null,
    "compare": null,
    "edge": {
-    "mean": 0.06529,
-    "lower": -0.2709,
-    "upper": 0.4014,
-    "adjusted_lower": -0.3215,
-    "adjusted_upper": 0.452
+    "mean": 0.0652885,
+    "lower": -0.272678,
+    "upper": 0.401445,
+    "adjusted_lower": -0.323823,
+    "adjusted_upper": 0.452034
    },
    "luck": {
     "one_in": null,
     "coin_flips": 1000,
     "coin_flips_above": 258,
-    "sentence": "In 1,000 coin-flip copies of your own trades, 258 ended higher than you. That alone might look convincing, but a pass here needs none (rarer than about 1 in 5,000), because you can check again at any time and you have 4 strategies."
+    "sentence": "In 1,000 coin-flip copies of your own trades, 258 ended higher than you. That alone might look convincing, but a pass here needs none (rarer than about 1 in 5,400), because you can check again at any time and you have 4 strategies."
    },
    "stats": {
-    "win_rate": 0.5077,
-    "profit_factor": 1.103,
-    "total": 16.98,
+    "win_rate": 0.507692,
+    "profit_factor": 1.10307,
+    "total": 16.975,
     "best": 5.501,
     "worst": -4.241,
-    "max_drawdown": 20.82
+    "max_drawdown": 20.823
    },
    "drawdown": {
     "depth": 9.314,
-    "max": 20.82,
+    "max": 20.823,
     "trades_since_peak": 67,
     "happens_pct": 99.5,
     "reading": "normal",
@@ -13891,16 +13894,16 @@
     "n": 30,
     "window": 30,
     "total": 9.575,
-    "mean": 0.3192,
-    "earlier_mean": 0.03217,
+    "mean": 0.319167,
+    "earlier_mean": 0.0321739,
     "deepest_drop": 4.794,
-    "odds_drop": 0.8345,
-    "odds_total_this_low": 0.8452,
+    "odds_drop": 0.834508,
+    "odds_total_this_low": 0.845158,
     "reading": "normal",
     "sentence": "Your last 30 trades: +9.57% in total, with a drop of 4.79% inside them. If nothing changed, a drop that deep within 30 trades happens almost always times for this strategy. That is normal for it.",
     "why": "A losing stretch feels like the strategy broke. Often it is just a normal streak, and the odds tell which."
    },
-   "trades_needed": 11275,
+   "trades_needed": 11000,
    "prediction": null
   },
   {
@@ -20562,7 +20565,7 @@
     "label": "Real edge",
     "tone": "good",
     "headline": "This looks like a real edge: +0.670% per trade, more than luck explains across your 4 strategies.",
-    "plain": "Over 300 trades it made +0.670% per trade on average. Luck alone rarely makes a record this strong across your 4 strategies. The likely range is +0.26% to +1.08% per trade, all above zero. Past results can still stop working, so keep checking new trades.",
+    "plain": "Over 300 trades it made +0.670% per trade on average. Luck alone rarely makes a record this strong across your 4 strategies. The likely range is +0.24% to +1.10% per trade, all above zero. Past results can still stop working, so keep checking new trades.",
     "why": "A real edge means the profit is too steady to be luck. Only then is it worth more testing.",
     "sentence": "This looks like a real edge: +0.670% per trade, more than luck explains across your 4 strategies."
    },
@@ -20575,33 +20578,33 @@
     "unit": "%",
     "first_trade": "2025-01-06",
     "last_trade": "2025-11-01",
-    "total": 201.0,
+    "total": 201.011,
     "mean_per_trade": {
-     "value": 0.67,
+     "value": 0.670037,
      "range_95": [
-      0.3161,
-      1.024
+      0.293798,
+      1.04261
      ],
      "range_kind": "anytime-valid 95%"
     },
     "percent_per_trade": null,
     "win_rate": {
-     "value": 0.6433,
+     "value": 0.643333,
      "range_95": [
-      0.5876,
-      0.6954
+      0.587629,
+      0.695413
      ]
     },
-    "profit_factor": 2.469,
+    "profit_factor": 2.46851,
     "best_trade": 5.044,
     "worst_trade": -5.324,
     "fees": null,
     "top_3": {
-     "share_of_profit": 0.07215,
-     "mean_without": 0.628
+     "share_of_profit": 0.0721453,
+     "mean_without": 0.627976
     },
     "drawdown": {
-     "max": 14.45,
+     "max": 14.454,
      "current": 0.0,
      "trades_since_peak": 0,
      "odds_pct": null
@@ -20611,23 +20614,24 @@
      "ended_higher": 0,
      "share": 0.0,
      "needed_at_most": 0,
-     "needed_one_in": 5224
+     "needed_one_in": 6079
     },
     "evidence": {
-     "e_value": 5595000.0,
-     "e_value_below": 0.02403,
+     "e_value": 895924.0,
+     "e_value_below": 0.0252244,
      "bar": 160.0,
      "passes": true,
      "passes_below": false,
      "versions_or_strategies": 4,
-     "serial_factor": 1.189
+     "serial_factor": 1.31785,
+     "skew": -0.157267
     },
     "adjusted": {
      "versions_tried": null,
      "strategies": 4,
      "range": [
-      0.2633,
-      1.077
+      0.237017,
+      1.09827
      ],
      "bar": 160.0,
      "passes": true
@@ -20635,7 +20639,7 @@
     "benchmark": null,
     "market_adjusted": null,
     "trades_needed": null,
-    "versions_it_survives": 116540
+    "versions_it_survives": 14165
    },
    "checks": [
     {
@@ -20711,11 +20715,11 @@
    "what_would_change_it": [
     {
      "code": "versions",
-     "text": "If you tried more than 116,540 versions, it would no longer count as real."
+     "text": "If you tried more than 14,165 versions, it would no longer count as real."
     },
     {
      "code": "costs",
-     "text": "Extra costs above about 0.263% per trade (fees or slippage not in the results) would make it unprovable; above 0.670% per trade they would erase the average."
+     "text": "Extra costs above about 0.237% per trade (fees or slippage not in the results) would make it unprovable; above 0.670% per trade they would erase the average."
     },
     {
      "code": "market",
@@ -20727,7 +20731,7 @@
    "money": {
     "total": null,
     "unit": "%",
-    "percent_mean": 0.67,
+    "percent_mean": 0.670037,
     "disagree": false,
     "judged_in": "%",
     "sentence": "Your results are in percent per trade. We can't see the money amounts.",
@@ -20736,29 +20740,29 @@
    "benchmark": null,
    "compare": null,
    "edge": {
-    "mean": 0.67,
-    "lower": 0.3161,
-    "upper": 1.024,
-    "adjusted_lower": 0.2633,
-    "adjusted_upper": 1.077
+    "mean": 0.670037,
+    "lower": 0.293798,
+    "upper": 1.04261,
+    "adjusted_lower": 0.237017,
+    "adjusted_upper": 1.09827
    },
    "luck": {
-    "one_in": 5594542,
+    "one_in": 895924,
     "coin_flips": 1000,
     "coin_flips_above": 0,
-    "sentence": "In 1,000 coin-flip copies of your own trades, 0 ended higher than you. A pass here needs none (rarer than about 1 in 5,224), because you can check again at any time and you have 4 strategies. It passes."
+    "sentence": "In 1,000 coin-flip copies of your own trades, 0 ended higher than you. A pass here needs none (rarer than about 1 in 6,100), because you can check again at any time and you have 4 strategies. It passes."
    },
    "stats": {
-    "win_rate": 0.6433,
-    "profit_factor": 2.469,
-    "total": 201.0,
+    "win_rate": 0.643333,
+    "profit_factor": 2.46851,
+    "total": 201.011,
     "best": 5.044,
     "worst": -5.324,
-    "max_drawdown": 14.45
+    "max_drawdown": 14.454
    },
    "drawdown": {
     "depth": 0.0,
-    "max": 14.45,
+    "max": 14.454,
     "trades_since_peak": 0,
     "happens_pct": null,
     "reading": "normal",
@@ -20767,12 +20771,12 @@
    "recent": {
     "n": 30,
     "window": 30,
-    "total": 24.8,
-    "mean": 0.8266,
-    "earlier_mean": 0.6526,
+    "total": 24.797,
+    "mean": 0.826567,
+    "earlier_mean": 0.652644,
     "deepest_drop": 2.895,
-    "odds_drop": 0.8814,
-    "odds_total_this_low": 0.6873,
+    "odds_drop": 0.881406,
+    "odds_total_this_low": 0.687316,
     "reading": "normal",
     "sentence": "Your last 30 trades: +24.80% in total, with a drop of 2.89% inside them. If nothing changed, a drop that deep within 30 trades happens almost always times for this strategy. That is normal for it.",
     "why": "A losing stretch feels like the strategy broke. Often it is just a normal streak, and the odds tell which."
@@ -27439,12 +27443,12 @@
     "label": "Can't tell yet",
     "tone": "warn",
     "headline": "Can't tell yet: +0.0977% per trade so far, but luck often makes records like this across your 4 strategies.",
-    "plain": "It made +0.0977% per trade over 300 trades. That looks good, but luck alone makes a record this good too often across your 4 strategies. The likely range is -0.290% to +0.486% per trade, and that includes zero. About 5,373 more trades at this average would settle it.",
+    "plain": "It made +0.0977% per trade over 300 trades. That looks good, but luck alone makes a record this good too often across your 4 strategies. The likely range is -0.329% to +0.517% per trade, and that includes zero. About 6,500 more trades at this average would settle it.",
     "why": "A good-looking record can come from luck. If it is luck, it stops working when real money goes in.",
     "sentence": "Can't tell yet: +0.0977% per trade so far, but luck often makes records like this across your 4 strategies."
    },
    "next_step": {
-    "text": "Keep it on paper until about 5,373 more trades, then check again.",
+    "text": "Keep it on paper until about 6,500 more trades, then check again.",
     "why": "Paper trades cost nothing and add the evidence this record is missing."
    },
    "numbers": {
@@ -27454,31 +27458,31 @@
     "last_trade": "2025-11-01",
     "total": 29.32,
     "mean_per_trade": {
-     "value": 0.09773,
+     "value": 0.0977333,
      "range_95": [
-      -0.2397,
-      0.4351
+      -0.272451,
+      0.462884
      ],
      "range_kind": "anytime-valid 95%"
     },
     "percent_per_trade": null,
     "win_rate": {
-     "value": 0.5367,
+     "value": 0.536667,
      "range_95": [
-      0.4801,
-      0.5923
+      0.480131,
+      0.592275
      ]
     },
-    "profit_factor": 1.142,
+    "profit_factor": 1.1419,
     "best_trade": 4.664,
     "worst_trade": -5.923,
     "fees": null,
     "top_3": {
-     "share_of_profit": 0.4663,
-     "mean_without": 0.05269
+     "share_of_profit": 0.466269,
+     "mean_without": 0.0526902
     },
     "drawdown": {
-     "max": 31.4,
+     "max": 31.404,
      "current": 5.124,
      "trades_since_peak": 10,
      "odds_pct": 100.0
@@ -27488,30 +27492,31 @@
      "ended_higher": 197,
      "share": 0.197,
      "needed_at_most": 0,
-     "needed_one_in": 5224
+     "needed_one_in": 6462
     },
     "evidence": {
-     "e_value": 0.4261,
-     "e_value_below": 0.09946,
+     "e_value": 0.369192,
+     "e_value_below": 0.103238,
      "bar": 160.0,
      "passes": false,
      "passes_below": false,
      "versions_or_strategies": 4,
-     "serial_factor": 1.002
+     "serial_factor": 1.17366,
+     "skew": -0.220266
     },
     "adjusted": {
      "versions_tried": null,
      "strategies": 4,
      "range": [
-      -0.2901,
-      0.4856
+      -0.32854,
+      0.517437
      ],
      "bar": 160.0,
      "passes": false
     },
     "benchmark": null,
     "market_adjusted": null,
-    "trades_needed": 5373,
+    "trades_needed": 6500,
     "versions_it_survives": null
    },
    "checks": [
@@ -27588,7 +27593,7 @@
    "what_would_change_it": [
     {
      "code": "more_trades",
-     "text": "About 5,373 more trades at this average (+0.0977% each) would settle it."
+     "text": "About 6,500 more trades at this average (+0.0977% each) would settle it."
     },
     {
      "code": "costs",
@@ -27604,7 +27609,7 @@
    "money": {
     "total": null,
     "unit": "%",
-    "percent_mean": 0.09773,
+    "percent_mean": 0.0977333,
     "disagree": false,
     "judged_in": "%",
     "sentence": "Your results are in percent per trade. We can't see the money amounts.",
@@ -27613,29 +27618,29 @@
    "benchmark": null,
    "compare": null,
    "edge": {
-    "mean": 0.09773,
-    "lower": -0.2397,
-    "upper": 0.4351,
-    "adjusted_lower": -0.2901,
-    "adjusted_upper": 0.4856
+    "mean": 0.0977333,
+    "lower": -0.272451,
+    "upper": 0.462884,
+    "adjusted_lower": -0.32854,
+    "adjusted_upper": 0.517437
    },
    "luck": {
     "one_in": null,
     "coin_flips": 1000,
     "coin_flips_above": 197,
-    "sentence": "In 1,000 coin-flip copies of your own trades, 197 ended higher than you. That alone might look convincing, but a pass here needs none (rarer than about 1 in 5,224), because you can check again at any time and you have 4 strategies."
+    "sentence": "In 1,000 coin-flip copies of your own trades, 197 ended higher than you. That alone might look convincing, but a pass here needs none (rarer than about 1 in 6,500), because you can check again at any time and you have 4 strategies."
    },
    "stats": {
-    "win_rate": 0.5367,
-    "profit_factor": 1.142,
+    "win_rate": 0.536667,
+    "profit_factor": 1.1419,
     "total": 29.32,
     "best": 4.664,
     "worst": -5.923,
-    "max_drawdown": 31.4
+    "max_drawdown": 31.404
    },
    "drawdown": {
     "depth": 5.124,
-    "max": 31.4,
+    "max": 31.404,
     "trades_since_peak": 10,
     "happens_pct": 100.0,
     "reading": "normal",
@@ -27645,16 +27650,16 @@
     "n": 30,
     "window": 30,
     "total": 9.299,
-    "mean": 0.31,
-    "earlier_mean": 0.07415,
+    "mean": 0.309967,
+    "earlier_mean": 0.0741519,
     "deepest_drop": 7.163,
-    "odds_drop": 0.6575,
-    "odds_total_this_low": 0.7585,
+    "odds_drop": 0.657467,
+    "odds_total_this_low": 0.758512,
     "reading": "normal",
     "sentence": "Your last 30 trades: +9.30% in total, with a drop of 7.16% inside them. If nothing changed, a drop that deep within 30 trades happens about 1 in 2 times for this strategy. That is normal for it.",
     "why": "A losing stretch feels like the strategy broke. Often it is just a normal streak, and the odds tell which."
    },
-   "trades_needed": 5373,
+   "trades_needed": 6500,
    "prediction": null
   }
  ],
@@ -27674,6 +27679,7 @@
  "input": {
   "format": "trades_table",
   "rows": 1220,
+  "read_as": "Read a table of closed trades: 1,220 closed trades in 4 strategies, results in %.",
   "columns_seen": [
    "strategy",
    "close_time",
@@ -27702,6 +27708,7 @@
  },
  "warnings": [],
  "need": null,
+ "markdown": "## Edge or luck: Real edge\n\n**1 of 4 strategies shows a real edge: Breakout BTC.**\n\n4 strategies, 1,220 trades. 1 shows a real edge, 2 can't be told from luck yet and 1 has faded. Breakout BTC and Trend ETH win and lose on the same days (0.70). They are really one bet.\n\n_Why: A real edge means the profit is too steady to be luck. Only then is it worth more testing._\n\n**Next step:** Paper-trade it for 30 to 50 trades, then compare those trades with this backtest.\n\n_Why: A backtest can be tuned to its own data. New trades it has never seen are the real test._\n\n### Each strategy\n\n| Strategy | Verdict | Trades | Average per trade | 95% range |\n|---|---|---|---|---|\n| News scalper | Faded | 360 | +0.408% | +0.00803% to +0.807% |\n| Mean-revert SOL | Can't tell yet | 260 | +0.0653% | -0.273% to +0.401% |\n| Breakout BTC | Real edge | 300 | +0.670% | +0.294% to +1.04% |\n| Trend ETH | Can't tell yet | 300 | +0.0977% | -0.272% to +0.463% |\n\n- **News scalper:** It worked until Sep 16, 2025, but the edge is gone: the last 60 trades average -1.01%.\n- **Mean-revert SOL:** Can't tell yet: +0.0653% per trade so far, but luck often makes records like this across your 4 strategies.\n- **Breakout BTC:** This looks like a real edge: +0.670% per trade, more than luck explains across your 4 strategies.\n- **Trend ETH:** Can't tell yet: +0.0977% per trade so far, but luck often makes records like this across your 4 strategies.\n\n### What would change it\n\n- News scalper: If the next 60 trades return to the earlier average, the bad stretch was noise.\n- Mean-revert SOL: About 11,000 more trades at this average (+0.0653% each) would settle it.\n- Breakout BTC: If you tried more than 14,165 versions, it would no longer count as real.\n- Trend ETH: About 6,500 more trades at this average (+0.0977% each) would settle it.\n\n### Checks\n\n- **FAIL** News scalper: It worked until Sep 16, 2025, but the edge is gone: the last 60 trades average -1.01%.\n  _Why: Markets change. A strategy that worked before can stop working, and old profits do not protect new money._\n- **WARN** Mean-revert SOL: Can't tell yet: +0.0653% per trade so far, but luck often makes records like this across your 4 strategies.\n  _Why: A good-looking record can come from luck. If it is luck, it stops working when real money goes in._\n- **PASS** Breakout BTC: This looks like a real edge: +0.670% per trade, more than luck explains across your 4 strategies.\n  _Why: A real edge means the profit is too steady to be luck. Only then is it worth more testing._\n- **WARN** Trend ETH: Can't tell yet: +0.0977% per trade so far, but luck often makes records like this across your 4 strategies.\n  _Why: A good-looking record can come from luck. If it is luck, it stops working when real money goes in._\n- **WARN** Breakout BTC and Trend ETH win and lose on the same days (0.70). They are really one bet.\n  _Why: Two strategies that move together don't spread your risk. When one loses, so does the other._\n\n### Questions for the trader\n\n1. Do these results include trading fees and slippage? (answer with `fees_included=true|false`)\n   _Why: A small edge before fees is often a loss after them._\n2. How many versions or settings of this strategy did you try before this one? A rough number is fine. (answer with `variants_tried=<number>`)\n   _Why: If you tried 40 versions, one of them looks good by luck alone, so the bar for 'real' must be higher._\n3. Over the same dates, what would simply buying and holding the asset have returned, in percent? (answer with `benchmark_return_pct=<percent>`)\n   _Why: A strategy that only buys looks good whenever prices rise. This tells us if it beat simply holding._\n4. Are these backtest, paper-trading or live (real money) results? (answer with `source=backtest|paper|live`)\n   _Why: Backtests are usually better than live trading, so the next step depends on it._\n\n### Prompt to audit the bot's code\n\nGive this to the AI that wrote the bot:\n\n```text\nI am not a programmer. Please audit my trading bot's code: its results look better than real trading usually is, and I want to know if a bug causes that.\nWhy I am asking: an independent check of my trades said: the record passed, and I want to be sure the test itself is honest\nCheck each of these, in this order:\n1. Lookahead: does it decide on a bar's close and then fill at that same close or earlier? A signal only exists after its bar closes, so the trade must happen on the next bar.\n2. Indicators that peek at the future: repainting, request.security with lookahead on, pivots or zigzags that confirm bars later, centered averages, shift(-1), or scaling with numbers from the whole data set.\n3. Fees and slippage: are trading fees charged on both the buy and the sell, plus a little slippage?\n4. Survivorship: was the coin or stock list picked today (ones that still exist, or went up) and then tested on the past?\n5. Compounding size: does the position size grow with the account, so a few late trades decide the whole result?\n6. Averaging down or martingale: does it buy more when a position is losing, or raise the size after a loss? Is there a hard stop that always fires?\nFor each one: show me the exact line of code, explain the problem in simple words, and fix it.\nThen run the backtest again with the fixes and give me the new list of trades as a CSV file, so I can check it again.\n```\n\n<details><summary>How we know</summary>\n\n- The range is an anytime-valid 95% range (a confidence sequence; Waudby-Smith, Arbour, Sinha, Kennedy & Ramdas 2021; Howard, Ramdas, McAuliffe & Sekhon 2021): it stays valid however often you check, unlike a normal confidence interval read every day.\n- Each strategy gets one-sided normal-mixture e-values for 'the average is above zero' and 'below zero'. Every version tried and every strategy shown is one family; e-BH (Wang & Ramdas 2022) selects at a 5% false discovery rate. Versions tried but not shown count as e = 0, which is valid under any dependence. One strategy alone needs e >= 40; with N versions it needs e >= 40 N, exactly where its Bonferroni-adjusted 95% range clears zero.\n- The spread is the sample standard deviation, widened when neighbouring trades move together: by the larger of a Newey-West long-run variance factor and a bias-corrected AR(1) factor (never narrowed).\n- When losses are rarer but bigger than wins (negative skew), the bar for 'above zero' is raised by the Edgeworth term of a studentized mean (Hall 1987), and the range is widened on that side; the same for 'below zero' and positive skew. Skew never lowers a bar.\n- Coin-flip copies flip the sign of each trade at random: same trades, same sizes, zero edge by construction.\n- 'Faded' needs the earlier trades to pass on their own and the latest 30 or 60 trades to be worse than 99.75% of stretches resampled from the earlier trades.\n- News scalper: e-value 42.9 against a bar of 160 (does not pass); spread widened x1.13 for neighbouring trades.\n- Mean-revert SOL: e-value 0.32 against a bar of 160 (does not pass); spread widened x1.06 for neighbouring trades.\n- Breakout BTC: e-value 8.96e+05 against a bar of 160 (passes); spread widened x1.15 for neighbouring trades.\n- Trend ETH: e-value 0.369 against a bar of 160 (does not pass); spread widened x1.08 for neighbouring trades.\n\nLimits:\n- Trades are treated as independent; neighbouring trades that move together are allowed for (Newey-West), but trades driven by the same market moves still count more than they should.\n- The ranges and e-values use a normal approximation with an estimated spread: valid as trades accumulate, not exactly at every small sample.\n- The comparison with buying and holding is rough: it assumes the price moved at a steady pace.\n- It judges the trades it is given. It can't see a bug in the backtest, only signs of one.\n\n</details>\n\n### For the assistant\n\n- Lead with verdict.headline word for word, then verdict.plain (or reply_draft) in your own short words.\n- Never call 'cant_tell' a win, and never call 'no_edge' almost there. Do not round a verdict up.\n- Ask the questions in ask_the_user, in order. Each says which parameter to set when you check again.\n- Don't add your own t-test, Sharpe ratio or p-value as a second opinion: they ignore repeated checking and the versions tried, which this verdict accounts for.\n- This is a statistical check of past trades, not financial advice. Don't turn it into buy, sell or position-size advice; next_step is about testing.\n- The verdict assumes this was the only version tried. Say so, and ask how many were tried.\n- Offer the ai_audit_prompt: suggest checking the bot's code for the listed bugs first.\n\n_edge or luck 2.0.0 (schema 1.0), input sha256:e66751f6f0c1e626ef01. The same input always gets the same answer. Not financial advice: a statistical check of past trades._",
  "sample": "trader",
  "track_record": {
   "predictions": 0,

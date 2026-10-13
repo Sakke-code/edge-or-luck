@@ -2,13 +2,13 @@
  "schema_version": "1.0",
  "engine_version": "2.0.0",
  "status": "ok",
- "input_fingerprint": "sha256:ac15e8aee3e87ed9a897",
+ "input_fingerprint": "sha256:50ea88155d78551ca0a6",
  "verdict": {
   "code": "losing",
   "label": "Losing",
   "tone": "bad",
   "headline": "Losing for real: -1.01 USDT per trade, too steady to be bad luck.",
-  "plain": "Your average trade is +1.73%, but you lost 161 USDT in total: your losing trades were bigger than your winning ones. Over 160 trades it lost 1.01 USDT per trade on average. The likely range is -2.02 USDT to -0.00197 USDT per trade, all below zero. Bad luck does not look this steady: something in the rules or the costs works against you.",
+  "plain": "Your average trade is +1.73%, but you lost 161 USDT in total: your losing trades were bigger than your winning ones. Over 160 trades it lost 1.01 USDT per trade on average. The likely range is -2.13 USDT to -0.00197 USDT per trade, all below zero. Bad luck does not look this steady: something in the rules or the costs works against you.",
   "why": "Steady losses mean something in the rules works against you. Bad luck does not look this steady.",
   "sentence": "Losing for real: -1.01 USDT per trade, too steady to be bad luck."
  },
@@ -21,33 +21,33 @@
   "unit": "USDT",
   "first_trade": "2025-05-01",
   "last_trade": "2025-06-21",
-  "total": -161.4,
+  "total": -161.435,
   "mean_per_trade": {
-   "value": -1.009,
+   "value": -1.00897,
    "range_95": [
-    -2.016,
-    -0.001971
+    -2.12638,
+    -0.00197083
    ],
    "range_kind": "anytime-valid 95%"
   },
   "percent_per_trade": {
-   "mean": 1.727
+   "mean": 1.72661
   },
   "win_rate": {
    "value": 0.7375,
    "range_95": [
-    0.6643,
-    0.7995
+    0.664328,
+    0.799535
    ]
   },
-  "profit_factor": 0.5031,
-  "best_trade": 2.468,
-  "worst_trade": -13.06,
+  "profit_factor": 0.503085,
+  "best_trade": 2.4679,
+  "worst_trade": -13.0584,
   "fees": null,
   "top_3": null,
   "drawdown": {
-   "max": 168.8,
-   "current": 163.9,
+   "max": 168.78,
+   "current": 163.903,
    "trades_since_peak": 159,
    "odds_pct": 55.7
   },
@@ -55,17 +55,18 @@
    "copies": 1000,
    "ended_higher": 999,
    "share": 0.999,
-   "needed_at_most": 1,
-   "needed_one_in": 858
+   "needed_at_most": 0,
+   "needed_one_in": 2742
   },
   "evidence": {
-   "e_value": 0.06931,
-   "e_value_below": 40.68,
+   "e_value": 0.0634215,
+   "e_value_below": 40.6765,
    "bar": 40.0,
    "passes": false,
    "passes_below": true,
    "versions_or_strategies": 1,
-   "serial_factor": 1.0
+   "serial_factor": 1.0,
+   "skew": -1.29671
   },
   "adjusted": null,
   "benchmark": null,
@@ -146,10 +147,11 @@
  "how_we_know": [
   "The range is an anytime-valid 95% range (a confidence sequence; Waudby-Smith, Arbour, Sinha, Kennedy & Ramdas 2021; Howard, Ramdas, McAuliffe & Sekhon 2021): it stays valid however often you check, unlike a normal confidence interval read every day.",
   "Each strategy gets one-sided normal-mixture e-values for 'the average is above zero' and 'below zero'. Every version tried and every strategy shown is one family; e-BH (Wang & Ramdas 2022) selects at a 5% false discovery rate. Versions tried but not shown count as e = 0, which is valid under any dependence. One strategy alone needs e >= 40; with N versions it needs e >= 40 N, exactly where its Bonferroni-adjusted 95% range clears zero.",
-  "The spread is the sample standard deviation, widened by a Newey-West long-run variance factor when neighbouring trades move together (never narrowed).",
+  "The spread is the sample standard deviation, widened when neighbouring trades move together: by the larger of a Newey-West long-run variance factor and a bias-corrected AR(1) factor (never narrowed).",
+  "When losses are rarer but bigger than wins (negative skew), the bar for 'above zero' is raised by the Edgeworth term of a studentized mean (Hall 1987), and the range is widened on that side; the same for 'below zero' and positive skew. Skew never lowers a bar.",
   "Coin-flip copies flip the sign of each trade at random: same trades, same sizes, zero edge by construction.",
   "'Faded' needs the earlier trades to pass on their own and the latest 30 or 60 trades to be worse than 99.75% of stretches resampled from the earlier trades.",
-  "Grid bot: e-value 0.0693 against a bar of 40 (does not pass)."
+  "Grid bot: e-value 0.0634 against a bar of 40 (does not pass)."
  ],
  "limitations": [
   "Trades are treated as independent; neighbouring trades that move together are allowed for (Newey-West), but trades driven by the same market moves still count more than they should.",
@@ -6831,7 +6833,7 @@
     "label": "Losing",
     "tone": "bad",
     "headline": "Losing for real: -1.01 USDT per trade, too steady to be bad luck.",
-    "plain": "Your average trade is +1.73%, but you lost 161 USDT in total: your losing trades were bigger than your winning ones. Over 160 trades it lost 1.01 USDT per trade on average. The likely range is -2.02 USDT to -0.00197 USDT per trade, all below zero. Bad luck does not look this steady: something in the rules or the costs works against you.",
+    "plain": "Your average trade is +1.73%, but you lost 161 USDT in total: your losing trades were bigger than your winning ones. Over 160 trades it lost 1.01 USDT per trade on average. The likely range is -2.13 USDT to -0.00197 USDT per trade, all below zero. Bad luck does not look this steady: something in the rules or the costs works against you.",
     "why": "Steady losses mean something in the rules works against you. Bad luck does not look this steady.",
     "sentence": "Losing for real: -1.01 USDT per trade, too steady to be bad luck."
    },
@@ -6844,33 +6846,33 @@
     "unit": "USDT",
     "first_trade": "2025-05-01",
     "last_trade": "2025-06-21",
-    "total": -161.4,
+    "total": -161.435,
     "mean_per_trade": {
-     "value": -1.009,
+     "value": -1.00897,
      "range_95": [
-      -2.016,
-      -0.001971
+      -2.12638,
+      -0.00197083
      ],
      "range_kind": "anytime-valid 95%"
     },
     "percent_per_trade": {
-     "mean": 1.727
+     "mean": 1.72661
     },
     "win_rate": {
      "value": 0.7375,
      "range_95": [
-      0.6643,
-      0.7995
+      0.664328,
+      0.799535
      ]
     },
-    "profit_factor": 0.5031,
-    "best_trade": 2.468,
-    "worst_trade": -13.06,
+    "profit_factor": 0.503085,
+    "best_trade": 2.4679,
+    "worst_trade": -13.0584,
     "fees": null,
     "top_3": null,
     "drawdown": {
-     "max": 168.8,
-     "current": 163.9,
+     "max": 168.78,
+     "current": 163.903,
      "trades_since_peak": 159,
      "odds_pct": 55.7
     },
@@ -6878,17 +6880,18 @@
      "copies": 1000,
      "ended_higher": 999,
      "share": 0.999,
-     "needed_at_most": 1,
-     "needed_one_in": 858
+     "needed_at_most": 0,
+     "needed_one_in": 2742
     },
     "evidence": {
-     "e_value": 0.06931,
-     "e_value_below": 40.68,
+     "e_value": 0.0634215,
+     "e_value_below": 40.6765,
      "bar": 40.0,
      "passes": false,
      "passes_below": true,
      "versions_or_strategies": 1,
-     "serial_factor": 1.0
+     "serial_factor": 1.0,
+     "skew": -1.29671
     },
     "adjusted": null,
     "benchmark": null,
@@ -6961,9 +6964,9 @@
     "small_wins_big_losses"
    ],
    "money": {
-    "total": -161.4,
+    "total": -161.435,
     "unit": "USDT",
-    "percent_mean": 1.727,
+    "percent_mean": 1.72661,
     "disagree": true,
     "sentence": "Your average trade is +1.73%, but you lost 161 USDT in total: your losing trades were bigger than your winning ones.",
     "judged_in": "USDT",
@@ -6972,11 +6975,11 @@
    "benchmark": null,
    "compare": null,
    "edge": {
-    "mean": -1.009,
-    "lower": -2.016,
-    "upper": -0.001971,
-    "adjusted_lower": -2.016,
-    "adjusted_upper": -0.001971
+    "mean": -1.00897,
+    "lower": -2.12638,
+    "upper": -0.00197083,
+    "adjusted_lower": -2.12638,
+    "adjusted_upper": -0.00197083
    },
    "luck": {
     "one_in": null,
@@ -6986,15 +6989,15 @@
    },
    "stats": {
     "win_rate": 0.7375,
-    "profit_factor": 0.5031,
-    "total": -161.4,
-    "best": 2.468,
-    "worst": -13.06,
-    "max_drawdown": 168.8
+    "profit_factor": 0.503085,
+    "total": -161.435,
+    "best": 2.4679,
+    "worst": -13.0584,
+    "max_drawdown": 168.78
    },
    "drawdown": {
-    "depth": 163.9,
-    "max": 168.8,
+    "depth": 163.903,
+    "max": 168.78,
     "trades_since_peak": 159,
     "happens_pct": 55.7,
     "reading": "normal",
@@ -7003,12 +7006,12 @@
    "recent": {
     "n": 30,
     "window": 30,
-    "total": -44.15,
-    "mean": -1.472,
-    "earlier_mean": -0.9022,
-    "deepest_drop": 49.02,
-    "odds_drop": 0.2447,
-    "odds_total_this_low": 0.2192,
+    "total": -44.1469,
+    "mean": -1.47156,
+    "earlier_mean": -0.902218,
+    "deepest_drop": 49.0232,
+    "odds_drop": 0.244688,
+    "odds_total_this_low": 0.219239,
     "reading": "normal",
     "sentence": "Your last 30 trades: -44.15 USDT in total, with a drop of 49.02 USDT inside them. If nothing changed, a drop that deep within 30 trades happens about 1 in 4 times for this strategy. That is normal for it.",
     "why": "A losing stretch feels like the strategy broke. Often it is just a normal streak, and the odds tell which."
@@ -7024,6 +7027,7 @@
  "input": {
   "format": "trades_table",
   "rows": 160,
+  "read_as": "Read a table of closed trades: 160 closed trades, results in USDT (money first, percent alongside).",
   "columns_seen": [
    "close_time",
    "symbol",
@@ -7056,6 +7060,7 @@
  },
  "warnings": [],
  "need": null,
+ "markdown": "## Edge or luck: Losing\n\n**Losing for real: -1.01 USDT per trade, too steady to be bad luck.**\n\nYour average trade is +1.73%, but you lost 161 USDT in total: your losing trades were bigger than your winning ones. Over 160 trades it lost 1.01 USDT per trade on average. The likely range is -2.13 USDT to -0.00197 USDT per trade, all below zero. Bad luck does not look this steady: something in the rules or the costs works against you.\n\n_Why: Steady losses mean something in the rules works against you. Bad luck does not look this steady._\n\n**Next step:** Ask your AI to check how the bot handles losing trades: the stop, averaging down and position size. The audit prompt lists what to look for.\n\n_Why: A few big losses are erasing many small wins. That comes from how losing trades are handled, and it can be fixed._\n\n### The numbers\n\n_Read a table of closed trades: 160 closed trades, results in USDT (money first, percent alongside)._\n\n| | |\n|---|---|\n| Trades | 160, 2025-05-01 to 2025-06-21 |\n| Result | -161 USDT in total (average trade +1.73%) **(percent and money disagree)** |\n| Average per trade | -1.01 USDT (95% range -2.13 USDT to -0.00197 USDT) |\n| Win rate | 74% (66% to 80%) |\n| Coin-flip copies | 999 of 1,000 ended higher (a pass needs none) |\n| Drop from peak | worst 169 USDT, now 164 USDT |\n| Last 30 trades | Your last 30 trades: -44.15 USDT in total, with a drop of 49.02 USDT inside them. If nothing changed, a drop that deep within 30 trades happens about 1 in 4 times for this strategy. That is normal for it. |\n\n### What would change it\n\n- More trades at this average won't help. Only a different strategy would change it.\n\n### Checks\n\n- **PASS** 160 trades.\n  _Why: More trades make luck easier to tell apart from a real edge._\n- **WARN** We can't see whether fees are included.\n  Fix: Check the strategy's commission setting, or tell us (fees_included).\n  _Why: Every trade pays fees twice, on the way in and out. A small edge before fees is often a loss after them._\n- **WARN** Your average trade is +1.73%, but you lost 161 USDT in total: your losing trades were bigger than your winning ones.\n  Fix: Look at the size of each trade: the losses come from the big positions.\n  _Why: Money is what you keep. A good average percent can hide a loss when the losing trades are the big ones._\n- **PASS** Your last 30 trades: -44.15 USDT in total, with a drop of 49.02 USDT inside them. If nothing changed, a drop that deep within 30 trades happens about 1 in 4 times for this strategy. That is normal for it.\n  _Why: A losing stretch feels like the strategy broke. Often it is just a normal streak, and the odds tell which._\n- **PASS** These are live results.\n  _Why: Live trades include real fills and fees, so they are the most honest record._\n- **WARN** Many small wins (about 1.39 USDT) and rare big losses (up to 13.06 USDT). This is the shape of grid, martingale and averaging-down bots.\n  Fix: Ask your AI to audit the code with the audit prompt below.\n  _Why: These records look great until one bad move. Then one loss can take months of wins, or the whole account._\n\n### Questions for the trader\n\n1. Do these results include trading fees and slippage? (answer with `fees_included=true|false`)\n   _Why: A small edge before fees is often a loss after them._\n\n### Prompt to audit the bot's code\n\nGive this to the AI that wrote the bot:\n\n```text\nI am not a programmer. Please audit my trading bot's code: many small wins are being erased by a few big losses, and I want to know which rules cause that.\nWhy I am asking: an independent check of my trades said: Many small wins (about 1.39 USDT) and rare big losses (up to 13.06 USDT). This is the shape of grid, martingale and averaging-down bots.\nCheck each of these, in this order:\n1. Averaging down or martingale: does it buy more when a position is losing, or raise the size after a loss? Is there a hard stop that always fires?\n2. Fees and slippage: are trading fees charged on both the buy and the sell, plus a little slippage?\n3. Lookahead: does it decide on a bar's close and then fill at that same close or earlier? A signal only exists after its bar closes, so the trade must happen on the next bar.\n4. Indicators that peek at the future: repainting, request.security with lookahead on, pivots or zigzags that confirm bars later, centered averages, shift(-1), or scaling with numbers from the whole data set.\n5. Survivorship: was the coin or stock list picked today (ones that still exist, or went up) and then tested on the past?\n6. Compounding size: does the position size grow with the account, so a few late trades decide the whole result?\nFor each one: show me the exact line of code, explain the problem in simple words, and fix it.\nThen run the backtest again with the fixes and give me the new list of trades as a CSV file, so I can check it again.\n```\n\n<details><summary>How we know</summary>\n\n- The range is an anytime-valid 95% range (a confidence sequence; Waudby-Smith, Arbour, Sinha, Kennedy & Ramdas 2021; Howard, Ramdas, McAuliffe & Sekhon 2021): it stays valid however often you check, unlike a normal confidence interval read every day.\n- Each strategy gets one-sided normal-mixture e-values for 'the average is above zero' and 'below zero'. Every version tried and every strategy shown is one family; e-BH (Wang & Ramdas 2022) selects at a 5% false discovery rate. Versions tried but not shown count as e = 0, which is valid under any dependence. One strategy alone needs e >= 40; with N versions it needs e >= 40 N, exactly where its Bonferroni-adjusted 95% range clears zero.\n- The spread is the sample standard deviation, widened when neighbouring trades move together: by the larger of a Newey-West long-run variance factor and a bias-corrected AR(1) factor (never narrowed).\n- When losses are rarer but bigger than wins (negative skew), the bar for 'above zero' is raised by the Edgeworth term of a studentized mean (Hall 1987), and the range is widened on that side; the same for 'below zero' and positive skew. Skew never lowers a bar.\n- Coin-flip copies flip the sign of each trade at random: same trades, same sizes, zero edge by construction.\n- 'Faded' needs the earlier trades to pass on their own and the latest 30 or 60 trades to be worse than 99.75% of stretches resampled from the earlier trades.\n- Grid bot: e-value 0.0634 against a bar of 40 (does not pass).\n\nLimits:\n- Trades are treated as independent; neighbouring trades that move together are allowed for (Newey-West), but trades driven by the same market moves still count more than they should.\n- The ranges and e-values use a normal approximation with an estimated spread: valid as trades accumulate, not exactly at every small sample.\n- The comparison with buying and holding is rough: it assumes the price moved at a steady pace.\n- It judges the trades it is given. It can't see a bug in the backtest, only signs of one.\n\n</details>\n\n### For the assistant\n\n- Lead with verdict.headline word for word, then verdict.plain (or reply_draft) in your own short words.\n- Never call 'cant_tell' a win, and never call 'no_edge' almost there. Do not round a verdict up.\n- Ask the questions in ask_the_user, in order. Each says which parameter to set when you check again.\n- Don't add your own t-test, Sharpe ratio or p-value as a second opinion: they ignore repeated checking and the versions tried, which this verdict accounts for.\n- This is a statistical check of past trades, not financial advice. Don't turn it into buy, sell or position-size advice; next_step is about testing.\n- Offer the ai_audit_prompt: suggest checking the bot's code for the listed bugs first.\n\n_edge or luck 2.0.0 (schema 1.0), input sha256:50ea88155d78551ca0a6. The same input always gets the same answer. Not financial advice: a statistical check of past trades._",
  "sample": "small_wins_big_losses",
  "track_record": {
   "predictions": 0,

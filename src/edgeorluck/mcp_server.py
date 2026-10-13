@@ -42,7 +42,8 @@ JUDGE_DESCRIPTION = (
     "Catches a long-only strategy that only rode a rising market.\n"
     "- fees_included (true/false), source ('backtest', 'paper' or 'live'), unit ('%' or 'USDT' etc.), "
     "kind ('auto', 'trades', 'fills', 'tradingview', 'pnl').\n"
-    "- backtest_file_path / backtest_csv_text / backtest_pnl: the backtest, to check the live trades against it.\n\n"
+    "- backtest_file_path / backtest_csv_text / backtest_pnl: the backtest, to check the live trades against it.\n"
+    "- detail: 'full' (default: Markdown, then the JSON result) or 'markdown' (shorter: the Markdown only).\n\n"
     "Returns Markdown (ready to relay) followed by the full JSON result. Answer the user from it: quote "
     "verdict.headline word for word, explain verdict.plain in short words, give next_step, and ask the questions "
     "in ask_the_user (each says which parameter to set when you call again). Never present 'cant_tell' as a win. "
@@ -61,8 +62,8 @@ def judge_trades(file_path: Optional[str] = None, csv_text: Optional[str] = None
                  benchmark_return_pct: Optional[float] = None, fees_included: Optional[bool] = None,
                  source: Optional[str] = None, unit: Optional[str] = None, kind: Optional[str] = None,
                  backtest_file_path: Optional[str] = None, backtest_csv_text: Optional[str] = None,
-                 backtest_pnl: Optional[List[float]] = None) -> str:
-    """Judge a trading record: Markdown, then the full JSON result."""
+                 backtest_pnl: Optional[List[float]] = None, detail: str = "full") -> str:
+    """Judge a trading record: Markdown, then the full JSON result (detail="markdown": the Markdown only)."""
     data = _path(file_path) or csv_text or pnl
     if data is None:
         return ("Nothing to judge: pass file_path (an export on this machine), csv_text (its text) or pnl (a list "
@@ -73,7 +74,9 @@ def judge_trades(file_path: Optional[str] = None, csv_text: Optional[str] = None
     backtest = _path(backtest_file_path) or backtest_csv_text or backtest_pnl
     result = judge(data, variants_tried=variants_tried, benchmark_return_pct=benchmark_return_pct,
                    fees_included=fees_included, source=source, unit=unit, kind=kind, backtest=backtest)
-    return result.to_markdown() + "\n\n## Full result (JSON)\n\n```json\n" + result.to_json(indent=1) + "\n```\n"
+    if str(detail).strip().lower().startswith("markdown"):
+        return result.to_markdown()
+    return result.to_markdown() + "\n\n## Full result (JSON)\n\n```json\n" + result.to_json(indent=None) + "\n```\n"
 
 
 def result_schema() -> str:

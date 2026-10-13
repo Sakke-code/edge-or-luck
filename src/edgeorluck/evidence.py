@@ -48,6 +48,7 @@ ALPHA = 0.05             # the range is a two-sided 95% range: alpha/2 on each s
 T_STAR = 100             # the mixture decides soonest around this many trades
 BASE_BAR = 2.0 / Q       # one strategy, one version: e >= 40
 SERIAL_ADJUST = True     # widen the spread when neighbouring trades move together (Newey-West)
+SERIAL_AR1_FLOOR = True  # ...and never by less than the bias-corrected AR(1) factor
 SKEW_ADJUST = True       # raise a claim's bar when the trades are skewed against it (Edgeworth)
 SKEW_CAP = 6.0
 
@@ -267,8 +268,12 @@ def max_versions_passing(rec: Record, *, strategies: int = 1, cap: int = 1_000_0
 
 def serial_factor(x: "np.ndarray") -> float:
     """How much neighbouring trades moving together widens the spread of the
-    average: the Newey-West long-run variance over the plain variance, never
-    below 1 (a negative correlation is not allowed to narrow it)."""
+    average: the larger of the Newey-West long-run variance ratio (Bartlett
+    weights, 4 (n/100)^(2/9) lags) and the AR(1) ratio (1 + r) / (1 - r) with
+    Kendall's small-sample bias correction of the lag-1 correlation r. Newey-
+    West alone under-corrects at a few dozen trades (validation: 3.4% instead
+    of under 2.5% for AR 0.3 trades checked every 10 trades). Never below 1: a
+    negative correlation is not allowed to narrow the spread."""
     n = len(x)
     if not SERIAL_ADJUST or n < 20:
         return 1.0
@@ -277,12 +282,14 @@ def serial_factor(x: "np.ndarray") -> float:
     if var <= 0:
         return 1.0
     lags = int(math.floor(4.0 * (n / 100.0) ** (2.0 / 9.0)))
-    total = 1.0
+    newey_west = 1.0
     for lag in range(1, max(lags, 1) + 1):
         rho = float(np.dot(d[lag:], d[:-lag])) / n / var
-        total += 2.0 * (1.0 - lag / (lags + 1.0)) * rho
-    return float(min(10.0, max(1.0, total)))
-
+        newey_west += 2.0 * (1.0 - lag / (lags + 1.0)) * rho
+    r1 = float(np.dot(d[1:], d[:-1])) / n / var
+    r1 = min(0.8, r1 + (1.0 + 3.0 * r1) / n)
+    ar1 = (1.0 + r1) / (1.0 - r1) if (r1 > 0 and SERIAL_AR1_FLOOR) else 1.0
+    return float(min(10.0, max(1.0, newey_west, ar1)))
 
 
 def wilson_bounds_count(wins: int, n: int, z: float = 1.96) -> Tuple[float, float]:

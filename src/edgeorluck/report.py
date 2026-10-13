@@ -88,8 +88,10 @@ def to_markdown(result: Dict[str, Any]) -> str:
         lines += ["### Live vs backtest", "", f"**{compare['headline']}**", "", compare.get("plain", ""), ""]
         lines += _why(compare.get("why")) + [""]
     cards = result.get("strategies") or []
+    read_as = (result.get("input") or {}).get("read_as")
     if len(cards) == 1 and result.get("numbers"):
-        lines += ["### The numbers", ""] + _num_rows(result["numbers"], cards[0]) + [""]
+        lines += ["### The numbers", ""] + ([f"_{read_as}_", ""] if read_as else [])
+        lines += _num_rows(result["numbers"], cards[0]) + [""]
     elif len(cards) > 1:
         lines += ["### Each strategy", "", "| Strategy | Verdict | Trades | Average per trade | 95% range |",
                   "|---|---|---|---|---|"]

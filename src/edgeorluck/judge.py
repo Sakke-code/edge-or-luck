@@ -576,11 +576,17 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
         code = "cant_tell"
         if market_adjusted is not None and market_adjusted["mean"] <= 0:
             code, downgraded = "no_edge", True
+        elif len(losses) < MIN_LOSSES:
+            few_losses = True
     else:
         code = "no_edge"
     needed = None
     if code == "cant_tell" and not downgraded and not few_losses:
         needed = trades_needed(m["record"], bar, m["rho_family"])
+        if needed is not None and needed > max(5000, 50 * n):
+            needed = None                       # out of reach: say so instead of a huge number
+        elif needed is not None and needed >= 100:
+            needed = int(float(f"{needed:.2g}"))  # an estimate: two significant figures
     survives = max_versions_passing(m["record"], strategies=strategies) if code == "real_edge" else None
 
     # money first, percent second
@@ -640,7 +646,7 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
             if needed is not None and needed > 0:
                 plain += f" About {needed:,} more trades at this average would settle it."
             elif needed is None:
-                plain += " At this size the edge is too small to ever prove from trades alone."
+                plain += " At this average it would take many thousands of trades to tell it apart from luck."
         verdict = _verdict(code, head, plain)
     elif code == "losing":
         verdict = _verdict(code, f"Losing for real: {per}, too steady to be bad luck.",
@@ -659,6 +665,9 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
             plain = (f"Over {count(n, 'trade')} it averaged {per}. That is what luck alone does. More trades at this "
                      "average will not turn it into an edge.")
         verdict = _verdict(code, head, plain)
+    if downgraded:
+        verdict["why"] = ("A rising market lifts every strategy that buys. Only what is left after the market is the "
+                          "strategy's own edge.")
     if money_card["disagree"]:
         verdict["plain"] = money_card["sentence"] + " " + verdict["plain"]
 
@@ -675,6 +684,9 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
             "needed_at_most": int(math.floor(COIN_FLIPS * needed_share)),
             "needed_one_in": int(round(1.0 / needed_share)) if needed_share > 0 else None}
     coin["sentence"] = _coin_sentence(coin, code, mean, versions, strategies)
+    if downgraded:
+        coin["sentence"] += (" Coin-flip copies keep the market's rise inside every trade, so they can't tell skill "
+                             "from a rising market; the market check above can.")
     top3 = None
     if n >= 4 and total > 0:
         best = np.sort(x)[-3:]
@@ -726,7 +738,7 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
     positive_backtest = code == "real_edge" and source != "live"
     audit = _audit_prompt(flags, st, positive_backtest, losing=code in ("losing", "no_edge"))
     next_step = _next_step(code, n, needed, settings, source, flags, versions, strategies, fees, read, split_day,
-                           few_losses)
+                           few_losses, market_explains=downgraded)
     card.update(
         verdict=verdict, next_step=next_step, numbers=rnd(numbers), checks=checks, ask_the_user=questions,
         what_would_change_it=changes, ai_audit_prompt=audit, red_flags=[f["code"] for f in flags],
@@ -802,12 +814,26 @@ def _drawdown_card(depth: float, since: int, worst: float, odds: Optional[float]
             "sentence": sentence}
 
 
+def _clearly_nonzero(v: Optional[np.ndarray]) -> bool:
+    """An average at least one standard error from zero: worth naming when
+    percent and money point different ways (two near-zero numbers don't)."""
+    if v is None:
+        return False
+    v = np.asarray(v, dtype=float)
+    v = v[np.isfinite(v)]
+    if len(v) < 2:
+        return False
+    se = float(np.std(v, ddof=1)) / math.sqrt(len(v))
+    return abs(float(np.mean(v))) >= max(se, 1e-12)
+
+
 def _money_card(st: Trades, x: np.ndarray, unit: str, pct: Optional[np.ndarray],
                 shadow: Optional[np.ndarray]) -> Dict[str, Any]:
     total = float(x.sum())
     if unit != "%":
         pmean = float(np.mean(pct)) if pct is not None else None
-        disagree = pmean is not None and abs(pmean) > 1e-9 and total != 0 and (pmean > 0) != (total > 0)
+        disagree = (pmean is not None and (pmean > 0) != (total > 0)
+                    and _clearly_nonzero(pct) and _clearly_nonzero(x))
         if disagree and total < 0:
             sentence = (f"Your average trade is {fmt(pmean, '%')}, but you lost {fmt(-total, unit, False)} in total: "
                         "your losing trades were bigger than your winning ones.")
@@ -824,7 +850,7 @@ def _money_card(st: Trades, x: np.ndarray, unit: str, pct: Optional[np.ndarray],
     pmean = float(np.mean(x))
     if shadow is not None and np.isfinite(shadow).any():
         mt = float(np.nansum(shadow))
-        disagree = mt != 0 and abs(pmean) > 1e-9 and (pmean > 0) != (mt > 0)
+        disagree = (pmean > 0) != (mt > 0) and _clearly_nonzero(x) and _clearly_nonzero(shadow)
         sentence = (f"Your average trade is {fmt(pmean, '%')}, but in money the trades add up to {fmt(mt, 'money')}: "
                     f"your {'losing' if mt < 0 else 'winning'} trades were the bigger ones." if disagree else
                     f"In total: {fmt(mt, 'money')} (average trade {fmt(pmean, '%')}).")
@@ -873,7 +899,9 @@ def _coin_sentence(coin: Dict[str, Any], code: str, mean: float, versions: Optio
     reason = ("you can check again at any time" + (f" and you tried {versions} versions" if versions and versions > 1
                                                    else f" and you have {strategies} strategies" if strategies > 1
                                                    else ""))
-    need_text = f"{need:,} or fewer" if need >= 1 else f"none (rarer than about 1 in {coin['needed_one_in']:,})"
+    rare = coin["needed_one_in"]
+    rare = int(float(f"{rare:.2g}")) if rare >= 100 else rare
+    need_text = f"{need:,} or fewer" if need >= 1 else f"none (rarer than about 1 in {rare:,})"
     if code in ("real_edge",):
         return base + f" A pass here needs {need_text}, because {reason}. It passes."
     return base + f" That alone might look convincing, but a pass here needs {need_text}, because {reason}."
@@ -912,7 +940,11 @@ def _checks(st, read, settings, n, code, mean, unit, fees, top3, drawdown, recen
     if fees is not None and fees["paid"] > 0:
         share_ = fees.get("share_of_gross")
         if share_ is not None and share_ > 0.25:
-            out.append(_check("fees", "warn", f"Fees took {share(share_)} of what the trades made before fees.",
+            gross = fees["paid"] / share_
+            text = (f"Fees ({fmt(fees['paid'], unit, False)}) were more than everything the trades made before fees "
+                    f"({fmt(gross, unit, False)})." if share_ >= 1 else
+                    f"Fees took {share(share_)} of what the trades made before fees.")
+            out.append(_check("fees", "warn", text,
                               "When fees eat a big part of the profit, a small change in costs can wipe it out.",
                               "Look for fewer, larger trades, or lower fees (maker orders, fee discounts)."))
         else:
@@ -996,8 +1028,23 @@ def _checks(st, read, settings, n, code, mean, unit, fees, top3, drawdown, recen
         out.append(_check(f"red_flag:{flag['code']}", "warn", flag["text"], flag["why"],
                           "Ask your AI to audit the code with the audit prompt below."))
     for w in read.warnings:
-        out.append(_check("data", "warn", w, "Rows we could not read are not in the verdict."))
+        out.append(_check("data", "warn", w, _data_why(w)))
     return out
+
+
+def _data_why(warning: str) -> str:
+    w = warning.lower()
+    if "fee" in w:
+        return "Fees that are not counted make the results look better than they were."
+    if "no earlier buy" in w:
+        return "A sell without its buy has no known cost, so it can't be scored."
+    if "still open" in w:
+        return "An open position has no final result yet."
+    if "quoted in" in w:
+        return "Results in different coins can't be added up."
+    if "still open" in w or "open" in w:
+        return "An open trade has no final result yet."
+    return "Rows we could not read are not in the verdict."
 
 
 def _questions(st, read, settings, code, mean, n, unit, benchmark, versions, strategies,
@@ -1052,8 +1099,8 @@ def _changes(code, n, mean, unit, m, needed, survives, versions, settings, bench
             out.append({"code": "more_trades", "text": f"About {needed:,} more trades at this average "
                                                        f"({fmt(mean, unit)} each) would settle it."})
         elif market_adjusted is None:
-            out.append({"code": "more_trades", "text": "At this average, no realistic number of trades would prove "
-                                                       "it: the edge is too small next to the swings."})
+            out.append({"code": "more_trades", "text": "At this average it would take many thousands of trades to "
+                                                       "prove it: the edge is small next to the swings."})
         if versions and versions > 1:
             out.append({"code": "fewer_versions", "text": "Fresh trades the strategy was never tuned on count fully: "
                                                           "test it on a new period and judge those trades alone "
@@ -1074,7 +1121,12 @@ def _changes(code, n, mean, unit, m, needed, survives, versions, settings, bench
     if code in ("cant_tell",) and mean > 0:
         out.append({"code": "costs", "text": f"Costs of {fmt(mean, unit, False)} per trade would wipe out the "
                                              "average."})
-    if code in ("no_edge", "losing"):
+    market_explains = (market_adjusted is not None and code in ("no_edge", "cant_tell")
+                       and not market_adjusted["passes"] and mean > 0)
+    if market_explains:
+        out.append({"code": "market", "text": "Making money in a period when prices fell or moved sideways would "
+                                              "show an edge the market can't explain."})
+    elif code in ("no_edge", "losing"):
         out.append({"code": "change_strategy", "text": "More trades at this average won't help. Only a different "
                                                        "strategy would change it."})
     if code == "faded":
@@ -1087,10 +1139,16 @@ def _changes(code, n, mean, unit, m, needed, survives, versions, settings, bench
 
 
 def _next_step(code, n, needed, settings, source, flags, versions, strategies, fees, read,
-               split_day, few_losses=False) -> Dict[str, str]:
+               split_day, few_losses=False, market_explains=False) -> Dict[str, str]:
     fees_known = settings.fees_included
+    if market_explains and not flags:
+        return {"text": "Test it on a period when the price fell or moved sideways, and compare it with simply "
+                        "holding.",
+                "why": "A rising market lifts every strategy that buys. Only what is left after the market is the "
+                       "strategy's own."}
     loss_shape = {"small_wins_big_losses", "averaging_down"}
-    if flags and code in ("losing", "no_edge") and {f["code"] for f in flags} & loss_shape:
+    flag_codes = {f["code"] for f in flags}
+    if flags and (code in ("losing", "no_edge") and flag_codes & loss_shape or flag_codes <= loss_shape):
         return {"text": "Ask your AI to check how the bot handles losing trades: the stop, averaging down and "
                         "position size. The audit prompt lists what to look for.",
                 "why": "A few big losses are erasing many small wins. That comes from how losing trades are "
@@ -1108,6 +1166,13 @@ def _next_step(code, n, needed, settings, source, flags, versions, strategies, f
     if code in ("real_edge", "cant_tell") and not versions and strategies == 1 and source != "live":
         return {"text": "Tell your AI how many versions you tried, then check again.",
                 "why": "Trying many versions and keeping the best one makes luck look like skill."}
+    fee_share = (fees or {}).get("share_of_gross")
+    if code in ("no_edge", "losing") and fee_share is not None and fee_share >= 0.5:
+        return {"text": "Look at the fees first: they took "
+                        + ("more than everything the trades made" if fee_share >= 1 else "half or more of the gross")
+                        + ". Check again with fewer trades, maker orders or lower fees.",
+                "why": "Before fees these trades made money; the fees decide the result, and fees are the easiest "
+                       "part to change."}
     if code == "too_early":
         return {"text": f"Collect at least {MIN_TRADES - n} more trades (paper trading is fine), then check again.",
                 "why": "With few trades, luck decides almost everything."}
@@ -1125,7 +1190,8 @@ def _next_step(code, n, needed, settings, source, flags, versions, strategies, f
             return {"text": f"Keep it on paper until about {needed:,} more trades, then check again.",
                     "why": "Paper trades cost nothing and add the evidence this record is missing."}
         return {"text": "Test the idea on a different period or market before spending more time on it.",
-                "why": "At this size the edge is too small to prove, so more of the same data won't decide it."}
+                "why": "At this size the edge would take thousands of trades to prove, so more of the same data "
+                       "won't decide it soon."}
     if code == "faded":
         when = f" around {split_day}" if split_day else ""
         return {"text": f"Find out what changed{when}: the market, the exchange, the settings or the code. Then "
@@ -1152,7 +1218,7 @@ def _pairs(strategies: List[Trades]) -> List[Dict[str, Any]]:
     out = []
     for i, a in enumerate(names):
         for b in names[i + 1:]:
-            joined = pd.concat([daily[a], daily[b]], axis=1).fillna(0.0)
+            joined = pd.concat([daily[a], daily[b]], axis=1, sort=True).fillna(0.0)
             active = (joined != 0).all(axis=1).sum()
             if len(joined) < MIN_PAIR_DAYS or active < 10:
                 continue
@@ -1203,8 +1269,8 @@ HOW_WE_KNOW = [
     "discovery rate. Versions tried but not shown count as e = 0, which is valid under any dependence. One strategy "
     "alone needs e >= 40; with N versions it needs e >= 40 N, exactly where its Bonferroni-adjusted 95% range clears "
     "zero.",
-    "The spread is the sample standard deviation, widened by a Newey-West long-run variance factor when "
-    "neighbouring trades move together (never narrowed).",
+    "The spread is the sample standard deviation, widened when neighbouring trades move together: by the larger "
+    "of a Newey-West long-run variance factor and a bias-corrected AR(1) factor (never narrowed).",
     "When losses are rarer but bigger than wins (negative skew), the bar for 'above zero' is raised by the "
     "Edgeworth term of a studentized mean (Hall 1987), and the range is widened on that side; the same for "
     "'below zero' and positive skew. Skew never lowers a bar.",
@@ -1215,12 +1281,16 @@ HOW_WE_KNOW = [
 
 
 def _input_fingerprint(read: ReadResult, backtest: Optional[ReadResult]) -> str:
+    """The trades as read: the same trades give the same fingerprint, however
+    they were passed (path, bytes, text, table). Names count only when a file
+    holds several strategies (then they come from the data itself)."""
     body = []
     for r in (read, backtest):
         if r is None:
             continue
         for st in r.strategies:
-            body.append([st.name, st.unit, [round(float(v), 8) for v in st.pnl],
+            body.append([st.name if len(r.strategies) > 1 else None, st.unit,
+                         [round(float(v), 8) for v in st.pnl],
                          [t.strftime("%Y-%m-%dT%H:%M:%S") for t in st.times] if st.times else None])
     text = json.dumps(body, sort_keys=True, separators=(",", ":"))
     return "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()[:20]
@@ -1322,7 +1392,8 @@ def analyze(read: ReadResult, settings: Settings, *, details: bool = True,
         "reply_draft": _reply_draft(verdict, next_step, questions, compare),
         "how_we_know": HOW_WE_KNOW + _how_numbers(cards), "limitations": LIMITATIONS,
         "summary": summary, "strategies": cards, "portfolio": {"pairs": pairs}, "compare": compare,
-        "input": {"format": read.format, "rows": read.rows, "columns_seen": read.columns_seen[:60],
+        "input": {"format": read.format, "rows": read.rows, "read_as": read.summary,
+                  "columns_seen": read.columns_seen[:60],
                   "columns_used": read.columns_used, "strategies": len(cards),
                   "trades": int(sum(c["n"] for c in cards)), "warnings": list(read.warnings)},
         "settings": _settings_dict(settings),
@@ -1375,7 +1446,7 @@ def _multi_checks(cards, pairs, read) -> List[Dict[str, Any]]:
         out.append(_check("same_bet" if p["reading"] == "same_bet" else "opposite_bets", "warn", p["sentence"],
                           p["why"]))
     for w in read.warnings:
-        out.append(_check("data", "warn", w, "Rows we could not read are not in the verdict."))
+        out.append(_check("data", "warn", w, _data_why(w)))
     return out
 
 

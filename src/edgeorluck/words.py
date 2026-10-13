@@ -95,7 +95,7 @@ def join_and(parts: Sequence[str]) -> str:
     return ", ".join(parts[:-1]) + " and " + parts[-1]
 
 
-def rnd(value: Any, digits: int = 4) -> Any:
+def rnd(value: Any, digits: int = 6) -> Any:
     """Round for stable, compact JSON: floats to ``digits`` significant
     digits, nan/inf to None, numpy scalars to Python."""
     if value is None:

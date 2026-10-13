@@ -75,6 +75,7 @@ class ReadResult:
     warnings: List[str] = field(default_factory=list)
     need: Optional[Dict[str, Any]] = None
     source_hint: Optional[str] = None           # "backtest" when the format can only be one
+    summary: Optional[str] = None               # what was read, in one sentence
 
 
 # ── cells ─────────────────────────────────────────────────────────────────────
@@ -269,6 +270,30 @@ def numbers_from_text(text: str) -> Optional[Tuple[List[float], Optional[str]]]:
         return None
     unit = "%" if "%" in body else _currency_in(body)
     return [v for v in values if math.isfinite(v)], unit
+
+
+def _numbers_with_words_around(text: str) -> Tuple[Optional[Tuple[List[float], Optional[str]]], List[str]]:
+    """A paste like "here are my trades (usdt):" followed by one number per
+    line: set aside up to three lines of words at the top and bottom, read
+    the numbers, and take a unit hint ("usdt", "%") from the words."""
+    lines = [ln for ln in text.splitlines() if ln.strip()]
+    if len(lines) < 4:
+        return None, []
+    head, tail = [], []
+    while lines and len(head) < 3 and _has_words(lines[0]):
+        head.append(lines.pop(0))
+    while lines and len(tail) < 3 and _has_words(lines[-1]):
+        tail.insert(0, lines.pop())
+    if not (head or tail) or len(lines) < 3:
+        return None, []
+    found = numbers_from_text("\n".join(lines))
+    if found is None:
+        return None, []
+    values, unit = found
+    words = " ".join(head + tail)
+    if unit is None:
+        unit = "%" if ("%" in words or re.search(r"(?i)\b(percent|pct)\b", words)) else _currency_in(words)
+    return (values, unit), head + tail
 
 
 def _sniff(lines: List[str]) -> str:
@@ -647,8 +672,12 @@ def _from_fills(frame: pd.DataFrame, colmap: Dict[str, str], name: str) -> ReadR
         for st in strategies:
             st.buys_per_trade = trips["buys"].fillna(1).to_numpy(dtype=float)
     used = dict(colmap)
+    pairs = sorted({"/".join(x for x in split_pair(p) if x) for p in facts["pairs"] if p and p != "?"})
+    summary = (f"{facts['fills']:,} fills in {len(pairs)} pair{'s' if len(pairs) != 1 else ''} "
+               f"({', '.join(pairs[:6])}{', ...' if len(pairs) > 6 else ''}) paired into "
+               f"{len(trips):,} round trips, first in first out, net of fees.")
     return ReadResult(strategies, "fills", rows=len(frame), columns_seen=list(map(str, frame.columns)),
-                      columns_used=used, warnings=warnings)
+                      columns_used=used, warnings=warnings, summary=summary)
 
 
 def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Optional[str]) -> ReadResult:
@@ -664,9 +693,13 @@ def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Op
             money_unit = _currency_in(used.get("result", "")) or "money"
             strategies = build_trades(canon, unit=money_unit if used.get("result") else "%", name=name,
                                       prefer=unit)
-            cum = canon["cum_pct"].dropna() if "cum_pct" in canon else pd.Series(dtype=float)
+            last = None
+            if "cum_pct" in canon and canon["cum_pct"].notna().any():
+                order = canon["time"] if canon["time"].notna().all() else canon["trade_no"]
+                last = float(canon.loc[order.idxmax(), "cum_pct"])          # exports are newest first
+                last = last if math.isfinite(last) else None
             for st in strategies:
-                st.strategy_return_pct = float(cum.iloc[-1]) if len(cum) else None
+                st.strategy_return_pct = last
             return ReadResult(strategies, "tradingview", rows=len(frame), columns_seen=cols, columns_used=used,
                               source_hint="backtest")
     money, pct = find_result_columns(cols)
@@ -805,6 +838,10 @@ def build_trades(canon: pd.DataFrame, *, unit: str, name: str, prefer: Optional[
 
 def _frame_from_records(data: Any) -> Optional[pd.DataFrame]:
     if isinstance(data, dict):
+        for key in ("trades", "data", "rows", "results", "closed_trades", "orders", "fills"):
+            value = data.get(key)
+            if isinstance(value, list) and value and all(isinstance(r, dict) for r in value):
+                return _frame_from_records(value)
         if data and all(isinstance(v, (list, tuple, np.ndarray, pd.Series)) for v in data.values()):
             lengths = {len(v) for v in data.values()}
             if len(lengths) == 1:
@@ -853,12 +890,12 @@ def read_any(data: Any, *, kind: Optional[str] = None, unit: Optional[str] = Non
             if path.exists():
                 return _read_path(path, kind=kind, unit=unit, name=name)
             return _need([], f"No file at {path.name!r}. Check the path, or paste the file's text instead.")
-        return _read_text(text, kind=kind, unit=unit, name=label)
+        return _read_text(text, kind=kind, unit=unit, name=label, explicit=name)
     if isinstance(data, (bytes, bytearray)):
         raw = bytes(data)
         if raw[:2] == b"PK":
-            return _read_xlsx_or_zip(io.BytesIO(raw), kind=kind, unit=unit, name=label)
-        return _read_text(_decode(raw), kind=kind, unit=unit, name=label)
+            return _read_xlsx_or_zip(io.BytesIO(raw), kind=kind, unit=unit, name=label, explicit=name)
+        return _read_text(_decode(raw), kind=kind, unit=unit, name=label, explicit=name)
     if isinstance(data, pd.Series) and not isinstance(data.index, pd.RangeIndex) and data.dtype == object:
         data = data.to_frame().T
     if isinstance(data, pd.Series):
@@ -905,7 +942,8 @@ def _normalize_unit(unit: Optional[str]) -> Optional[str]:
     return SYMBOLS.get(text, text.upper())
 
 
-def _read_text(text: str, *, kind: str, unit: Optional[str], name: str) -> ReadResult:
+def _read_text(text: str, *, kind: str, unit: Optional[str], name: str,
+               explicit: Optional[str] = None) -> ReadResult:
     stripped = text.strip()
     if not stripped:
         return _need([], "The text is empty.")
@@ -915,13 +953,19 @@ def _read_text(text: str, *, kind: str, unit: Optional[str], name: str) -> ReadR
         except ValueError:
             parsed = None
         if parsed is not None and not (isinstance(parsed, list) and all(isinstance(v, (int, float)) for v in parsed)):
-            return read_any(parsed, kind=kind, unit=unit, name=name)
+            return read_any(parsed, kind=kind, unit=unit, name=explicit)
     pasted = numbers_from_text(stripped) if kind in ("auto", "pnl") else None
+    skipped: List[str] = []
+    if pasted is None and kind in ("auto", "pnl"):
+        pasted, skipped = _numbers_with_words_around(stripped)
     if pasted is not None:
         values, seen_unit = pasted
         st = Trades(name=name, unit=unit or seen_unit or "money", pnl=np.array(values, dtype=float))
-        return _finish(ReadResult([st], "pnl_list", rows=len(values), columns_used={"result": "the pasted numbers"}),
-                       unit)
+        result = ReadResult([st], "pnl_list", rows=len(values), columns_used={"result": "the pasted numbers"})
+        if skipped:
+            result.warnings.append("Read the numbers and skipped the line(s) with words: "
+                                   + "; ".join(repr(s[:60]) for s in skipped) + ".")
+        return _finish(result, unit)
     try:
         frame = table_from_text(stripped)
     except Exception as exc:  # a malformed paste is the trader's to fix, not a crash
@@ -929,7 +973,8 @@ def _read_text(text: str, *, kind: str, unit: Optional[str], name: str) -> ReadR
     return _finish(_from_table(frame, name, unit=unit, kind=kind), unit)
 
 
-def _read_xlsx_or_zip(source: Any, *, kind: str, unit: Optional[str], name: str) -> ReadResult:
+def _read_xlsx_or_zip(source: Any, *, kind: str, unit: Optional[str], name: str,
+                      explicit: Optional[str] = None) -> ReadResult:
     try:
         with zipfile.ZipFile(source) as zf:
             names = zf.namelist()
@@ -941,12 +986,12 @@ def _read_xlsx_or_zip(source: Any, *, kind: str, unit: Optional[str], name: str)
                         parsed = json.loads(zf.read(n).decode("utf-8"))
                     except ValueError:
                         continue
-                    found = read_any(parsed, kind=kind, unit=unit, name=None if name == "Your strategy" else name)
+                    found = read_any(parsed, kind=kind, unit=unit, name=explicit)
                     if found.strategies:
                         return found
                 csvs = [n for n in names if n.lower().endswith((".csv", ".tsv", ".txt"))]
                 if csvs:
-                    return _read_text(_decode(zf.read(csvs[0])), kind=kind, unit=unit, name=name)
+                    return _read_text(_decode(zf.read(csvs[0])), kind=kind, unit=unit, name=name, explicit=explicit)
                 return _need([], "The ZIP holds no trade file we know.")
     except zipfile.BadZipFile:
         return _need([], "The file looks like a ZIP or XLSX but can't be opened.")
@@ -981,11 +1026,23 @@ def _read_path(path: Path, *, kind: str, unit: Optional[str], name: Optional[str
     if suffix == ".xls" and raw[:4] == b"\xd0\xcf\x11\xe0":
         return _need([], "Old .xls workbooks can't be read here. Open it and save as .xlsx or CSV.")
     if raw[:2] == b"PK":
-        return _read_xlsx_or_zip(io.BytesIO(raw), kind=kind, unit=unit, name=label)
-    return _read_text(_decode(raw), kind=kind, unit=unit, name=label)
+        return _read_xlsx_or_zip(io.BytesIO(raw), kind=kind, unit=unit, name=label, explicit=name)
+    return _read_text(_decode(raw), kind=kind, unit=unit, name=label, explicit=name)
+
+
+FORMAT_WORDS = {"tradingview": "a TradingView list of trades", "trades_table": "a table of closed trades",
+                "pnl_list": "a list of results", "backtesting.py": "a backtesting.py result",
+                "vectorbt": "a vectorbt portfolio", "freqtrade": "a freqtrade backtest result"}
 
 
 def _finish(result: ReadResult, unit: Optional[str]) -> ReadResult:
+    if result.summary is None and result.strategies:
+        n = sum(len(st.pnl) for st in result.strategies)
+        k = len(result.strategies)
+        what = FORMAT_WORDS.get(result.format, "the input")
+        result.summary = (f"Read {what}: {n:,} closed trades" + (f" in {k} strategies" if k > 1 else "") +
+                          f", results in {result.strategies[0].unit if result.strategies[0].unit != 'money' else 'money'}"
+                          + (" (money first, percent alongside)." if result.strategies[0].pct is not None else "."))
     if result.need is None and not result.strategies:
         result.need = {"problem": "We found the columns but no rows with a result we could read."}
     names: Dict[str, int] = {}

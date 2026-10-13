@@ -47,3 +47,4 @@ edgeorluck = ["llms.txt", "web/static/*", "web/static/assets/*", "web/static/ass
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: starts subprocesses (MCP over stdio)"]
