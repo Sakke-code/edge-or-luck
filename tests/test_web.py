@@ -185,6 +185,21 @@ def test_bad_requests_are_answered_plainly(client):
     assert client.get("/api/judge").status_code == 405
 
 
+def test_uploads_stay_in_memory(client, monkeypatch):
+    import tempfile
+    def no_disk(*a, **k):
+        raise AssertionError("an upload was spooled to disk")
+    monkeypatch.setattr(tempfile, "SpooledTemporaryFile", no_disk)
+    monkeypatch.setattr(tempfile, "TemporaryFile", no_disk)
+    import werkzeug.formparser as formparser
+    monkeypatch.setattr(formparser, "SpooledTemporaryFile", no_disk, raising=False)
+    monkeypatch.setattr(formparser, "TemporaryFile", no_disk, raising=False)
+    lines = [f"{(i % 9) - 3.9:.4f}" for i in range(120_000)]
+    big = "\n".join(["pnl %"] + lines)                                      # about 1 MB
+    report = upload(client, big, "big.csv").get_json()
+    assert report["status"] == "ok" and report["strategies"][0]["n"] == 120_000
+
+
 def test_the_rate_limit(tmp_path):
     client = create_app(Ledger(tmp_path), rate_limit=3).test_client()
     codes = [client.post("/api/judge", json={"pnl": [1, 2, 3]}).status_code for _ in range(5)]

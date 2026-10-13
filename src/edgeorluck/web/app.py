@@ -22,6 +22,7 @@ JSON {"error", "why"} with a 4xx code.
 """
 from __future__ import annotations
 
+import io
 import json
 import logging
 import os
@@ -31,7 +32,7 @@ from collections import deque
 from pathlib import Path
 from typing import Any, Deque, Dict, List, Optional, Tuple
 
-from flask import Flask, Response, jsonify, request, send_from_directory
+from flask import Flask, Request, Response, jsonify, request, send_from_directory
 
 from .. import samples
 from ..judge import CHANGELOG, ENGINE_VERSION, analyze, make_settings
@@ -53,6 +54,15 @@ PRIVACY = ("Your file is read in memory and never stored. For each strategy with
            "forecast for its next 30 trades, and the time. If you come back with 30 more trades, we also keep "
            "whether those trades ended up or down, to grade the forecast. No trades, no file, no IP address (the "
            "rate limiter holds addresses in memory for one minute).")
+
+
+class InMemoryRequest(Request):
+    """Uploads stay in memory: Werkzeug would spool files over 500 KB to a
+    temporary file on disk, and the page promises files are never stored.
+    The 10 MB cap bounds the memory."""
+
+    def _get_file_stream(self, total_content_length, content_type, filename=None, content_length=None):
+        return io.BytesIO()
 
 
 class RateLimiter:
@@ -118,6 +128,7 @@ _single_cache: Dict[str, str] = {}
 
 def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT) -> Flask:
     app = Flask(__name__, static_folder=None)
+    app.request_class = InMemoryRequest
     app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD
     app.json.sort_keys = False  # type: ignore[attr-defined]
     book = ledger if ledger is not None else Ledger()
@@ -285,4 +296,7 @@ def serve(host: str = "127.0.0.1", port: Optional[int] = None, threads: int = 8)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     app = create_app()
     logger.info("edge or luck on http://%s:%d (ledger: %s)", host, port, app.config["EDGEORLUCK_LEDGER"].root)
-    waitress_serve(app, host=host, port=port, threads=threads, max_request_body_size=MAX_UPLOAD + 1024 * 1024)
+    # waitress buffers request bodies over 512 KB (and responses over 1 MB) in temporary files; keep both in
+    # memory so an upload never touches the disk.
+    waitress_serve(app, host=host, port=port, threads=threads, max_request_body_size=MAX_UPLOAD + 1024 * 1024,
+                   inbuf_overflow=MAX_UPLOAD + 2 * 1024 * 1024, outbuf_overflow=16 * 1024 * 1024)
