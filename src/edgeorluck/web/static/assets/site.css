@@ -116,7 +116,15 @@ button,input{font:inherit;color:inherit}
 .theme{display:inline-flex;align-items:center;gap:7px;background:none;border:1px solid var(--rule);border-radius:999px;padding:5px 12px 5px 9px;cursor:pointer;color:var(--ink-2);font-size:15px}
 .theme:hover{color:var(--ink);border-color:var(--ink-3)}
 .theme svg{width:16px;height:16px}
-@media (max-width:760px){.nav .opt{display:none}}
+@media (max-width:760px){
+  /* Phones: every page stays one tap away, in a row under the name that scrolls sideways (no menu to open). */
+  .top .wrap{flex-wrap:wrap;height:auto;padding-top:14px;padding-bottom:6px;row-gap:8px}
+  .nav{order:3;width:100%;overflow-x:auto;gap:20px;padding-bottom:6px;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+    -webkit-mask-image:linear-gradient(to right,#000 82%,transparent);mask-image:linear-gradient(to right,#000 82%,transparent)}
+  .nav::-webkit-scrollbar{display:none}
+  .nav a,.nav button{flex:none;white-space:nowrap}
+  .nav a[aria-current="page"]{color:var(--ink);text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.3em}
+}
 
 /* ---- Links that are buttons ---- */
 .linkish{display:inline;background:none;border:0;padding:0;font:inherit;text-align:left;color:var(--ink);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.2em;cursor:pointer}

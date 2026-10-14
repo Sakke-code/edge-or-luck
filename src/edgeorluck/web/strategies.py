@@ -100,6 +100,11 @@ def compute(end: str = END) -> Dict[str, Any]:
             bt = backtest(frames[m["symbol"]], s["rule"], fee_pct=m["fee_pct"], slippage_pct=m["slippage_pct"],
                           variants_tried=tries)
             verdict = (bt["judgement"] or {}).get("verdict") or {}
+            # The same trades judged as if this were the only rule ever tested: is it the counting that sinks it?
+            alone = backtest(frames[m["symbol"]], s["rule"], fee_pct=m["fee_pct"], slippage_pct=m["slippage_pct"],
+                             variants_tried=1)["judgement"] or {}
+            e_alone = ((((alone.get("strategies") or [{}])[0].get("numbers") or {}).get("evidence") or {})
+                       .get("e_value") or 0.0)
             r = np.array([t["return_pct"] for t in bt["trades"]], float)
             curve = 100.0 * (np.cumprod(1.0 + r / 100.0) - 1.0) if len(r) else np.zeros(0)
             keep = np.unique(np.linspace(0, len(curve) - 1, min(len(curve), 60)).astype(int)) if len(curve) else []
@@ -108,6 +113,8 @@ def compute(end: str = END) -> Dict[str, Any]:
                             "mean_pct": None if not len(r) else round(float(r.mean()), 4),
                             "code": verdict.get("code", "no_trades"), "label": verdict.get("label", "No trades"),
                             "headline": bt["headline"], "plain": verdict.get("plain", ""),
+                            "alone_code": (alone.get("verdict") or {}).get("code", "no_trades"),
+                            "e_alone": round(float(e_alone), 2),
                             "curve": [0.0] + [round(float(curve[i]), 2) for i in keep]})
         out.append({**{k: s[k] for k in ("slug", "title", "claim", "rule", "lesson")},
                     "text": rule_from(s["rule"]).describe(), "results": results})
@@ -123,6 +130,31 @@ def load() -> Optional[Dict[str, Any]]:
 
 def find(data: Dict[str, Any], slug: str) -> Optional[Dict[str, Any]]:
     return next((s for s in data["strategies"] if s["slug"] == slug), None)
+
+
+def why_none(data: Dict[str, Any]) -> List[str]:
+    """The answers to "isn't it suspicious that nothing passes?", from the numbers themselves."""
+    from ..evidence import BASE_BAR
+    names = {m["symbol"]: m["name"] for m in data["markets"]}
+    rows = [(r["e_alone"], s["title"], names[r["symbol"]], r["alone_code"]) for s in data["strategies"]
+            for r in s["results"]]
+    passing_alone = sum(code == "real_edge" for _, _, _, code in rows)
+    e, title, market, _ = max(rows)
+    out = [f"It isn't the counting. Judged as if each were the only rule ever tested, {passing_alone} of "
+           f"{len(rows)} pass{'es' if passing_alone == 1 else ''}. The closest, {title} on {market}, reaches evidence of "
+           f"{e:.0f} where {BASE_BAR:.0f} is needed."]
+    path = PACKAGE / "data" / "validation.json"
+    if path.exists():
+        power = json.loads(path.read_text(encoding="utf-8")).get("power", {})
+        found = (power.get("0.3") or {}).get("300", {}).get("rate")
+        if found is not None:
+            out.append(f"The judge does say yes when an edge is there: on test records with a real edge of 0.3 "
+                       f"standard deviations per trade, it finds it {found:.0%} of the time at 300 trades. These rules "
+                       "don't have edges that size on these markets.")
+    out.append("Research on technical trading rules finds the same once the many rules tried and the costs are "
+               "counted (Sullivan, Timmermann & White 1999; Bajgrowicz & Scaillet 2012). That is the trap this "
+               "catalogue shows: a rule that looks great somewhere is usually the luckiest of many.")
+    return out
 
 
 def summary(data: Dict[str, Any], s: Dict[str, Any]) -> str:
@@ -191,6 +223,7 @@ def hub_page(data: Dict[str, Any]) -> str:
 </section>
 <section class="wrap catalogue" aria-label="The results">
   <div class="table matrix"><table><thead><tr><th>Strategy</th>{head}</tr></thead><tbody>{rows}</tbody></table></div>
+  <section class="why-none" aria-labelledby="why"><h2 id="why">Not one? Isn't that suspicious?</h2>{"".join(f"<p>{e(p)}</p>" for p in why_none(data))}</section>
   {_notes(data)}
 </section>"""
     return _shell("Popular strategies, judged · edge or luck",
@@ -241,6 +274,8 @@ def markdown(data: Dict[str, Any], s: Optional[Dict[str, Any]] = None) -> str:
         lines += [f"| {names[r['symbol']]} | {r['trades']:,} | {_pct(r['total_pct'])} | {_pct(r['hold_pct'])} | "
                   f"{r['label']} |" for r in one["results"]]
         lines += ["", f"**What to know:** {one['lesson']}", ""]
+    if not s:
+        lines += ["## Not one? Isn't that suspicious?", ""] + [p + "\n" for p in why_none(data)]
     lines += [f"_Past prices only, to {data['end']}; daily bars; costs on every fill; each verdict counts all "
               f"{data['tries']} tries. Not a signal and not financial advice._", ""]
     return "\n".join(lines)

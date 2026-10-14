@@ -29,3 +29,6 @@
 .spark line{stroke:var(--rule);stroke-width:1;stroke-dasharray:3 3}
 .spark.down polyline{stroke:var(--red)}
 .strategy .prose{margin-top:30px}
+.why-none{max-width:80ch;margin:30px 0 8px;padding:16px 20px 6px;border-left:3px solid var(--amber);background:color-mix(in srgb,var(--amber) 7%,transparent)}
+.why-none h2{margin:0 0 10px;font-size:22px}
+.why-none p{margin:0 0 12px;color:var(--ink-2)}

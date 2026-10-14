@@ -66,7 +66,7 @@ A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made 
 | Market | Trades | Total | Holding | Verdict |
 |---|---|---|---|---|
 | S&P 500 (SPY) | 168 | +77% | +843% | Can't tell yet |
-| Nasdaq 100 (QQQ) | 178 | +97% | +2,088% | Can't tell yet |
+| Nasdaq 100 (QQQ) | 178 | +98% | +2,088% | Can't tell yet |
 | Gold (GLD) | 140 | +36% | +795% | Can't tell yet |
 | EUR/USD | 121 | -11% | -16% | No edge |
 | Bitcoin (BTC/USDT) | 68 | +52% | +525% | Can't tell yet |
@@ -180,5 +180,13 @@ A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made 
 | Bitcoin (BTC/USDT) | 66 | -48% | +525% | No edge |
 
 **What to know:** A rule that waits for big gaps trades rarely in calm markets and too early in a crash: it has few trades to judge and its worst ones come together.
+
+## Not one? Isn't that suspicious?
+
+It isn't the counting. Judged as if each were the only rule ever tested, 0 of 50 pass. The closest, 20-day breakout on S&P 500 (SPY), reaches evidence of 34 where 40 is needed.
+
+The judge does say yes when an edge is there: on test records with a real edge of 0.3 standard deviations per trade, it finds it 97% of the time at 300 trades. These rules don't have edges that size on these markets.
+
+Research on technical trading rules finds the same once the many rules tried and the costs are counted (Sullivan, Timmermann & White 1999; Bajgrowicz & Scaillet 2012). That is the trap this catalogue shows: a rule that looks great somewhere is usually the luckiest of many.
 
 _Past prices only, to 2026-09-30; daily bars; costs on every fill; each verdict counts all 50 tries. Not a signal and not financial advice._
