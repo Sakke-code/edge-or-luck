@@ -17,6 +17,8 @@ GET  /how                   the page where Flip shows how it checks and where it
 GET  /strategies            popular strategies, judged (past prices, every try counted); /strategies/<slug> one,
                             add .md for Markdown; GET /api/strategies the numbers
 GET  /api/usage             how much it is used: checks per day, by way in and kind of assistant (counts only)
+GET  /support               support edge or luck (Buy Me a Coffee, Patreon), and Flip's wardrobe; /thanks/<token> a
+                            supporter's thank-you link (support.py); /games the Flippy games
 GET  /openapi.json          the assistant tools as an OpenAPI description (for GPT actions and the like)
 POST /api/tools/<tool>      judge | backtest | tune | forward: the MCP tools over plain HTTP, the same fields,
                             answering {markdown, study, receipt?}; GET /api/tools/rules the rule language
@@ -60,7 +62,7 @@ from ..mcp_server import rule_language
 from ..readers import MAX_STRATEGIES, MAX_TRADES, ReadResult, read_any
 from ..report import to_markdown
 from ..schema import schema
-from . import guides, openapi, strategies, tools
+from . import guides, openapi, strategies, support, tools
 from .ledger import Ledger
 from .tools import TOOLS
 from .usage import Usage
@@ -178,6 +180,19 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
     def api_usage():
         return jsonify(usage.summary())
 
+    @app.get("/support")
+    def support_page():
+        return Response(support.page(), mimetype="text/html")
+
+    @app.get("/games")
+    def games_page():
+        return Response(support.games_page(), mimetype="text/html")
+
+    @app.get("/thanks/<token>")
+    def thanks(token: str):
+        tier = support.tier_of_token(token)
+        return Response(support.thanks_page(tier), status=200 if tier else 404, mimetype="text/html")
+
     @app.get("/privacy")
     def privacy_page():
         e = html.escape
@@ -185,8 +200,9 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
                 "the answer and dropped. A frozen rule is not kept by us either: its receipt, signed by the server, "
                 "holds the rule and the time, and you keep it.", "Prices come from public sources (Binance, Yahoo "
                 "Finance, the European Central Bank) and are fetched by the server, not linked to you.",
-                "No accounts, no cookies for tracking, no ads, no selling of anything. The code that does all this is "
-                "open: github.com/Sakke-code/edge-or-luck."]
+                "Supporting happens on Buy Me a Coffee or Patreon, under their own privacy policies; we receive nothing "
+                "about you from them. A supporter's thank-you link unlocks Flip's extras in that browser only.",
+                "We never sell data. The code that does all this is open: github.com/Sakke-code/edge-or-luck."]
         body = ('<article class="wrap guide"><header class="guide-head"><div><h1>Privacy</h1><p class="lede">What edge '
                 'or luck keeps, and what it doesn\'t.</p></div></header><div class="prose">'
                 + "".join(f"<p>{e(p)}</p>" for p in kept) + "</div></article>")
@@ -312,7 +328,7 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
     @app.get("/api/engine")
     def api_engine():
         return jsonify({"name": "edge or luck", "version": ENGINE_VERSION, "changelog": CHANGELOG,
-                        "tip_url": os.environ.get("EDGEORLUCK_TIP_URL") or None})
+                        "tip_url": os.environ.get("EDGEORLUCK_BMC_URL") or None})
 
     @app.get("/api/track-record")
     def api_track_record():

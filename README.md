@@ -255,7 +255,7 @@ docker build -t edgeorluck . && docker run -p 8080:8080 -v eol-data:/data edgeor
 # or: pip install "edgeorluck[host]" && uvicorn --factory edgeorluck.web.remote:make_app --port 8080
 ```
 
-Keep `/data` (`EDGEORLUCK_DATA_DIR`) on a volume: the forecast ledger lives there. Set `EDGEORLUCK_SECRET` (any long random text) so receipts outlive a restart, and `EDGEORLUCK_HOSTS` (your host names, comma-separated) to turn on the MCP server's host check. Over the web the tools never read files on anyone's computer, and since the protocol keeps no session, each answer names a study id for the assistant to pass back, so every version tried in a conversation still counts.
+Keep `/data` (`EDGEORLUCK_DATA_DIR`) on a volume: the forecast ledger lives there. Set `EDGEORLUCK_SECRET` (any long random text) so receipts outlive a restart, and `EDGEORLUCK_HOSTS` (your host names, comma-separated) to turn on the MCP server's host check. `EDGEORLUCK_BMC_URL` and `EDGEORLUCK_PATREON_URL` put the Buy Me a Coffee and Patreon buttons on `/support`; `python -m edgeorluck.web.support link <tier>` makes the thank-you link that unlocks a tier's extras (Flip's wardrobe and the Flippy games at `/games`) for the platforms' thank-you messages. Over the web the tools never read files on anyone's computer, and since the protocol keeps no session, each answer names a study id for the assistant to pass back, so every version tried in a conversation still counts.
 
 ## How it judges (the short version)
 

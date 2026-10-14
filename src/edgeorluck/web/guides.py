@@ -291,7 +291,7 @@ FAVICON = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox
 
 
 NAV = (("/", "Check your trades"), ("/strategies", "Strategies"), ("/guides", "Guides"), ("/story", "Story"),
-       ("/play", "Play"), ("/how", "How it checks"))
+       ("/play", "Play"), ("/how", "How it checks"), ("/support", "Support"))
 
 
 def _shell(title: str, description: str, body: str, *, alternate: Optional[str] = None, current: str = "/guides",
@@ -302,8 +302,8 @@ def _shell(title: str, description: str, body: str, *, alternate: Optional[str] 
     nav = "\n      ".join(f'<a class="opt" href="{href}"{" aria-current=page" if href == current else ""}>{label}</a>'
                           for href, label in NAV)
     sheets = "".join(f'\n<link rel="stylesheet" href="/assets/{name}">' for name in css)
-    tip_url = os.environ.get("EDGEORLUCK_TIP_URL")
-    tip = f' · <a href="{e(tip_url)}" rel="noopener">Keep it free: buy a coffee</a>' if tip_url else ""
+    tip_url = os.environ.get("EDGEORLUCK_BMC_URL")
+    tip = f' · <a href="{e(tip_url)}" rel="noopener">Buy me a coffee</a>' if tip_url else ""
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -325,7 +325,6 @@ def _shell(title: str, description: str, body: str, *, alternate: Optional[str] 
     </a>
     <nav class="nav" aria-label="Site">
       {nav}
-      <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">GitHub</a>
       <button class="theme" id="theme" type="button" aria-label="Switch to blueprint (dark) look">
         <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.8a6.2 6.2 0 0 1 0 12.4z" fill="currentColor"/></svg>
         <span id="themeLabel">Blueprint</span>

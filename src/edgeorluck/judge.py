@@ -49,7 +49,8 @@ CHANGELOG = [
                "MCP tools at /mcp and the same tools as JSON at /api/tools/ with an OpenAPI description for GPTs; "
                "versions counted per study id; frozen rules as receipts the server signs; a Claude Code plugin with "
                "a skill; uvx edgeorluck mcp (server.json for the MCP registry). A public usage count (/api/usage), "
-               "a privacy page, an optional tip link."},
+               "a privacy page, and /support (Buy Me a Coffee, Patreon) whose thank-you links unlock Flip's wardrobe "
+               "and the Flippy games (/games)."},
     {"version": "2.4.0", "date": "2026-10-14",
      "change": "For assistants: the MCP server counts every record and rule it judges in a session as a version "
                "tried, so the bar rises even when nobody says. backtest_rule(freeze=true) keeps a rule, and the new "

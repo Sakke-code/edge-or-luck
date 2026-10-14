@@ -162,6 +162,49 @@ def test_usage_is_counted_without_knowing_who(tmp_path, monkeypatch):
     assert all(set(k.split(":")[0] for k in day) <= {"page", "link", "tools", "mcp"} for day in stored.days.values())
     assert "pnl" not in (tmp_path / "usage.json").read_text(encoding="utf-8")
     assert client.get("/api/engine").get_json()["tip_url"] is None and b"never stored" in client.get("/privacy").data
-    monkeypatch.setenv("EDGEORLUCK_TIP_URL", "https://ko-fi.com/edgeorluck")
-    assert "Keep it free" in client.get("/strategies").get_data(as_text=True)
-    assert client.get("/api/engine").get_json()["tip_url"] == "https://ko-fi.com/edgeorluck"
+    monkeypatch.setenv("EDGEORLUCK_BMC_URL", "https://buymeacoffee.com/edgeorluck")
+    assert "Buy me a coffee" in client.get("/strategies").get_data(as_text=True)
+    assert client.get("/api/engine").get_json()["tip_url"] == "https://buymeacoffee.com/edgeorluck"
+
+
+def test_support_is_one_click_and_a_thank_you_link_unlocks_flips_extras(tmp_path, monkeypatch):
+    from edgeorluck.web import support
+    monkeypatch.setenv("EDGEORLUCK_SECRET", "s3cret")
+    client = create_app(Ledger(tmp_path), rate_limit=1000).test_client()
+    assert "Supporting opens soon" in client.get("/support").get_data(as_text=True)      # no links set: no dead buttons
+    monkeypatch.setenv("EDGEORLUCK_BMC_URL", "https://buymeacoffee.com/edgeorluck")
+    monkeypatch.setenv("EDGEORLUCK_PATREON_URL", "https://patreon.com/edgeorluck")
+    page = client.get("/support").get_data(as_text=True)
+    assert 'href="https://buymeacoffee.com/edgeorluck"' in page and 'href="https://patreon.com/edgeorluck"' in page
+    assert "no ads" not in page.lower() and "no accounts" not in page.lower() and "EOL_WARDROBE" in page
+    assert "aria-current=page>Support" in page and "<input" not in page                  # nothing to type
+    first, again = support.thanks_token(3), support.thanks_token(3)
+    assert first != again and support.tier_of_token(first) == support.tier_of_token(again) == 3
+    thanks = client.get(f"/thanks/{first}")
+    assert thanks.status_code == 200 and "Patron" in thanks.get_data(as_text=True)
+    assert 'localStorage.setItem("eol-tier", "3")' in thanks.get_data(as_text=True)
+    tier, rest = first.split(".", 1)
+    assert client.get(f"/thanks/4.{rest}").status_code == 404                            # a tier can't be raised by hand
+    assert client.get("/thanks/3.made-up.0123456789abcdef0123").status_code == 404
+    monkeypatch.setenv("EDGEORLUCK_SECRET", "another")
+    assert support.tier_of_token(first) == 0                                             # signed by this site only
+    with pytest.raises(ValueError):
+        support.thanks_token(5)
+    assert [i["tier"] for i in support.ITEMS] == sorted(i["tier"] for i in support.ITEMS)
+    assert {i["slot"] for i in support.ITEMS} <= {s for s, _ in support.SLOTS}
+    for path in ("/", "/strategies", "/guides", "/story", "/play", "/how", "/privacy", "/games"):
+        html = client.get(path).get_data(as_text=True)
+        head, foot = html.split("</header>")[0], html.split("<footer")[1]
+        assert 'href="/support"' in head and "GitHub" not in head and "Source on GitHub" in foot, path
+
+
+def test_the_thank_you_link_maker(monkeypatch, capsys):
+    from edgeorluck.web import support
+    monkeypatch.delenv("EDGEORLUCK_SECRET", raising=False)
+    assert support.main(["link", "2"]) == 2 and support.tier_of_token("2.abc.0123456789abcdef0123") == 0
+    monkeypatch.setenv("EDGEORLUCK_SECRET", "s3cret")
+    monkeypatch.setenv("EDGEORLUCK_URL", "https://edgeorluck.example/")
+    assert support.main(["link", "2"]) == 0
+    link = capsys.readouterr().out.strip()
+    assert link.startswith("https://edgeorluck.example/thanks/2.") and support.tier_of_token(link.rsplit("/", 1)[1]) == 2
+    assert support.main(["link"]) == 2 and support.main(["link", "9"]) == 2

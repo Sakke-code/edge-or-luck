@@ -1,0 +1,25 @@
+/* edge or luck: the support page and Flip's wardrobe. Shares site.css and guides.css. */
+
+.give{display:flex;flex-wrap:wrap;align-items:center;gap:12px 16px;margin:22px 0 0}
+.give span{font-size:15px;color:var(--ink-3);max-width:44ch}
+.give .soon{font-family:var(--hand);font-size:20px;color:var(--ink-2)}
+#wardrobePet{width:150px;height:160px}
+
+.support{padding-top:clamp(36px,6vh,64px)}
+.support h2{margin:0 0 14px;font-size:clamp(24px,2.4vw,30px);letter-spacing:-.02em}
+.tiers{list-style:none;margin:0 0 clamp(40px,7vh,70px);padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
+.tier{padding:16px 18px 12px;border:1.5px solid var(--rule);border-radius:9px 12px 8px 11px;background:color-mix(in srgb,var(--paper-raised) 85%,transparent)}
+.tier-pet{width:84px;height:92px;margin:4px 0 8px}
+.tier h3{margin:0;font-size:19px}
+.tier .at{margin:2px 0 8px;font-family:var(--hand);font-size:17px;color:var(--ink-3)}
+.tier ul{margin:0;padding-left:18px;font-size:15px;line-height:1.6;color:var(--ink-2)}
+
+.wardrobe{max-width:880px;margin-bottom:clamp(36px,6vh,60px)}
+.wardrobe p{max-width:70ch;color:var(--ink-2)}
+.slots{display:grid;gap:14px;margin:16px 0}
+.slot h3{margin:0 0 6px;font-size:15px;font-weight:600;color:var(--ink-3)}
+.item{margin:0 8px 8px 0;min-height:38px;padding:6px 14px;border:1.5px solid var(--rule);border-radius:999px;background:var(--paper);color:var(--ink);font-size:15px;cursor:pointer}
+.item:hover:not(:disabled){border-color:var(--ink)}
+.item[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.item:disabled{cursor:not-allowed;color:var(--ink-3);border-style:dashed}
+.hint{font-size:15px;color:var(--ink-3)}
