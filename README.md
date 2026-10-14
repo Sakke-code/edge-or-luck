@@ -23,7 +23,8 @@ pip install "edgeorluck[web]"     # + the web page and API
 pip install "edgeorluck[xlsx]"    # + Excel files
 ```
 
-Until the package is on PyPI, install from a clone: `pip install -e ".[all]"`.
+Until the package is on PyPI, install it straight from GitHub:
+`pip install "edgeorluck[all] @ git+https://github.com/Sakke-code/edge-or-luck"`.
 
 ## Use it
 
@@ -49,7 +50,7 @@ What it reads (it never crashes on messy input; when it can't judge, it says exa
 
 Exchange fills: a fee in the base coin is valued at the fill price; a fee in a third coin (BNB, BGB) is reported, not guessed. Sells with no earlier buy, and positions still open at the end, are named in the warnings.
 
-**About the export formats:** we built the readers from public descriptions of each export's columns (Binance spot trade history old and new, Bitget spot fills and order history, TradingView's list of trades), not from real accounts. If yours fails, please [open an issue](https://github.com/edge-or-luck/edge-or-luck/issues) with the header row and a few anonymised rows.
+**About the export formats:** we built the readers from public descriptions of each export's columns (Binance spot trade history old and new, Bitget spot fills and order history, TradingView's list of trades), not from real accounts. If yours fails, please [open an issue](https://github.com/Sakke-code/edge-or-luck/issues) with the header row and a few anonymised rows.
 
 ### Make the verdict more honest
 
@@ -137,7 +138,7 @@ On Windows the Python is `C:\\path\\to\\edge-or-luck\\.venv\\Scripts\\python.exe
 
 **One prompt for any AI** (for a trader who can't code):
 
-> Before you tell me my strategy is good, check it with edge or luck (https://github.com/edge-or-luck/edge-or-luck): run `edgeorluck.judge()` on my trade export, tell me how many versions I tried (ask me if you don't know), quote its headline word for word, and give me its next step. Don't round "can't tell" up to "good".
+> Before you tell me my strategy is good, check it with edge or luck (https://github.com/Sakke-code/edge-or-luck): run `edgeorluck.judge()` on my trade export, tell me how many versions I tried (ask me if you don't know), quote its headline word for word, and give me its next step. Don't round "can't tell" up to "good".
 
 [llms.txt](llms.txt) describes all of this for assistants in one page.
 

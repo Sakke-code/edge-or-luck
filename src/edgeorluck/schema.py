@@ -95,7 +95,7 @@ _CARD = {
 
 SCHEMA: Dict[str, Any] = {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
-    "$id": "https://github.com/edge-or-luck/edge-or-luck/schema/result-1.0.json",
+    "$id": "https://github.com/Sakke-code/edge-or-luck/schema/result-1.0.json",
     "title": "edge or luck: result",
     "description": "Whether a trading record is a real edge or luck, in fields an assistant can relay without "
                    "computing anything else. Start with verdict.headline, then next_step and ask_the_user.",

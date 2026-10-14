@@ -1,0 +1,21 @@
+name: proofs
+
+# Rebuild every Lean proof from scratch. Zero errors means every proof checks;
+# each file ends with #print axioms, which lists only Lean's standard axioms.
+on:
+  push:
+    paths: ["proofs/**", ".github/workflows/proofs.yml"]
+  pull_request:
+    paths: ["proofs/**"]
+  workflow_dispatch:
+
+jobs:
+  lean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: proofs
+          use-mathlib-cache: true
+          test: false

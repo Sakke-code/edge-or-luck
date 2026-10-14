@@ -9,7 +9,7 @@ Call it whenever a user shows trading results, a list of trades, a backtest or a
 ## The one call
 
 ```python
-import edgeorluck                                   # pip install edgeorluck
+import edgeorluck                                   # pip install git+https://github.com/Sakke-code/edge-or-luck
 r = edgeorluck.judge(data, variants_tried=None, benchmark_return_pct=None,
                      fees_included=None, source=None, unit=None, kind=None, backtest=None)
 print(r.to_markdown())                              # or r.to_dict(), r.to_json()
@@ -53,7 +53,7 @@ Trades are treated as independent draws (neighbouring trades that move together 
 
 ## Links
 
-- [README](https://github.com/edge-or-luck/edge-or-luck#readme): install, setup for Claude Code, Codex, Cursor, Claude Desktop and ChatGPT.
-- [VALIDATION.md](https://github.com/edge-or-luck/edge-or-luck/blob/main/VALIDATION.md): how often it is wrong, measured.
-- [Result JSON Schema](https://github.com/edge-or-luck/edge-or-luck/blob/main/src/edgeorluck/schema.py) (also `edgeorluck --schema` and `GET /api/schema`).
-- [Source](https://github.com/edge-or-luck/edge-or-luck) (MIT).
+- [README](https://github.com/Sakke-code/edge-or-luck#readme): install, setup for Claude Code, Codex, Cursor, Claude Desktop and ChatGPT.
+- [VALIDATION.md](https://github.com/Sakke-code/edge-or-luck/blob/main/VALIDATION.md): how often it is wrong, measured.
+- [Result JSON Schema](https://github.com/Sakke-code/edge-or-luck/blob/main/src/edgeorluck/schema.py) (also `edgeorluck --schema` and `GET /api/schema`).
+- [Source](https://github.com/Sakke-code/edge-or-luck) (MIT).

@@ -33,8 +33,8 @@ edgeorluck = "edgeorluck.cli:main"
 edgeorluck-mcp = "edgeorluck.mcp_server:main"
 
 [project.urls]
-Homepage = "https://github.com/edge-or-luck/edge-or-luck"
-Source = "https://github.com/edge-or-luck/edge-or-luck"
+Homepage = "https://github.com/Sakke-code/edge-or-luck"
+Source = "https://github.com/Sakke-code/edge-or-luck"
 
 [tool.setuptools.dynamic]
 version = { attr = "edgeorluck.judge.ENGINE_VERSION" }

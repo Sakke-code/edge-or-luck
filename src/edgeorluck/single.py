@@ -36,7 +36,7 @@ Answer the trader from the result alone: quote verdict.headline, explain
 verdict.plain in short words, give next_step, and ask the questions in
 ask_the_user. Not financial advice: a statistical check of past trades.
 
-Open source (MIT): https://github.com/edge-or-luck/edge-or-luck
+Open source (MIT): https://github.com/Sakke-code/edge-or-luck
 Built from edgeorluck {version}. Generated file: do not edit; rebuild it.
 """
 from __future__ import annotations

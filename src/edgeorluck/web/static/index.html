@@ -353,7 +353,7 @@ h1 .line{display:block;white-space:nowrap}
       <a class="opt" href="/how">How it checks</a>
       <a class="opt" href="#proof">How often it's wrong</a>
       <a class="opt" href="#ai">For AI assistants</a>
-      <a href="https://github.com/edge-or-luck/edge-or-luck" rel="noopener">GitHub</a>
+      <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">GitHub</a>
       <button class="theme" id="theme" type="button" aria-label="Switch to blueprint (dark) look">
         <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.8a6.2 6.2 0 0 1 0 12.4z" fill="currentColor"/></svg>
         <span id="themeLabel">Blueprint</span>
@@ -589,7 +589,7 @@ h1 .line{display:block;white-space:nowrap}
       <p>Your files are read in memory and never stored. We keep only an anonymous fingerprint of each strategy and our call on it, so we can grade ourselves when it comes back.</p>
     </div>
     <div>
-      <p>Open source under the MIT licence. <a href="https://github.com/edge-or-luck/edge-or-luck" rel="noopener">Source on GitHub</a></p>
+      <p>Open source under the MIT licence. <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">Source on GitHub</a></p>
       <p id="engineVersion"></p>
     </div>
   </div>
@@ -1532,7 +1532,7 @@ h1 .line{display:block;white-space:nowrap}
     var ul = $("proofList"); ul.textContent = "";
     items.forEach(function (t) { var li = el("li"); li.appendChild(mark("pass")); li.appendChild(el("span", null, t)); ul.appendChild(li); });
     var more = el("p", "proof-more");
-    var a = el("a", null, "Read the full report, with every table"); a.href = "https://github.com/edge-or-luck/edge-or-luck/blob/main/VALIDATION.md"; a.rel = "noopener";
+    var a = el("a", null, "Read the full report, with every table"); a.href = "https://github.com/Sakke-code/edge-or-luck/blob/main/VALIDATION.md"; a.rel = "noopener";
     more.appendChild(a);
     if (j.date) more.appendChild(document.createTextNode(" (measured " + j.date + ", judge " + (j.engine_version || "") + ")"));
     ul.parentNode.insertBefore(more, ul.nextSibling);
@@ -1547,7 +1547,7 @@ h1 .line{display:block;white-space:nowrap}
 
   /* ---------- assistant tabs ---------- */
   var SNIPS = {
-    python: { p: "Install it, then add one line after any backtest. It reads backtesting.py, vectorbt and freqtrade results, or a plain list of trades.", code: "pip install edgeorluck\n\nimport edgeorluck\nstats = bt.run()\nprint(edgeorluck.judge(stats).to_markdown())" },
+    python: { p: "Install it, then add one line after any backtest. It reads backtesting.py, vectorbt and freqtrade results, or a plain list of trades.", code: "pip install git+https://github.com/Sakke-code/edge-or-luck\n\nimport edgeorluck\nstats = bt.run()\nprint(edgeorluck.judge(stats).to_markdown())" },
     claude: { p: "Run this once in your terminal. Claude Code can then judge any trade file you point it at.", code: "claude mcp add edge-or-luck -- uvx --from \"edgeorluck[mcp]\" edgeorluck-mcp" },
     codex: { p: "Add this to ~/.codex/config.toml.", code: "[mcp_servers.edge-or-luck]\ncommand = \"uvx\"\nargs = [\"--from\", \"edgeorluck[mcp]\", \"edgeorluck-mcp\"]" },
     cursor: { p: "Add this to .cursor/mcp.json in your project.", code: "{\n  \"mcpServers\": {\n    \"edge-or-luck\": {\n      \"command\": \"uvx\",\n      \"args\": [\"--from\", \"edgeorluck[mcp]\", \"edgeorluck-mcp\"]\n    }\n  }\n}" },

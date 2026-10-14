@@ -8,3 +8,4 @@ dist/
 edgeorluck-data/
 *.log
 .private/
+proofs/.lake/
