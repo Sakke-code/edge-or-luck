@@ -182,7 +182,9 @@ def test_bad_requests_are_answered_plainly(client):
     odd = upload(client, "a,b\n1,2\n", "odd.csv").get_json()
     assert odd["status"] == "need_input" and odd["need"]["problem"] and odd["strategies"] == []
     assert client.get("/nope").status_code == 404 and client.get("/nope").get_json()["error"]
-    assert client.get("/api/judge").status_code == 405
+    empty = client.get("/api/judge")          # a plain link with nothing to judge says how to use it
+    assert empty.status_code == 400 and "pnl=" in empty.get_json()["why"]
+    assert client.put("/api/judge").status_code == 405
 
 
 def test_uploads_stay_in_memory(client, monkeypatch):

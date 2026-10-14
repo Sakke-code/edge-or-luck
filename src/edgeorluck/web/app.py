@@ -10,6 +10,9 @@ GET  /api/engine            {version, changelog}
 GET  /api/track-record      how good the app's own forecasts have been
 GET  /api/validation        how often the judge is wrong, measured (VALIDATION.md)
 GET  /edgeorluck_single.py  the judge in one file, for chatbots without installs
+GET  /api/judge             for assistants that can only fetch links:
+                            ?pnl=1.2,-0.8,0.5 | ?csv=<url-encoded CSV> | ?sample=<id>,
+                            plus the fields below; Markdown, or format=json
 POST /api/judge             multipart: files (one or more), backtest (optional),
                             and fields variants_tried, benchmark_return_pct,
                             fees_included, source, unit; or JSON: {sample} or
@@ -154,7 +157,7 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
     def llms():
         path = PACKAGE / "llms.txt"
         text = path.read_text(encoding="utf-8") if path.exists() else "edge or luck\n"
-        return Response(text, mimetype="text/plain; charset=utf-8")
+        return Response(text, mimetype="text/plain")
 
     @app.get("/api/schema")
     def api_schema():
@@ -185,7 +188,7 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
         if ENGINE_VERSION not in _single_cache:
             from ..single import build
             _single_cache[ENGINE_VERSION] = build()
-        return Response(_single_cache[ENGINE_VERSION], mimetype="text/x-python; charset=utf-8",
+        return Response(_single_cache[ENGINE_VERSION], mimetype="text/x-python",
                         headers={"Content-Disposition": "attachment; filename=edgeorluck_single.py"})
 
     @app.post("/api/judge")
@@ -241,7 +244,51 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
             bt_files = [(f.filename or "backtest.csv", f.read()) for f in request.files.getlist("backtest")]
             if bt_files:
                 backtest = _merge([read_any(raw, name="Backtest") for _, raw in bt_files])
-        read = _merge(reads)
+        result = _run(_merge(reads), payload, backtest, source_kind, sample_id, include_chart)
+        return result if isinstance(result, tuple) else jsonify(result)
+
+    @app.get("/api/judge")
+    def api_judge_get():
+        """The same judge from a plain link, for assistants that can only fetch
+        URLs: ?pnl=1.2,-0.8,0.5 (or separated by ; or spaces, which allows
+        decimal commas) or ?csv=<url-encoded CSV> or ?sample=<id>, plus the
+        usual fields. Markdown by default; format=json for the JSON result."""
+        if not limiter.allow(request.headers.get("X-Forwarded-For", request.remote_addr or "?").split(",")[0]):
+            return _error("too many requests", f"Up to {limiter.limit} checks a minute per visitor. Wait a minute "
+                                               "and try again.", 429)
+        args = {k: v for k, v in request.args.items()}
+        backtest = None
+        source_kind, sample_id = "upload", None
+        if _field(args, "sample"):
+            sample_id = args["sample"]
+            try:
+                given = samples.sample_input(str(sample_id))
+            except KeyError:
+                return _error(f"no sample called {sample_id!r}", "See GET /api/samples for the ids.", 404)
+            source_kind = "sample"
+            reads = [read_any(given["data"], name=given.get("name"))]
+            if given.get("backtest") is not None:
+                backtest = read_any(given["backtest"], name="Backtest")
+            args.setdefault("source", given.get("source"))
+        elif _field(args, "csv"):
+            reads = [read_any(args["csv"], kind=_field(args, "kind"), unit=_field(args, "unit"),
+                              name=_field(args, "name"))]
+        elif _field(args, "pnl"):
+            reads = [read_any(_pnl_lines(args["pnl"]), unit=_field(args, "unit"), name=_field(args, "name"))]
+        else:
+            return _error("nothing to judge", "Add ?pnl=1.2,-0.8,0.5 (one result per trade), ?csv=<url-encoded "
+                                              "CSV> or ?sample=<id>. See /llms.txt.", 400)
+        result = _run(_merge(reads), args, backtest, source_kind, sample_id, include_chart=False)
+        if isinstance(result, tuple):
+            return result
+        if (args.get("format") or "md").lower() == "json":
+            return jsonify(result)
+        return Response(result["markdown"], mimetype="text/markdown")
+
+    def _run(read: ReadResult, payload: Dict[str, Any], backtest: Optional[ReadResult], source_kind: str,
+             sample_id: Optional[str], include_chart: bool):
+        """Judge, let the ledger make its forecast for real uploads, and add what
+        every answer carries: the Markdown, the track record, the privacy note."""
         settings = make_settings(_field(payload, "variants_tried"), _field(payload, "benchmark_return_pct"),
                                  _field(payload, "fees_included"), _field(payload, "source"),
                                  _field(payload, "unit"), _field(payload, "kind"), include_chart)
@@ -265,7 +312,7 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
         result["sample"] = sample_id
         result["track_record"] = book.track_record()
         result["privacy"] = PRIVACY
-        return jsonify(result)
+        return result
 
     @app.errorhandler(413)
     def too_large(_):
@@ -278,9 +325,19 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
 
     @app.errorhandler(405)
     def wrong_method(_):
-        return _error("method not allowed", "POST to /api/judge; GET everything else.", 405)
+        return _error("method not allowed", "GET or POST /api/judge; GET everything else.", 405)
 
     return app
+
+
+def _pnl_lines(text: str) -> str:
+    """One result per line. Commas separate results unless the text also has
+    semicolons, spaces or line breaks, in which case commas may be decimal
+    commas ("1,20; -0,80")."""
+    import re
+    text = text.strip()
+    parts = re.split(r"[;\s]+", text) if re.search(r"[;\s]", text) else text.split(",")
+    return "\n".join(p for p in parts if p)
 
 
 def _display_name(filename: str) -> str:

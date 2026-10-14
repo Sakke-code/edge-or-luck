@@ -739,6 +739,7 @@ footer b{color:var(--ink-2);font-weight:600}
         <button class="tab" role="tab" aria-selected="false" data-tab="codex">Codex</button>
         <button class="tab" role="tab" aria-selected="false" data-tab="cursor">Cursor</button>
         <button class="tab" role="tab" aria-selected="false" data-tab="chatgpt">ChatGPT</button>
+        <button class="tab" role="tab" aria-selected="false" data-tab="link">A link</button>
       </div>
       <div class="panel" role="tabpanel" id="panel"></div>
     </div>
@@ -1820,6 +1821,10 @@ footer b{color:var(--ink-2);font-weight:600}
     chatgpt: { p: "Upload the one-file judge together with your trade file, then paste this message.", code: "I uploaded edgeorluck_single.py and my trades file.\nRun: import edgeorluck_single as e; print(e.judge('<my file>').to_markdown())\nThen explain the verdict to me in plain words, including the why and the next step." }
   };
   var panel = $("panel");
+  SNIPS.link = {
+    p: "Any AI that can open web links can judge numbers from a link, with nothing to install. Put your own results after pnl=, one per trade.",
+    code: location.origin + "/api/judge?pnl=1.2,-0.8,0.5,2.1,-0.4"
+  };
   function showTab(key) {
     document.querySelectorAll("#ai .tab").forEach(function (t) { t.setAttribute("aria-selected", t.dataset.tab === key ? "true" : "false"); });
     var s = SNIPS[key]; panel.textContent = "";
