@@ -143,6 +143,13 @@ def test_llms_txt_is_one_file_in_two_places():
         assert must in text, must
 
 
+def test_the_registry_entry_matches_the_release_and_the_readme():
+    entry = json.loads((ROOT / "server.json").read_text(encoding="utf-8"))
+    assert entry["version"] == entry["packages"][0]["version"] == edgeorluck.__version__
+    assert len(entry["description"]) <= 100 and entry["packages"][0]["packageArguments"][0]["value"] == "mcp"
+    assert f"mcp-name: {entry['name']} -->" in (ROOT / "README.md").read_text(encoding="utf-8")
+
+
 def test_readme_snippets_name_real_entry_points():
     text = (ROOT / "README.md").read_text(encoding="utf-8")
     for must in ("claude mcp add", "[mcp_servers.edgeorluck]", ".cursor/mcp.json", "claude_desktop_config.json",

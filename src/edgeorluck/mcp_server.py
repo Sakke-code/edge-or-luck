@@ -1,7 +1,6 @@
 """The MCP server (stdio): lets an AI assistant judge a trader's results.
 
-    pip install 'edgeorluck[mcp]'
-    edgeorluck-mcp                         # or: python -m edgeorluck.mcp_server
+    uvx edgeorluck mcp                     # or, installed: edgeorluck-mcp, python -m edgeorluck.mcp_server
 
 It runs on the trader's own machine, so the assistant can pass the path of
 an export it can see. Tools:
@@ -19,6 +18,9 @@ Works with the official MCP Python SDK 1.x (FastMCP) and 2.x (MCPServer).
 import hashlib
 import json
 import os
+import threading
+from collections import OrderedDict
+from contextvars import ContextVar
 from datetime import datetime, timezone
 from functools import partial
 from typing import Any, Callable, Dict, List, Optional, Union
@@ -59,6 +61,10 @@ JUDGE_DESCRIPTION = (
 )
 
 SESSION: set = set()     # each distinct record or rule judged since the server started: a version tried
+_CURRENT: ContextVar[Optional[str]] = ContextVar("edgeorluck_session", default=None)  # over the web: the session id
+_SESSIONS: "OrderedDict[str, set]" = OrderedDict()     # over the web, the most recent MAX_SESSIONS sessions
+MAX_SESSIONS = 10_000
+_SESSIONS_LOCK = threading.Lock()
 FROZEN = os.path.join(os.path.expanduser("~"), ".edgeorluck", "frozen.json")
 
 
@@ -68,14 +74,27 @@ def _path(value: Optional[str]) -> Optional[str]:
     return os.path.abspath(os.path.expanduser(os.path.expandvars(value.strip().strip('"'))))
 
 
+def _tried() -> set:
+    """What this session has judged: one set over stdio, one per assistant session over the web ("" when the
+    client keeps no session: then nothing carries over from one call to the next)."""
+    current = _CURRENT.get()
+    if not current:
+        return SESSION if current is None else set()
+    with _SESSIONS_LOCK:                                # tools run in worker threads
+        _SESSIONS[current] = _SESSIONS.pop(current, None) or set()
+        while len(_SESSIONS) > MAX_SESSIONS:
+            _SESSIONS.popitem(last=False)
+        return _SESSIONS[current]
+
+
 def _versions(said: Optional[int]) -> Optional[int]:
     """The versions tried: never fewer than this session has judged (None: unknown, and one so far)."""
-    return max(said or 0, len(SESSION)) if (said or len(SESSION) > 1) else None
+    return max(said or 0, len(_tried())) if (said or len(_tried()) > 1) else None
 
 
 def _note() -> str:
-    return "" if len(SESSION) < 2 else (
-        f"\n_This session has judged {len(SESSION)} records and rules. Each is a version tried, so the bar is raised "
+    return "" if len(_tried()) < 2 else (
+        f"\n_This session has judged {len(_tried())} records and rules. Each is a version tried, so the bar is raised "
         "to match. Versions tried before the session aren't counted: ask, and pass the total as variants_tried._\n")
 
 
@@ -97,7 +116,7 @@ def judge_trades(file_path: Optional[str] = None, csv_text: Optional[str] = None
                   unit=unit, kind=kind, backtest=_path(backtest_file_path) or backtest_csv_text or backtest_pnl)
     result = run(variants_tried=variants_tried)
     if result.status == "ok":           # the same trades judged again (say, with an answer added) are no new version
-        SESSION.add(result["input_fingerprint"])
+        _tried().add(result["input_fingerprint"])
         if _versions(variants_tried) != variants_tried:
             result = run(variants_tried=_versions(variants_tried))
     full = str(detail).strip().lower().startswith("full")
@@ -167,12 +186,12 @@ def _run(failed: str, work: Callable[[], Any], key: Any = None) -> str:
     from .market import PriceError
     from .rulebook import RuleError
     key = None if key is None else json.dumps(key, sort_keys=True, default=str)
-    new = key is not None and key not in SESSION
-    SESSION.update([key] if new else [])
+    new = key is not None and key not in _tried()
+    _tried().update([key] if new else [])
     try:
         return work().to_markdown() + _note()
     except (RuleError, PriceError, ValueError, TypeError, OSError) as exc:   # ValueError: a CSV pandas can't parse
-        SESSION.difference_update([key] if new else [])
+        _tried().difference_update([key] if new else [])
         return f"{failed}: {exc}"
 
 
@@ -276,7 +295,7 @@ def main() -> int:
         server = build_server()
     except ImportError:
         import sys
-        print("The MCP server needs: pip install 'edgeorluck[mcp]'", file=sys.stderr)
+        print("The MCP server needs the mcp package: pip install 'mcp>=1.2'", file=sys.stderr)
         return 1
     server.run("stdio")
     return 0

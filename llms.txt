@@ -21,7 +21,7 @@ print(r.to_markdown())                              # or r.to_dict(), r.to_json(
 - `benchmark_return_pct`: what buying and holding returned over the same dates, in percent (34.5 means +34.5%).
 - `fees_included` (true/false), `source` ("backtest", "paper" or "live"), `unit` ("%" or a currency such as "USDT").
 
-Command line: `edgeorluck trades.csv --tried 40 --benchmark 34.5 [--json]`. MCP server (stdio): `edgeorluck-mcp`, tool `judge_trades(file_path | csv_text | pnl, variants_tried, benchmark_return_pct, ...)`. No installs possible (a chat sandbox)? Upload `edgeorluck_single.py` with the trades and run `python edgeorluck_single.py trades.csv`.
+Command line: `edgeorluck trades.csv --tried 40 --benchmark 34.5 [--json]`. MCP server (stdio): `uvx edgeorluck mcp` (installed: `edgeorluck-mcp`), or hosted over HTTP at the site's `/mcp`, tool `judge_trades(file_path | csv_text | pnl, variants_tried, benchmark_return_pct, ...)`. No installs possible (a chat sandbox)? Upload `edgeorluck_single.py` with the trades and run `python edgeorluck_single.py trades.csv`.
 
 Only a web fetch tool? `GET /api/judge?pnl=1.2,-0.8,0.5&variants_tried=40` on the edge or luck site returns this same result as Markdown (add `&format=json` for the JSON). Separate the results with commas, or with semicolons or spaces when they use decimal commas (`pnl=1,20;-0,80`). `?csv=<url-encoded CSV>` and `?sample=<id>` work too, with the same optional fields.
 

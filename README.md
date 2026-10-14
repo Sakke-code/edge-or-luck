@@ -1,4 +1,5 @@
 # edge or luck
+<!-- mcp-name: io.github.Sakke-code/edge-or-luck -->
 
 **Is your trading strategy a real edge, or just luck?** Drop in your trades and get an honest answer in plain words: what the record shows, how sure that is, what would change it, and one next step. No trades yet? [Test the idea honestly](#test-an-idea-before-you-have-trades) first.
 
@@ -17,10 +18,10 @@ $ edgeorluck "BTC breakout.csv" --tried 40
 ## Install
 
 ```bash
-pip install edgeorluck            # the judge (numpy + pandas)
-pip install "edgeorluck[mcp]"     # + the MCP server for AI assistants
+pip install edgeorluck            # the judge, the honest backtester and the MCP server for AI assistants
 pip install "edgeorluck[web]"     # + the web page and API
 pip install "edgeorluck[xlsx]"    # + Excel files
+pip install "edgeorluck[host]"    # + the hosted site: web page, league and MCP over HTTP in one app
 ```
 
 The latest code, straight from GitHub: `pip install "edgeorluck[all] @ git+https://github.com/Sakke-code/edge-or-luck"`.
@@ -175,7 +176,7 @@ These use [uv](https://docs.astral.sh/uv/)'s `uvx`, which fetches the package fr
 Claude Code:
 
 ```bash
-claude mcp add edgeorluck -- uvx --from "edgeorluck[mcp]" edgeorluck-mcp
+claude mcp add edgeorluck -- uvx edgeorluck mcp
 ```
 
 Codex (`~/.codex/config.toml`):
@@ -183,7 +184,7 @@ Codex (`~/.codex/config.toml`):
 ```toml
 [mcp_servers.edgeorluck]
 command = "uvx"
-args = ["--from", "edgeorluck[mcp]", "edgeorluck-mcp"]
+args = ["edgeorluck", "mcp"]
 ```
 
 Cursor (`.cursor/mcp.json`) and Claude Desktop (`claude_desktop_config.json`):
@@ -193,13 +194,13 @@ Cursor (`.cursor/mcp.json`) and Claude Desktop (`claude_desktop_config.json`):
   "mcpServers": {
     "edgeorluck": {
       "command": "uvx",
-      "args": ["--from", "edgeorluck[mcp]", "edgeorluck-mcp"]
+      "args": ["edgeorluck", "mcp"]
     }
   }
 }
 ```
 
-**Without uv** (after `pip install "edgeorluck[mcp]"` in a virtual environment), point the same entries at that environment's Python:
+**Without uv** (after `pip install edgeorluck` in a virtual environment), point the same entries at that environment's Python:
 
 ```bash
 claude mcp add edgeorluck -- /path/to/edge-or-luck/.venv/bin/python -m edgeorluck.mcp_server
@@ -222,6 +223,26 @@ On Windows the Python is `C:\\path\\to\\edge-or-luck\\.venv\\Scripts\\python.exe
 > Before you tell me my strategy is good, check it with edge or luck (https://github.com/Sakke-code/edge-or-luck): run `edgeorluck.judge()` on my trade export, tell me how many versions I tried (ask me if you don't know), quote its headline word for word, and give me its next step. Don't round "can't tell" up to "good".
 
 [llms.txt](llms.txt) describes all of this for assistants in one page.
+
+## The league: rules frozen in public
+
+A backtest, however honest, has seen its data. The league is the test that hasn't: a rule frozen in public is judged only on the trades it makes after the freeze, on Binance's public prices, so nobody could have tuned it on them. Every rule gets two verdicts:
+
+- **for its owner**, with the bar raised for every rule that owner froze (their tries, in the open);
+- **across the league**, with e-BH over every rule anyone froze, so tries hidden under other names can't help.
+
+The record is append-only and hash-chained (`/api/league/chain`), and each rule's page says how to recompute its trades with `backtest(..., since=frozen_at)`. Freeze from the page at `/league`, with `POST /api/league/freeze`, or from an assistant on the hosted MCP server with `backtest_rule(freeze=true)`; check with `forward_test`.
+
+## Host it
+
+One app serves the page, the guides, the league, the API and the MCP server for chat assistants that connect to a URL (ChatGPT, Claude) at `/mcp`:
+
+```bash
+docker build -t edgeorluck . && docker run -p 8080:8080 -v eol-data:/data edgeorluck
+# or: pip install "edgeorluck[host]" && uvicorn --factory edgeorluck.web.remote:make_app --port 8080
+```
+
+Keep `/data` (`EDGEORLUCK_DATA_DIR`) on a volume: the league and the forecast ledger live there. `EDGEORLUCK_HOSTS` (your host names, comma-separated) turns on the MCP server's host check. Over the web the tools never read files on anyone's computer, and since the protocol keeps no session, each answer names a study id for the assistant to pass back, so every version tried in a conversation still counts.
 
 ## How it judges (the short version)
 

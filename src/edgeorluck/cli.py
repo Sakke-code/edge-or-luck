@@ -4,6 +4,7 @@
     edgeorluck live.csv --backtest backtest.csv
     edgeorluck -                       # read the trades from stdin
     edgeorluck --schema                # the result's JSON Schema
+    edgeorluck mcp                     # the MCP server for AI assistants (stdio)
     edgeorluck --serve [--port 5078]   # the web app (needs edgeorluck[web])
     edgeorluck --single-file out.py    # the judge in one file, for chatbots
 
@@ -147,6 +148,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] in ("backtest", "tune"):
         return _rule_main(argv[0], argv[1:])
+    if argv[:1] == ["mcp"]:                    # what MCP registries run: uvx edgeorluck mcp
+        from .mcp_server import main as mcp_main
+        return mcp_main()
     args = _parser().parse_args(argv)
     if args.schema:
         print(json.dumps(schema(), indent=2))

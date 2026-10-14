@@ -14,6 +14,12 @@ GET  /play                  Flip Flip: call coin flips and watch luck even out i
 GET  /guides                the mini guides; /guides/<slug> one guide, /guides/<slug>.md its Markdown
 GET  /api/guides            [{slug, title, summary, minutes, group, url, markdown_url}]
 GET  /how                   the page where Flip shows how it checks and where it can be wrong
+GET  /league                rules frozen in public, judged on their trades after the freeze (?owner=<id>: one
+                            owner's); /league/<id> one rule's page
+GET  /api/league            the standings; /api/league/<id> one rule; /api/league/chain the hash-chained record
+POST /api/league/freeze     {buy, sell?, stop_loss_pct?, take_profit_pct?, max_hold_bars?, side?, symbol,
+                            interval, fee_pct?, slippage_pct?, name?, owner_token?}: freeze a rule in public
+                            (the address is held in memory for an hour, to cap freezes)
 GET  /api/claims            that page's claims: proved (Lean), measured, our choice, can't check
 GET  /proofs/<file>         the Lean proofs as plain text (when running from the repository)
 GET  /edgeorluck_single.py  the judge in one file, for chatbots without installs
@@ -36,6 +42,7 @@ import io
 import json
 import logging
 import os
+import re
 import threading
 import time
 from collections import deque
@@ -47,10 +54,14 @@ from werkzeug.exceptions import HTTPException
 
 from .. import samples
 from ..judge import CHANGELOG, ENGINE_VERSION, analyze, make_settings
+from ..market import PriceError
 from ..readers import MAX_STRATEGIES, MAX_TRADES, ReadResult, read_any
 from ..report import to_markdown
+from ..rulebook import RuleError
 from ..schema import schema
+from ..simulate import DEFAULT_FEE_PCT, DEFAULT_SLIPPAGE_PCT
 from . import guides
+from .league import League, board_page, rule_page
 from .ledger import Ledger
 
 logger = logging.getLogger(__name__)
@@ -61,6 +72,7 @@ PROOFS = PACKAGE.parents[1] / "proofs"          # the Lean proofs, present when 
 MAX_UPLOAD = 10 * 1024 * 1024
 RATE_LIMIT = 30                 # judge calls per address per window
 RATE_WINDOW_S = 60.0
+FREEZES_PER_HOUR = 10           # league freezes per address: each one is permanent
 
 PRIVACY = ("Your file is read in memory and never stored. For each strategy with 30 or more trades we keep only: a "
            "one-way fingerprint of its first 30 trades and of the whole list, the number of trades, the unit, our "
@@ -143,7 +155,8 @@ def _field(payload: Dict[str, Any], name: str) -> Any:
 _single_cache: Dict[str, str] = {}
 
 
-def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT) -> Flask:
+def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT,
+               league: Optional[League] = None) -> Flask:
     app = Flask(__name__, static_folder=None)
     app.request_class = InMemoryRequest
     app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD
@@ -156,6 +169,55 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
     book = ledger if ledger is not None else Ledger()
     limiter = RateLimiter(rate_limit)
     app.config["EDGEORLUCK_LEDGER"] = book
+    league = league if league is not None else League(book.root)
+    freezes = RateLimiter(FREEZES_PER_HOUR, 3600.0)
+    app.config["EDGEORLUCK_LEAGUE"] = league
+
+    @app.get("/league")
+    def league_board():
+        owner = request.args.get("owner", "")
+        return Response(board_page(league.standings(), owner if re.fullmatch(r"[0-9a-f]{16}", owner) else None),
+                        mimetype="text/html")
+
+    @app.get("/league/<rule_id>")
+    def league_rule(rule_id: str):
+        found = league.detail(rule_id)
+        if found is None:
+            return _error("no such rule", "The frozen rules are listed at /league.", 404)
+        return Response(rule_page(found), mimetype="text/html")
+
+    @app.get("/api/league")
+    def api_league():
+        return jsonify(league.standings())
+
+    @app.get("/api/league/chain")
+    def api_league_chain():
+        return Response(league.path.read_text(encoding="utf-8") if league.path.exists() else "", mimetype="text/plain")
+
+    @app.get("/api/league/<rule_id>")
+    def api_league_rule(rule_id: str):
+        found = league.detail(rule_id)
+        return jsonify(found) if found is not None else _error("no such rule", "See /api/league for every rule.", 404)
+
+    @app.post("/api/league/freeze")
+    def api_league_freeze():
+        if not freezes.allow(_visitor()):
+            return _error("too many freezes", f"Up to {FREEZES_PER_HOUR} freezes an hour per visitor: each one is "
+                                              "permanent and counts in everyone's family.", 429)
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return _error("send a JSON object", 'Like {"buy": "rsi(14) < 30", "sell": "rsi(14) > 60", "symbol": '
+                                                '"BTCUSDT", "interval": "1h"}.', 400)
+        try:
+            receipt = league.freeze({k: payload.get(k) for k in ("buy", "sell", "stop_loss_pct", "take_profit_pct",
+                                                                 "max_hold_bars", "side")},
+                                    payload.get("symbol"), payload.get("interval") or "1h",
+                                    fee_pct=payload.get("fee_pct", DEFAULT_FEE_PCT),
+                                    slippage_pct=payload.get("slippage_pct", DEFAULT_SLIPPAGE_PCT),
+                                    name=payload.get("name"), owner_token=payload.get("owner_token"))
+        except (RuleError, PriceError) as exc:
+            return _error("couldn't freeze it", str(exc), 400)
+        return jsonify(receipt), 201
 
     @app.get("/", defaults={"name": "index"})
     @app.get("/<any(how, story, play):name>")
@@ -447,14 +509,12 @@ def _pnl_lines(text: str) -> str:
     """One result per line. Commas separate results unless the text also has
     semicolons, spaces or line breaks, in which case commas may be decimal
     commas ("1,20; -0,80")."""
-    import re
     text = text.strip()
     parts = re.split(r"[;\s]+", text) if re.search(r"[;\s]", text) else text.split(",")
     return "\n".join(p for p in parts if p)
 
 
 def _display_name(filename: str) -> str:
-    import re
     stem = Path(filename).stem if filename else "Your strategy"
     return re.sub(r"[_\-]+", " ", stem).strip()[:60] or "Your strategy"
 

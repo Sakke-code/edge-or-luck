@@ -289,9 +289,18 @@ FAVICON = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox
            "%3E%3C/svg%3E")
 
 
-def _shell(title: str, description: str, body: str, *, alternate: Optional[str] = None) -> str:
+NAV = (("/", "Check your trades"), ("/guides", "Guides"), ("/league", "League"), ("/story", "Story"),
+       ("/play", "Play"), ("/how", "How it checks"))
+
+
+def _shell(title: str, description: str, body: str, *, alternate: Optional[str] = None, current: str = "/guides",
+           css: Tuple[str, ...] = ()) -> str:
+    """A page in the site's frame; css: style sheets beyond site.css and guides.css."""
     e = html.escape
     alt = f'<link rel="alternate" type="text/markdown" href="{e(alternate)}">' if alternate else ""
+    nav = "\n      ".join(f'<a class="opt" href="{href}"{" aria-current=page" if href == current else ""}>{label}</a>'
+                          for href, label in NAV)
+    sheets = "".join(f'\n<link rel="stylesheet" href="/assets/{name}">' for name in css)
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -301,7 +310,7 @@ def _shell(title: str, description: str, body: str, *, alternate: Optional[str] 
 <meta name="description" content="{e(description)}">
 <link rel="icon" href="{FAVICON}">
 <link rel="stylesheet" href="/assets/site.css">
-<link rel="stylesheet" href="/assets/guides.css">
+<link rel="stylesheet" href="/assets/guides.css">{sheets}
 {alt}
 </head>
 <body>
@@ -312,11 +321,7 @@ def _shell(title: str, description: str, body: str, *, alternate: Optional[str] 
       edge or luck
     </a>
     <nav class="nav" aria-label="Site">
-      <a class="opt" href="/">Check your trades</a>
-      <a class="opt" href="/guides" aria-current="page">Guides</a>
-      <a class="opt" href="/story">Story</a>
-      <a class="opt" href="/play">Play</a>
-      <a class="opt" href="/how">How it checks</a>
+      {nav}
       <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">GitHub</a>
       <button class="theme" id="theme" type="button" aria-label="Switch to blueprint (dark) look">
         <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.8a6.2 6.2 0 0 1 0 12.4z" fill="currentColor"/></svg>

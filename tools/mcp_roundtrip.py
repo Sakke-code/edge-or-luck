@@ -24,7 +24,7 @@ def _price_file() -> str:
 
 
 async def roundtrip(path: str) -> str:
-    params = StdioServerParameters(command=sys.executable, args=["-m", "edgeorluck.mcp_server"])
+    params = StdioServerParameters(command=sys.executable, args=["-m", "edgeorluck.cli", "mcp"])  # = uvx edgeorluck mcp
     prices = _price_file()
     async with stdio_client(params) as (read, write):
         async with ClientSession(read, write) as session:
