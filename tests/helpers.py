@@ -184,3 +184,61 @@ def freqtrade_result(n: int = 50, seed: int = 2) -> dict:
     return {"strategy": {"SampleStrategy": {"trades": trades, "stake_currency": "USDT", "profit_total": 0.12,
                                             "market_change": 0.25, "total_trades": n}},
             "strategy_comparison": [{"key": "SampleStrategy", "trades": n}]}
+
+
+# ── stock brokers (public column layouts; synthetic rows) ─────────────────────
+
+def stock_results(n: int = 40, seed: int = 5) -> List[float]:
+    rng = np.random.default_rng(seed)
+    return [round(float(rng.normal(3, 20)), 2) for _ in range(n)]
+
+
+def trading212(results: Sequence[float]) -> str:
+    rows = ["Action,Time,ISIN,Ticker,Name,Notes,ID,No. of shares,Price / share,Currency (Price / share),Exchange rate,"
+            "Result,Currency (Result),Total,Currency (Total)"]
+    rows.append('Deposit,2024-01-02 09:00:00,,,,,"d1",,,,,,,1000.00,"EUR"')
+    for i, r in enumerate(results):
+        day = (pd.Timestamp("2024-01-03") + pd.Timedelta(days=i)).strftime("%Y-%m-%d")
+        rows.append(f'Market buy,{day} 15:30:01,US0378331005,AAPL,"Apple",,b{i},2.0,185.10,USD,1.09,,"EUR",340.12,"EUR"')
+        rows.append(f'Market sell,{day} 20:59:01,US0378331005,AAPL,"Apple",,s{i},2.0,186.20,USD,1.09,{r},"EUR",341.50,'
+                    '"EUR"')
+    rows.append('Dividend (Dividend),2024-03-15 10:00:00,US0378331005,AAPL,"Apple",,,2.0,0.24,USD,1.09,,"EUR",0.41,"EUR"')
+    return "\n".join(rows)
+
+
+def ibkr_activity(results: Sequence[float]) -> str:
+    rows = ["Statement,Header,Field Name,Field Value", "Statement,Data,Title,Activity Statement",
+            "Trades,Header,DataDiscriminator,Asset Category,Currency,Symbol,Date/Time,Quantity,T. Price,C. Price,"
+            "Proceeds,Comm/Fee,Basis,Realized P/L,MTM P/L,Code"]
+    for i, r in enumerate(results):
+        day = (pd.Timestamp("2024-01-03") + pd.Timedelta(days=i)).strftime("%Y-%m-%d")
+        rows.append(f'Trades,Data,Order,Stocks,USD,MSFT,"{day}, 15:30:01",10,400.1,400.5,-4001,-1,4002,0,4,O')
+        rows.append(f'Trades,Data,Order,Stocks,USD,MSFT,"{day}, 19:59:01",-10,401.2,401.2,4012,-1,-4002,{r},0,C;P')
+    rows += [f"Trades,SubTotal,,Stocks,USD,MSFT,,0,,,,,,{sum(results):.2f},,",
+             f"Trades,Total,,Stocks,USD,,,,,,,,,{sum(results):.2f},,"]
+    return "\n".join(rows)
+
+
+def nordnet_finnish(results: Sequence[float]) -> str:
+    rows = ["Id\tKirjauspäivä\tKauppapäivä\tMaksupäivä\tSalkku\tTapahtumatyyppi\tArvopaperi\tISIN\tMäärä\tKurssi\tKorko\t"
+            "Kokonaiskulut\tValuutta\tSumma\tValuutta\tHankinta-arvo\tValuutta\tTulos\tValuutta"]
+    for i, r in enumerate(results):
+        day = (pd.Timestamp("2024-02-01") + pd.Timedelta(days=i)).strftime("%Y-%m-%d")
+        rows.append(f"{9000 + 2 * i}\t{day}\t{day}\t{day}\t123\tOSTO\tNokia\tFI0009000681\t100\t3,50\t0\t9\tEUR\t-359,00\t"
+                    "EUR\t359\tEUR\t\t")
+        rows.append(f"{9001 + 2 * i}\t{day}\t{day}\t{day}\t123\tMYYNTI\tNokia\tFI0009000681\t100\t3,55\t0\t9\tEUR\t"
+                    f"346,00\tEUR\t359\tEUR\t{str(r).replace('.', ',')}\tEUR")
+    return "\n".join(rows)
+
+
+def degiro(prices: Sequence[Tuple[float, float]]) -> str:
+    """Transactions.csv: newest first, Date and Time apart, signed quantities, the currency after each amount."""
+    rows = ["Date,Time,Product,ISIN,Reference exchange,Venue,Quantity,Price,,Local value,,Value,,Exchange rate,"
+            "Transaction and/or third party fees,,Total,,Order ID"]
+    for i, (buy, sell) in reversed(list(enumerate(prices))):
+        day = (pd.Timestamp("2024-01-03") + pd.Timedelta(days=i)).strftime("%d-%m-%Y")
+        rows.append(f"{day},17:20,ASML HOLDING,NL0010273215,EAM,XAMS,-10,{sell},EUR,{sell * 10:.2f},EUR,"
+                    f"{sell * 10:.2f},EUR,,-2.00,EUR,{sell * 10 - 2:.2f},EUR,s{i}")
+        rows.append(f"{day},15:30,ASML HOLDING,NL0010273215,EAM,XAMS,10,{buy},EUR,-{buy * 10:.2f},EUR,"
+                    f"-{buy * 10:.2f},EUR,,-2.00,EUR,-{buy * 10 + 2:.2f},EUR,b{i}")
+    return "\n".join(rows)

@@ -62,6 +62,10 @@ def split_amount(value: Any) -> Tuple[Optional[str], Optional[str]]:
     return text, None
 
 
+_BUY_WORDS = {"buy", "bought", "osto", "köpt", "köp", "købt", "køb", "kjøpt", "kjøp", "kauf", "koop", "achat", "compra"}
+_SELL_WORDS = {"sell", "sold", "myynti", "sålt", "sälj", "solgt", "salg", "verkauf", "verkoop", "vente", "venta"}
+
+
 def side_of(value: Any) -> Optional[int]:
     text = str(value).strip().lower()
     if not text:
@@ -69,6 +73,12 @@ def side_of(value: Any) -> Optional[int]:
     if text in ("buy", "b", "bid", "long", "open long", "buy long") or text.startswith("buy"):
         return 1
     if text in ("sell", "s", "ask", "short", "close long", "sell short") or text.startswith("sell"):
+        return -1
+    # "Market buy", "Limit sell" (Trading 212) and broker words in other languages (OSTO, KÖPT, Verkauf ...)
+    words = set(re.split(r"[^\w]+", text))
+    if words & _BUY_WORDS and not words & _SELL_WORDS:
+        return 1
+    if words & _SELL_WORDS and not words & _BUY_WORDS:
         return -1
     return None
 

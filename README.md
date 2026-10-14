@@ -42,6 +42,7 @@ What it reads (it never crashes on messy input; when it can't judge, it says exa
 |---|---|
 | TradingView strategy tester | Strategy Tester, then **List of trades**, then export (CSV or XLSX), old or new column names |
 | An exchange account | the spot **trade history (fills)**: time, pair, side, price, quantity, fee. Paired into round trips first-in-first-out, net of fees |
+| A stock broker | **Trading 212** (History export), **Interactive Brokers** (activity statement or Flex trades), **Nordnet** (transactions, in Finnish, Swedish or English), **eToro** (closed positions), **Degiro** (Transactions.csv: paired first-in-first-out), **MetaTrader 5** (positions report) |
 | [backtesting.py](https://kernc.github.io/backtesting.py/) | `stats = bt.run(); print(edgeorluck.judge(stats).to_markdown())` (also uses its Buy & Hold return) |
 | [vectorbt](https://vectorbt.dev/) | `edgeorluck.judge(pf)` or `edgeorluck.judge(pf.trades.records_readable)`; each column is a version |
 | [freqtrade](https://www.freqtrade.io/) | `edgeorluck user_data/backtest_results/backtest-result-....json` (or the `.zip`) |
@@ -50,7 +51,7 @@ What it reads (it never crashes on messy input; when it can't judge, it says exa
 
 Exchange fills: a fee in the base coin is valued at the fill price; a fee in a third coin (BNB, BGB) is reported, not guessed. Sells with no earlier buy, and positions still open at the end, are named in the warnings.
 
-**About the export formats:** we built the readers from public descriptions of each export's columns (Binance spot trade history old and new, Bitget spot fills and order history, TradingView's list of trades), not from real accounts. If yours fails, please [open an issue](https://github.com/Sakke-code/edge-or-luck/issues) with the header row and a few anonymised rows.
+**About the export formats:** we built the readers from public descriptions of each export's columns (Binance spot trade history old and new, Bitget spot fills and order history, TradingView's list of trades, and the stock brokers above), not from real accounts. If yours fails, please [open an issue](https://github.com/Sakke-code/edge-or-luck/issues) with the header row and a few anonymised rows.
 
 ### Make the verdict more honest
 

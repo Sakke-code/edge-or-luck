@@ -14,8 +14,30 @@ import edgeorluck
 from edgeorluck.fills import split_amount, split_pair
 from edgeorluck.readers import number, read_any
 
-from helpers import (backtesting_stats, binance_new, binance_old, bitget_fills, bitget_orders, csv_text,
-                     freqtrade_result, round_trips, tradingview_old, vectorbt_portfolio)
+from helpers import (backtesting_stats, binance_new, binance_old, bitget_fills, bitget_orders, csv_text, degiro,
+                     freqtrade_result, ibkr_activity, nordnet_finnish, round_trips, stock_results, trading212,
+                     tradingview_old, vectorbt_portfolio)
+
+
+# ── stock brokers ─────────────────────────────────────────────────────────────
+
+@pytest.mark.parametrize("make, unit", [(trading212, "EUR"), (ibkr_activity, "USD"), (nordnet_finnish, "EUR")])
+def test_stock_broker_exports_give_one_trade_per_closing_row(make, unit):
+    results = stock_results()
+    r = read_any(make(results))
+    [st] = r.strategies
+    # Buys, deposits and dividends carry no result; IBKR's opening executions (Code O) show 0 and are left out too.
+    assert st.unit == unit and list(st.pnl) == pytest.approx(results) and st.times is not None
+
+
+def test_degiro_transactions_are_paired_by_the_sign_of_the_quantity():
+    rng = np.random.default_rng(3)
+    prices = [(100.0, round(100.0 + float(rng.normal(0.3, 3)), 2)) for _ in range(35)]
+    r = read_any(degiro(prices))
+    [st] = r.strategies
+    assert r.format == "fills" and st.unit == "EUR" and len(st.pnl) == 35
+    # first in, first out, net of the 2 EUR fee on each side; the file is newest first, the day and clock apart
+    assert list(st.pnl) == pytest.approx([10 * (sell - buy) - 4 for buy, sell in prices])
 
 
 # ── cells ─────────────────────────────────────────────────────────────────────

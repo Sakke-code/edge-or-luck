@@ -162,8 +162,11 @@ _NOT_RESULT = {"cum", "cumulative", "running", "accumulated", "acc", "rolling", 
                "adverse", "unrealized", "unrealised", "open", "fee", "fees", "commission", "total", "equity",
                "balance", "avg", "average", "best", "worst", "trade", "size", "price", "qty", "quantity"}
 _PERCENTISH = {"%", "pct", "percent", "percentage", "ratio", "return", "roi", "change"}
+# A trade's result in the languages of European brokers' exports (Nordnet: Tulos, Resultat; Degiro, Comdirect ...)
+_RESULT_WORDS = {"tulos", "voitto", "resultat", "vinst", "gevinst", "gewinn", "ergebnis", "winst", "resultaat",
+                 "beneficio", "resultado", "risultato", "utile", "résultat", "zysk", "wynik"}
 _RESULTISH = {"pnl", "p&l", "profit", "p/l", "pl", "gain", "result", "return", "roi", "net", "change", "ratio",
-              "profit/loss", "loss"}
+              "profit/loss", "loss"} | _RESULT_WORDS
 
 
 def _is_pct_name(name: str) -> bool:
@@ -191,7 +194,8 @@ def find_result_columns(columns: Sequence[str]) -> Tuple[Optional[str], Optional
                 else 2 if core else 3)
         if _is_pct_name(name) or toks == {"return"} or toks <= {"return", "pct"}:
             pct.append((rank, col))
-        elif toks & {"pnl", "p&l", "profit", "p/l", "pl", "gain", "result", "profit/loss", "loss", "net"}:
+        elif toks & ({"pnl", "p&l", "profit", "p/l", "pl", "gain", "result", "profit/loss", "loss", "net"}
+                     | _RESULT_WORDS):
             money.append((rank, col))
     money.sort(key=lambda t: t[0])
     pct.sort(key=lambda t: t[0])
@@ -211,15 +215,18 @@ def find_column(columns: Sequence[str], candidates: Sequence[str], *, avoid: Ite
         for col, name in normed:
             rest = name[len(cand):]
             # "price usdt" is a price; "exit price" is no exit time, and "time opened" no close time
+            # ... and "Position ID" no side, "Market Spread (USD)" no market
             if name.startswith(cand + " ") and not re.search(r"\b(entry|exit|open\w*|clos\w*)\b", rest) \
-                    and not re.search(r"\b(price|qty|quantity|size|amount|value|fees?|pnl|profit)\b", rest):
+                    and not re.search(r"\b(price|qty|quantity|size|amount|value|fees?|pnl|profit|id|no|number|"
+                                      r"spread|rate)\b", rest):
                 return col
     return None
 
 
 _CLOSE_TIME = ("close time", "closed at", "close date", "exit time", "exit date", "exit timestamp", "close date utc",
                "closing time", "closing date", "time closed", "date closed", "closed time", "closed date",
-               "close timestamp", "closed", "date/time", "date and time", "datetime", "date time", "time", "date",
+               "close timestamp", "closed", "trade day", "trade date", "kauppapäivä", "affärsdag", "handelsdag",
+               "handelsdato", "date/time", "date and time", "datetime", "date time", "time", "date",
                "timestamp", "date utc", "time utc", "created time", "trade time", "fill time", "order time",
                "updated time", "execution time", "c time", "ctime", "exit")
 _OPEN_TIME = ("open time", "opened at", "open date", "entry time", "entry date", "entry timestamp", "opening time",
@@ -228,10 +235,11 @@ _OPEN_TIME = ("open time", "opened at", "open date", "entry time", "entry date",
 _STRATEGY = ("strategy", "strategy name", "bot", "bot name", "system", "setup", "algo", "model", "book", "tag",
              "label", "variant", "column")
 _FEE = ("fees", "fee", "commission", "commissions", "trading fee", "trading fees", "transaction fee", "fee amount",
-        "total fee", "fees paid", "fee usdt", "fees usdt")
+        "total fee", "fees paid", "fee usdt", "fees usdt", "transaction and/or third party fees", "transaction costs",
+        "total fees", "kokonaiskulut", "courtage")
 _SIDE = ("side", "direction", "order side", "trade side", "buy/sell", "b/s", "position side", "type")
 _SYMBOL = ("symbol", "pair", "market", "trading pair", "instrument", "ticker", "coin pair", "contract", "product",
-           "asset", "coin", "currency pair")
+           "asset", "coin", "currency pair", "security", "arvopaperi", "värdepapper", "verdipapir", "værdipapir")
 # What a fill was done at comes first: an order history's "Price" is the limit price, or the word "Market".
 _PRICE = ("avg price", "average price", "fill price", "filled price", "executed price", "execution price",
           "deal price", "trade price", "price avg", "avg fill price", "average filled price", "filled price avg",
@@ -705,18 +713,23 @@ def _tradingview(frame: pd.DataFrame) -> Optional[Tuple[pd.DataFrame, Dict[str, 
 def _looks_like_fills(cols: Sequence[str], frame: pd.DataFrame) -> Optional[Dict[str, str]]:
     side = find_column(cols, _SIDE)
     price = find_column(cols, _PRICE)
-    if side is None or price is None:
-        return None
-    sides = frame[side].map(side_of)
-    if sides.notna().mean() < 0.8:
+    if price is None:
         return None
     has_executed = find_column(cols, ("executed", "executed qty", "filled", "filled amount", "filled qty")) is not None
     qty = find_column(cols, _QTY if not has_executed else _QTY[:-1], avoid=[price])
+    signed = None
+    if side is None or frame[side].map(side_of).notna().mean() < 0.8:
+        # No side column, but buys and sells told apart by the sign of the quantity (Degiro: 10 bought, -10 sold)
+        amounts = numbers_of(frame[qty]) if qty else None
+        if amounts is None or amounts.notna().mean() < 0.9 or (amounts > 0).mean() < 0.2 or (amounts < 0).mean() < 0.2:
+            return None
+        side = signed = qty
     total_candidates = _QUOTE_TOTAL + (("amount",) if has_executed else ())
-    total = find_column(cols, total_candidates, avoid=[c for c in (price, qty) if c])
+    # A signed fill's own totals are often in another currency than its price (Degiro: Value in EUR, Price in USD)
+    total = None if signed else find_column(cols, total_candidates, avoid=[c for c in (price, qty) if c])
     if qty is None and total is None:
         return None
-    out = {"side": side, "price": price}
+    out = {"side": side, "price": price, **({"signed_qty": signed} if signed else {})}
     taken = [c for c in (side, price, qty, total) if c]
     when = find_column(cols, _CLOSE_TIME) or _fill_time_column(cols, frame, taken)
     pair = find_column(cols, _SYMBOL) or _fill_pair_column(cols, frame, taken)
@@ -735,7 +748,9 @@ def _fill_time_column(cols: Sequence[str], frame: pd.DataFrame, taken: Sequence[
         if re.search(r"time|date|created|timestamp|(?:^|[^a-z])at$", norm(c)):
             return c
     for c in rest:
-        if not pd.api.types.is_numeric_dtype(frame[c]) and _times(frame[c]).notna().mean() >= 0.9:
+        # Row ids and ticket numbers (9001, 9002 ...) read as 1970 epoch times: not dates
+        small_ints = frame[c].astype(str).str.strip().str.fullmatch(r"\d{1,8}").mean() > 0.5
+        if not pd.api.types.is_numeric_dtype(frame[c]) and not small_ints and _times(frame[c]).notna().mean() >= 0.9:
             return c
     return None
 
@@ -778,11 +793,22 @@ def _from_fills(frame: pd.DataFrame, colmap: Dict[str, str], name: str) -> ReadR
     def num(key: str, text: Any) -> float:
         return _comma_number(text) if commas.get(key) and text is not None else number(text)
 
+    # A stock broker's product is a name, not a pair ("ASML HOLDING" is no ASML quoted in HOLDING): its currency is
+    # the column right after the price when there is one (Degiro), else unknown.
+    currency = None
+    if "signed_qty" in colmap and cols.index(colmap["price"]) + 1 < len(cols):
+        cells = frame[cols[cols.index(colmap["price"]) + 1]].astype(str).str.strip().str.upper()
+        currency = cells if cells.str.fullmatch(r"[A-Z]{3}").mean() > 0.9 else None
+
     for i, (_, r) in enumerate(frame.iterrows()):
-        side = side_of(r[colmap["side"]])
+        qty_text, qty_coin = split_amount(r[colmap["qty"]]) if "qty" in colmap else (None, None)
+        if "signed_qty" in colmap:
+            amount = num("qty", qty_text)
+            side = (1 if amount > 0 else -1) if math.isfinite(amount) and amount != 0 else None
+        else:
+            side = side_of(r[colmap["side"]])
         if side is None:
             continue
-        qty_text, qty_coin = split_amount(r[colmap["qty"]]) if "qty" in colmap else (None, None)
         total_text, total_coin = split_amount(r[colmap["quote_total"]]) if "quote_total" in colmap else (None, None)
         fee_text, fee_coin = split_amount(r[colmap["fee"]]) if "fee" in colmap else (None, None)
         if "fee_coin" in colmap and str(r[colmap["fee_coin"]]).strip():
@@ -790,6 +816,8 @@ def _from_fills(frame: pd.DataFrame, colmap: Dict[str, str], name: str) -> ReadR
         pair = str(r[pair_col]).strip() if pair_col else ""
         if not pair and qty_coin and total_coin:
             pair = f"{qty_coin}/{total_coin}"
+        if "signed_qty" in colmap:
+            pair = f"{pair.replace('/', ' ') or '?'}/{currency.iloc[i] if currency is not None else ''}"
         rows.append({"time": times.iloc[i], "pair": pair or "?", "side": side,
                      "price": num("price", r[colmap["price"]]), "qty": abs(num("qty", qty_text)),   # sells as -0.5
                      "fee": num("fee", fee_text), "fee_coin": fee_coin, "quote_total": num("quote_total", total_text)})
@@ -844,8 +872,38 @@ def _comma_number(value: Any) -> float:
 _TOTAL_ROW = re.compile(r"(?:grand\s+)?(?:sub)?totals?|sum|summary", re.I)
 
 
+def _join_date_and_clock(frame: pd.DataFrame) -> pd.DataFrame:
+    """A date column next to a clock column (Degiro: Date 27-01-2024, Time 15:30) is one time: on its own, a
+    newest-first file's sell at 17:20 would come before the buy it closes at 15:30 on the same day."""
+    names = {norm(c): c for c in frame.columns}
+    day = next((names[n] for n in ("date", "trade date", "datum", "päivä", "dato") if n in names), None)
+    clock = next((names[n] for n in ("time", "trade time", "tid", "aika", "zeit", "klokkeslett") if n in names), None)
+    if day is None or clock is None:
+        return frame
+    clocks = frame[clock].astype(str).str.strip()
+    if clocks.str.fullmatch(r"\d{1,2}:\d{2}(:\d{2})?").mean() < 0.9:
+        return frame
+    frame[day] = frame[day].astype(str).str.strip() + " " + clocks
+    return frame.drop(columns=[clock])
+
+
+def _opening_rows(frame: pd.DataFrame, cols: Sequence[str], avoid: Sequence[str]) -> Optional[pd.Series]:
+    """Executions a broker marks as opening (IBKR: Open/CloseIndicator O, or O in its Code column): they carry
+    no result of their own, so they are no trades. None when no such column is there."""
+    col = find_column(cols, ("open/close indicator", "open/close", "open close indicator", "code"), avoid=avoid)
+    if col is None:
+        return None
+    codes = frame[col].astype(str).str.strip().str.upper()
+    shaped = codes[codes != ""].str.fullmatch(r"[A-Z]{1,3}(;[A-Z]{1,3})*")
+    if len(shaped) == 0 or shaped.mean() < 0.8:
+        return None
+    parts = codes.str.split(";")
+    opening = parts.map(lambda p: "O" in p and "C" not in p)
+    return opening if opening.any() and parts.map(lambda p: "C" in p).any() else None
+
+
 def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Optional[str]) -> ReadResult:
-    frame = frame.copy()
+    frame = _join_date_and_clock(frame.copy())
     frame.columns = [str(c) for c in frame.columns]
     cols = list(frame.columns)
     if frame.empty:
@@ -908,7 +966,8 @@ def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Op
         if len(sizes) > max(1, len(frame) // 5) or (sizes >= 3).mean() < 0.5:
             group = None
     fee = find_column(cols, _FEE, avoid=[c for c in (money, pct) if c])
-    side = find_column(cols, ("side", "direction", "position side", "position"), avoid=[c for c in (money, pct) if c])
+    side = find_column(cols, ("side", "direction", "position side", "long / short", "long/short", "position"),
+                       avoid=[c for c in (money, pct) if c])
     symbol = find_column(cols, _SYMBOL, avoid=[c for c in (money, pct, group) if c])
     canon = pd.DataFrame(index=frame.index)
     canon["pnl"] = numbers_of(frame[money]) if money else np.nan
@@ -931,8 +990,15 @@ def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Op
         canon["symbol"] = frame[symbol].astype(str).str.strip()
     if group:
         canon["strategy"] = frame[group].astype(str).str.strip().replace("", "(unnamed)")
-    # Futures-style fill exports carry realized P&L only on closing rows.
     warning = list(notes)
+    opening = _opening_rows(frame, cols, [c for c in (money, pct, when, entry, side, symbol) if c])
+    if opening is not None:
+        empty = canon["pnl"].fillna(0).eq(0) & canon["pct"].fillna(0).eq(0)
+        drop = opening.to_numpy() & empty.to_numpy()
+        if drop.any():
+            canon = canon[~drop]
+            warning.append(f"Left out {int(drop.sum())} opening execution{'s' if drop.sum() != 1 else ''}: the "
+                           "broker marks them as opening, and only the closing ones carry a trade's result.")
     # Futures-style fill exports carry realized P&L only on closing rows: drop the opening rows, but only for
     # files that look like fills (a price and a quantity), never breakeven trades in a trade table.
     fill_shaped = _looks_like_fills(cols, frame) is not None
@@ -957,7 +1023,12 @@ def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Op
         canon = canon[canon["pnl"].ne(0)]
         warning.append(f"Dropped {dropped} rows with a P&L of exactly 0 (opening fills).")
     money_unit = (unit if unit != "%" else None) or (_currency_in(money) if money else None) or \
-        _cell_currency(frame[money] if money else None)
+        _cell_currency(frame[money] if money else None) or (_next_currency(frame, money) if money else None)
+    ccy = find_column(cols, ("currency", "currency primary", "ccy", "valuutta", "valuta"), avoid=[money] if money else [])
+    if money and not money_unit and ccy is not None:            # IBKR: one Currency column for the whole statement
+        cells = frame.loc[canon.index, ccy].astype(str).str.strip().str.upper()
+        money_unit = cells.iloc[0] if len(cells) and cells.nunique() == 1 and re.fullmatch(r"[A-Z]{3}",
+                                                                                          cells.iloc[0]) else None
     strategies = build_trades(canon, unit=(money_unit or "money") if money else "%", name=name,
                               prefer="%" if not money else unit)
     if gross_fills:
@@ -974,6 +1045,18 @@ def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Op
                               ("strategy", group), ("fee", fee), ("side", side), ("symbol", symbol)) if v}
     return ReadResult(strategies, "trades_table", rows=len(frame), columns_seen=cols, columns_used=used,
                       warnings=warning)
+
+
+def _next_currency(frame: pd.DataFrame, col: str) -> Optional[str]:
+    """The currency in the column right after a result column (Trading 212: Result, Currency (Result); Nordnet:
+    Tulos, Valuutta), when it names one currency throughout."""
+    cols = list(frame.columns)
+    i = cols.index(col)
+    if i + 1 >= len(cols):
+        return None
+    cells = frame[cols[i + 1]].astype(str).str.strip().str.upper()
+    cells = cells[(cells != "") & (cells != "NAN")]
+    return cells.iloc[0] if len(cells) and cells.nunique() == 1 and re.fullmatch(r"[A-Z]{3}", cells.iloc[0]) else None
 
 
 def _cell_currency(series: Optional[pd.Series]) -> Optional[str]:
