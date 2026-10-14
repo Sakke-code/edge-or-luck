@@ -16,6 +16,7 @@ GET  /api/guides            [{slug, title, summary, minutes, group, url, markdow
 GET  /how                   the page where Flip shows how it checks and where it can be wrong
 GET  /strategies            popular strategies, judged (past prices, every try counted); /strategies/<slug> one,
                             add .md for Markdown; GET /api/strategies the numbers
+GET  /api/usage             how much it is used: checks per day, by way in and kind of assistant (counts only)
 GET  /openapi.json          the assistant tools as an OpenAPI description (for GPT actions and the like)
 POST /api/tools/<tool>      judge | backtest | tune | forward: the MCP tools over plain HTTP, the same fields,
                             answering {markdown, study, receipt?}; GET /api/tools/rules the rule language
@@ -61,6 +62,7 @@ from ..schema import schema
 from . import guides, openapi, strategies, tools
 from .ledger import Ledger
 from .tools import TOOLS
+from .usage import Usage
 
 logger = logging.getLogger(__name__)
 
@@ -74,8 +76,9 @@ RATE_WINDOW_S = 60.0
 PRIVACY = ("Your file is read in memory and never stored. For each strategy with 30 or more trades we keep only: a "
            "one-way fingerprint of its first 30 trades and of the whole list, the number of trades, the unit, our "
            "forecast for its next 30 trades, and the time. If you come back with 30 more trades, we also keep "
-           "whether those trades ended up or down, to grade the forecast. No trades, no file, no IP address (the "
-           "rate limiter holds addresses in memory for one minute).")
+           "whether those trades ended up or down, to grade the forecast. Each check also adds one to a daily count "
+           "(the way it came in and the kind of assistant, if any: public at /api/usage). No trades, no file, no IP "
+           "address (the rate limiter holds addresses in memory for one minute).")
 
 
 class InMemoryRequest(Request):
@@ -165,6 +168,14 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
     book = ledger if ledger is not None else Ledger()
     limiter = RateLimiter(rate_limit)
     app.config["EDGEORLUCK_LEDGER"] = book
+    usage = app.config["EDGEORLUCK_USAGE"] = Usage(book.root)
+
+    def _counted(way: str) -> None:
+        usage.count(way, request.headers.get("User-Agent", ""))
+
+    @app.get("/api/usage")
+    def api_usage():
+        return jsonify(usage.summary())
     @app.get("/strategies")
     @app.get("/strategies.md", defaults={"as_md": True})
     def strategies_hub(as_md: bool = False):
@@ -212,9 +223,11 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
         if unknown:
             return _error(f"unknown field(s) {', '.join(unknown)}", "The fields are listed in /openapi.json.", 400)
         try:
-            return jsonify(fn(**payload))
+            answer = fn(**payload)
         except TypeError as exc:                      # a required field left out
             return _error("a required field is missing", str(exc), 400)
+        _counted("tools")
+        return jsonify(answer)
 
     @app.get("/", defaults={"name": "index"})
     @app.get("/<any(how, story, play):name>")
@@ -282,7 +295,8 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
 
     @app.get("/api/engine")
     def api_engine():
-        return jsonify({"name": "edge or luck", "version": ENGINE_VERSION, "changelog": CHANGELOG})
+        return jsonify({"name": "edge or luck", "version": ENGINE_VERSION, "changelog": CHANGELOG,
+                        "tip_url": os.environ.get("EDGEORLUCK_TIP_URL") or None})
 
     @app.get("/api/track-record")
     def api_track_record():
@@ -335,6 +349,7 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
             return _error("too many requests", f"Up to {limiter.limit} checks a minute per visitor. Wait a minute "
                                                "and try again.", 429)
         try:
+            _counted("page")
             return _judge_post()
         except HTTPException:     # 413 too large and the like: their own handlers answer
             raise
@@ -413,6 +428,7 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
             return _error("too many requests", f"Up to {limiter.limit} checks a minute per visitor. Wait a minute "
                                                "and try again.", 429)
         try:
+            _counted("link")
             return _judge_get()
         except HTTPException:
             raise

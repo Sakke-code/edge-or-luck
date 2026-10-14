@@ -21,6 +21,7 @@ from starlette.routing import Mount
 from .. import mcp_server as local
 from . import tools
 from .app import RateLimiter, create_app
+from .usage import Usage
 
 CALLS_PER_MINUTE = 20
 BUSY = f"Too many calls from here: up to {CALLS_PER_MINUTE} a minute. Wait a minute, then call again."
@@ -63,7 +64,14 @@ FORWARD_DESCRIPTION = (
 TUNE_DESCRIPTION = _swap(local.TUNE_DESCRIPTION, "Don't tune again", STUDY + " Don't tune again")
 
 
-def build() -> MCPServer:
+def _client_name(ctx: Context) -> str:
+    """The name the assistant's MCP client gives (claude-ai, openai-mcp, cursor ...), else its user agent."""
+    params = getattr(ctx.session, "client_params", None)
+    info = getattr(params, "client_info", None) or getattr(params, "clientInfo", None)
+    return str(getattr(info, "name", "") or (ctx.headers or {}).get("user-agent", ""))
+
+
+def build(usage: Optional[Usage] = None) -> MCPServer:
     """The MCP tools for the web: tools.py behind a rate limit, counted per study (or per session id)."""
     calls = RateLimiter(CALLS_PER_MINUTE, 60.0)
 
@@ -71,7 +79,10 @@ def build() -> MCPServer:
     def caller(ctx: Context, study: Optional[str]) -> Iterator[Optional[str]]:
         """The study to count under, or None when the caller is over the rate limit."""
         host = getattr(getattr(ctx.request_context.request, "client", None), "host", None) or "?"
-        yield (study or (ctx.headers or {}).get("mcp-session-id", "")[:40] or "") if calls.allow(host) else None
+        allowed = calls.allow(host)
+        if allowed and usage is not None:
+            usage.count("mcp", _client_name(ctx) or "mcp")
+        yield (study or (ctx.headers or {}).get("mcp-session-id", "")[:40] or "") if allowed else None
 
     def judge_trades(csv_text: Optional[str] = None, pnl: Optional[List[float]] = None,
                      variants_tried: Optional[int] = None, benchmark_return_pct: Optional[float] = None,
@@ -132,8 +143,9 @@ def make_app() -> Any:
     security = TransportSecuritySettings(enable_dns_rebinding_protection=bool(hosts),
                                          allowed_hosts=hosts + [f"{h}:*" for h in hosts],
                                          allowed_origins=[f"https://{h}" for h in hosts])
-    app = build().streamable_http_app(transport_security=security, host="0.0.0.0")
-    app.router.routes.append(Mount("/", app=WSGIMiddleware(create_app())))
+    site = create_app()
+    app = build(site.config["EDGEORLUCK_USAGE"]).streamable_http_app(transport_security=security, host="0.0.0.0")
+    app.router.routes.append(Mount("/", app=WSGIMiddleware(site)))
     return app
 
 

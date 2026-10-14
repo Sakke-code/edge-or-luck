@@ -144,3 +144,24 @@ def test_the_hosted_app_serves_the_site_the_api_and_mcp_over_http(tmp_path, monk
         assert "forward_test" in asyncio.run(run())
     finally:
         server.should_exit = True
+
+
+def test_usage_is_counted_without_knowing_who(tmp_path, monkeypatch):
+    from edgeorluck.web.usage import Usage, assistant
+    assert assistant("Mozilla/5.0; compatible; ChatGPT-User/1.0") == "ChatGPT" and assistant("claude-ai") == "Claude"
+    assert assistant("curl/8.4") == ""
+    client = create_app(Ledger(tmp_path), rate_limit=1000).test_client()
+    assert client.get("/api/usage").get_json()["total"] == 0
+    client.get("/api/judge?pnl=" + ",".join(map(str, A)), headers={"User-Agent": "ChatGPT-User/1.0"})
+    client.post("/api/tools/judge", json={"pnl": A}, headers={"User-Agent": "curl/8.4"})
+    usage = client.get("/api/usage").get_json()
+    assert usage["total"] == 2 and usage["for_assistants"] == 1 and usage["by_assistant"] == {"ChatGPT": 1}
+    assert usage["by_way"] == {"links": 1, "the JSON tools": 1} and "2 checks so far" in usage["sentence"]
+    client.application.config["EDGEORLUCK_USAGE"].save()
+    stored = Usage(tmp_path)                  # nothing but counts reaches the disk
+    assert all(set(k.split(":")[0] for k in day) <= {"page", "link", "tools", "mcp"} for day in stored.days.values())
+    assert "pnl" not in (tmp_path / "usage.json").read_text(encoding="utf-8")
+    assert client.get("/api/engine").get_json()["tip_url"] is None
+    monkeypatch.setenv("EDGEORLUCK_TIP_URL", "https://ko-fi.com/edgeorluck")
+    assert "Keep it free" in client.get("/strategies").get_data(as_text=True)
+    assert client.get("/api/engine").get_json()["tip_url"] == "https://ko-fi.com/edgeorluck"

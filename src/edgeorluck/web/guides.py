@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -301,6 +302,8 @@ def _shell(title: str, description: str, body: str, *, alternate: Optional[str] 
     nav = "\n      ".join(f'<a class="opt" href="{href}"{" aria-current=page" if href == current else ""}>{label}</a>'
                           for href, label in NAV)
     sheets = "".join(f'\n<link rel="stylesheet" href="/assets/{name}">' for name in css)
+    tip_url = os.environ.get("EDGEORLUCK_TIP_URL")
+    tip = f' · <a href="{e(tip_url)}" rel="noopener">Keep it free: buy a coffee</a>' if tip_url else ""
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -336,7 +339,7 @@ def _shell(title: str, description: str, body: str, *, alternate: Optional[str] 
 <footer>
   <div class="wrap">
     <div><p><b>Not financial advice.</b> edge or luck judges past results. It doesn't tell you what to trade or how much.</p></div>
-    <div><p>Open source under the MIT licence. <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">Source on GitHub</a></p></div>
+    <div><p>Open source under the MIT licence. <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">Source on GitHub</a>{tip}</p></div>
   </div>
 </footer>
 <script src="/assets/site.js"></script>

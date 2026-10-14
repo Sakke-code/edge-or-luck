@@ -441,7 +441,7 @@ h1 .line{display:block;white-space:nowrap}
   </div>
 
   <ul class="promises wrap" aria-label="Why you can trust the answer">
-    <li id="promiseRate" hidden><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="promiseRateText"></span></li>
+    <li id="promiseRate" hidden><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="promiseRateText"></span></li><li id="promiseUsage" hidden><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="promiseUsageText"></span></li>
     <li><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Your file is never stored.</b> It is read in memory and dropped.</span></li>
     <li><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Same file, same answer.</b> Every time, for everyone.</span></li>
     <li><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Open source.</b> You can check every line of the maths.</span></li>
@@ -485,7 +485,7 @@ h1 .line{display:block;white-space:nowrap}
   </div>
   <div class="sheets" id="sheets"></div>
   <div class="pairs" id="pairs" hidden><h3>These move together</h3></div>
-  <p class="privacy"><span id="privacy"></span></p>
+  <p class="privacy"><span id="privacy"></span></p> <p class="privacy" id="tipLine" hidden>If this kept you from trading a lucky strategy, <a id="tipLink" href="#" rel="noopener">a coffee keeps edge or luck free</a>.</p>
 </section>
 
 <section class="band wrap" id="how" aria-labelledby="howTitle">
@@ -1160,7 +1160,7 @@ h1 .line{display:block;white-space:nowrap}
 
   function render(rep) {
     var res = $("result");
-    res.hidden = false;
+    res.hidden = false; $("tipLine").hidden = !tipUrl;
     $("dropBack").classList.remove("busy");
     var sum = rep.summary || {};
     $("resHeadline").textContent = sum.headline || "Here is what we found.";
@@ -1559,7 +1559,8 @@ h1 .line{display:block;white-space:nowrap}
     $("promiseRate").hidden = false;
   }).catch(function () {});
   fetch("/api/track-record").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.sentence) $("trackRecord").textContent = j.sentence; }).catch(function () {});
-  fetch("/api/engine").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.version) $("engineVersion").textContent = "Judge version " + j.version + "."; }).catch(function () {});
+  var tipUrl = null; fetch("/api/engine").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.version) $("engineVersion").textContent = "Judge version " + j.version + "."; if (j && j.tip_url) { tipUrl = j.tip_url; $("tipLink").href = j.tip_url; } }).catch(function () {});
+  fetch("/api/usage").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { if (j && j.total) { $("promiseUsageText").textContent = j.sentence; $("promiseUsage").hidden = false; } }).catch(function () {});
 
   /* ---------- assistant tabs ---------- */
   var SNIPS = {
