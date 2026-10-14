@@ -41,12 +41,15 @@ ENGINE_VERSION = "2.5.0"
 SCHEMA_VERSION = "1.0"
 CHANGELOG = [
     {"version": "2.5.0", "date": "2026-10-14",
-     "change": "For assistants on the web: one hosted app (edgeorluck[host], Dockerfile) serves the site, the MCP "
-               "tools over HTTP at /mcp for chat assistants, and the same tools as plain JSON at /api/tools/ with an "
-               "OpenAPI description (/openapi.json) for GPT actions. No file access; versions are counted per study "
-               "id the answers hand out (the protocol keeps no session); a frozen rule comes back as a receipt the "
-               "server signs, and forward_test judges only its trades after that. The MCP server is built in: uvx "
-               "edgeorluck mcp (server.json for the MCP registry)."},
+     "change": "Stocks, ETFs, indices and currencies: the backtester fetches Yahoo Finance (split- and "
+               "dividend-adjusted) and the ECB's daily rates as well as Binance, by symbol (AAPL, SPY, ^GSPC, "
+               "EURUSD, BTCUSDT). Broker exports: Trading 212, Interactive Brokers, Nordnet (Finnish, Swedish, "
+               "English), eToro and Degiro. Popular strategies, judged (/strategies): ten famous rules on five "
+               "markets, every try counted. For assistants: one hosted app (edgeorluck[host], Dockerfile) with the "
+               "MCP tools at /mcp and the same tools as JSON at /api/tools/ with an OpenAPI description for GPTs; "
+               "versions counted per study id; frozen rules as receipts the server signs; a Claude Code plugin with "
+               "a skill; uvx edgeorluck mcp (server.json for the MCP registry). A public usage count (/api/usage), "
+               "a privacy page, an optional tip link."},
     {"version": "2.4.0", "date": "2026-10-14",
      "change": "For assistants: the MCP server counts every record and rule it judges in a session as a version "
                "tried, so the bar rises even when nobody says. backtest_rule(freeze=true) keeps a rule, and the new "
