@@ -5,7 +5,9 @@
 .intro h1,.guide-head h1{font-weight:700;line-height:1.03;letter-spacing:-.028em;margin:0 0 18px;text-wrap:balance}
 .intro h1{font-size:clamp(40px,5.4vw,70px);max-width:14ch}
 .lede{margin:0;max-width:56ch;font-size:clamp(18px,1.5vw,21px);line-height:1.5;color:var(--ink-2)}
-.for-ai{margin:18px 0 0;max-width:60ch;font-size:15px;color:var(--ink-3)}
+.watch{margin:20px 0 0;font-family:var(--hand);font-size:21px}
+.watch a{color:var(--ink);text-decoration-color:var(--amber);text-decoration-thickness:2px}
+.for-ai{margin:14px 0 0;max-width:60ch;font-size:15px;color:var(--ink-3)}
 .for-ai code,.prose code{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:.86em;padding:1px 5px;border-radius:4px;background:color-mix(in srgb,var(--ink) 7%,transparent)}
 .intro-pet{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px}
 .intro-pet .bubble{position:relative;max-width:290px}

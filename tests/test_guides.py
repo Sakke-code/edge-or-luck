@@ -122,6 +122,15 @@ def test_the_pages_are_served(client):
     assert client.get("/guides/nope.md").status_code == 404
 
 
+def test_flips_story_is_served_and_linked(client):
+    page = client.get("/story")
+    text = page.get_data(as_text=True)
+    assert page.status_code == 200 and "Edge or luck, in 45 seconds" in text and "EOLStory" in text
+    assert "/api/validation" in text            # the false-alarm rate it quotes is the measured one
+    for path in ("/", "/how", "/guides", f"/guides/{GUIDES[0].slug}"):
+        assert 'href="/story"' in client.get(path).get_data(as_text=True), path
+
+
 def test_numbers_come_from_the_validation_run():
     values = guides.numbers()
     strict = next(g for g in GUIDES if g.slug == "why-the-judge-is-strict")

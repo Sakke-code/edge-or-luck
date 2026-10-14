@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edge or luck, in 45 seconds</title>
+<meta name="description" content="A 45-second animation: Flip shows what luck looks like, why trying versions raises the bar, and when a trading record finally clears it.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12.5' fill='%23F3F7F4' stroke='%2316294A' stroke-width='2.6'/%3E%3Cpath d='M8.5 20.5 13 16.5l3 2.4 7-8.4' fill='none' stroke='%2316294A' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+.story{padding-top:clamp(20px,4vh,44px)}
+.story-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 30px;margin-bottom:22px}
+.story-head h1{margin:0;font-size:clamp(32px,4.4vw,56px);line-height:1.03;letter-spacing:-.028em;text-wrap:balance}
+.story-head p{margin:0;max-width:52ch;color:var(--ink-2)}
+
+/* ---- The stage: a sheet of paper with the chart, Flip and the stamps ---- */
+.stage{position:relative;overflow:hidden;border:1.5px solid var(--rule);border-radius:12px 16px 11px 15px;
+  background:color-mix(in srgb,var(--paper-raised) 88%,transparent);box-shadow:0 18px 40px -34px var(--ink)}
+.stage svg.chart{display:block;width:100%;height:auto;aspect-ratio:1000/560}
+.stage.paused *,.stage.paused *::before,.stage.paused *::after{animation-play-state:paused!important}
+.axis{fill:none;stroke:var(--ink-3);stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.zero{fill:none;stroke:var(--ink-3);stroke-width:1.2;stroke-dasharray:3 7;opacity:.85}
+.luck{fill:none;stroke:var(--pencil-2);stroke-width:1.2;opacity:.5;stroke-linejoin:round;stroke-dasharray:1 1;stroke-dashoffset:1}
+.lucky{fill:none;stroke:var(--marker);stroke-width:11;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1 1;stroke-dashoffset:1}
+.you{fill:none;stroke:var(--ink);stroke-width:3.6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1 1;stroke-dashoffset:1}
+.bar{fill:none;stroke:var(--red);stroke-width:2.8;stroke-dasharray:10 8;stroke-linecap:round}
+.hand-label{font-family:var(--hand);font-size:25px;fill:var(--ink-2)}
+.hand-label.small{font-size:20px;fill:var(--ink-3)}
+.hand-label.you-label{font-weight:700;fill:var(--ink)}
+.hand-label.bar-label{fill:var(--red);font-weight:700}
+.bar-sub{font-size:19px;font-weight:400}
+.arrow{fill:none;stroke:var(--ink-2);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.fade{opacity:0}
+
+.actor{position:absolute;inset:0;pointer-events:none}
+.story-bubble{position:absolute;left:2%;top:3.5%;max-width:39%;opacity:0;transition:opacity .3s ease}
+.story-bubble.on{opacity:1}
+.story-bubble .tail{left:44px;right:auto;bottom:-13px;transform:rotate(90deg)}
+.story-flip{position:absolute;left:3.5%;top:37%;width:11.5%;aspect-ratio:84/90;color:var(--ink);pointer-events:auto;cursor:pointer}
+
+.paper{position:relative}
+.big-stamp{position:absolute;left:37%;top:72%;transform:translate(-50%,0) rotate(-7deg);opacity:0;pointer-events:none;
+  font-family:var(--hand);font-weight:700;font-size:clamp(22px,3.6vw,46px);line-height:1;letter-spacing:.02em;text-transform:uppercase;white-space:nowrap;
+  padding:10px 20px 8px;border:3.5px solid currentColor;border-radius:14px 20px 12px 18px / 18px 12px 20px 14px;background:color-mix(in srgb,var(--paper) 82%,transparent)}
+.big-stamp.cant{color:var(--amber)}
+.big-stamp.real{color:var(--green)}
+.big-stamp.on{opacity:1;animation:slam .42s cubic-bezier(.2,1.6,.4,1)}
+.big-stamp.on.still{animation:none}
+@keyframes slam{0%{opacity:0;transform:translate(-50%,0) rotate(-16deg) scale(1.9)}60%{opacity:1}100%{transform:translate(-50%,0) rotate(-7deg) scale(1)}}
+
+/* ---- Controls and chapters ---- */
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px 18px;margin-top:16px}
+.ctl{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:7px 16px;border-radius:999px;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);font-size:15.5px;font-weight:500;cursor:pointer}
+.ctl.quiet{background:transparent;color:var(--ink);border-color:var(--rule)}
+.ctl.quiet:hover{border-color:var(--ink)}
+.ctl svg{width:14px;height:14px}
+.chapters{list-style:none;display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0}
+.chapters button{display:inline-flex;align-items:center;gap:7px;padding:5px 11px 5px 7px;border:1.5px solid var(--rule);border-radius:999px;background:none;cursor:pointer;font-size:14px;color:var(--ink-2)}
+.chapters button:hover{border-color:var(--ink-3);color:var(--ink)}
+.chapters .dot{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;border:1.5px solid currentColor;font-family:var(--hand);font-weight:700;font-size:13px;line-height:1}
+.chapters button[aria-current="step"]{border-color:var(--ink);color:var(--ink);background:color-mix(in srgb,var(--marker) 70%,transparent)}
+.chapters button.done .dot{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.after{display:flex;flex-wrap:wrap;gap:12px;margin-top:34px;align-items:center}
+.after p{margin:0 12px 0 0;color:var(--ink-2)}
+
+@media (max-width:760px){
+  .chapters .t{display:none}
+  .chapters button{padding:5px}
+}
+@media (max-width:700px){
+  .actor{position:static;display:flex;align-items:center;gap:14px;padding:12px 14px 14px;border-top:1px dashed var(--rule)}
+  .story-flip{position:relative;left:auto;top:auto;width:64px;flex:none}
+  .story-bubble{position:relative;left:auto;top:auto;max-width:none;flex:1;font-size:17px}
+  .story-bubble .tail{left:-14px;bottom:auto;top:50%;transform:translateY(-50%) scaleX(-1)}
+  .hand-label{font-size:42px}
+  .hand-label.small{font-size:34px}
+  .bar-sub{font-size:32px}
+  .big-stamp{left:42%;top:70%;font-size:17px;padding:5px 10px 4px;border-width:2.5px}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="edge or luck, home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.6 20.4c1.4-1.2 2.9-2.6 4.3-3.8.9.7 1.9 1.6 2.9 2.3 2.3-2.6 4.6-5.6 6.8-8.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      edge or luck
+    </a>
+    <nav class="nav" aria-label="Site">
+      <a class="opt" href="/">Check your trades</a>
+      <a class="opt" href="/guides">Guides</a>
+      <a class="opt" href="/story" aria-current="page">Flip's story</a>
+      <a class="opt" href="/how">How it checks</a>
+      <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">GitHub</a>
+      <button class="theme" id="theme" type="button" aria-label="Switch to blueprint (dark) look">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.8a6.2 6.2 0 0 1 0 12.4z" fill="currentColor"/></svg>
+        <span id="themeLabel">Blueprint</span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<main class="story wrap">
+  <div class="story-head">
+    <h1>Edge or luck, in 45 seconds</h1>
+    <p>Flip shows what luck looks like, why trying versions raises the bar, and when a record finally clears it. The curves are the judge's real maths.</p>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="paper">
+    <svg class="chart" viewBox="0 0 1000 560" role="img" aria-labelledby="chartTitle">
+      <title id="chartTitle">A chart of trading results: grey lines are coin-flip copies of the trades, the ink line is the real record, and the dashed red curve is the bar luck rarely reaches.</title>
+      <defs><clipPath id="plotClip"><rect x="196" y="6" width="772" height="512"/></clipPath></defs>
+      <g id="axes" class="fade">
+        <path id="xAxis" class="axis"/>
+        <path id="zero" class="zero"/>
+        <text id="lbl0" class="hand-label small" text-anchor="end">0</text>
+        <text id="lblN" class="hand-label small" text-anchor="end">60 trades</text>
+      </g>
+      <g clip-path="url(#plotClip)">
+        <g id="hi"></g>
+        <g id="fan"></g>
+        <path id="bar" class="bar"/>
+        <path id="youA" class="you" pathLength="1"/>
+        <path id="youB" class="you" pathLength="1"/>
+      </g>
+      <g id="lblLuck" class="fade"><path class="arrow" id="luckArrow"/><text id="luckText" class="hand-label" text-anchor="middle">luck</text></g>
+      <text id="lblYou" class="hand-label you-label fade" text-anchor="end">you</text>
+      <text id="lblBar" class="hand-label bar-label fade" text-anchor="end"><tspan id="barLine1">the bar</tspan><tspan id="barLine2" class="bar-sub"></tspan></text>
+    </svg>
+    <span class="big-stamp" id="stamp" aria-hidden="true"></span>
+    </div>
+    <div class="actor">
+      <div class="bubble story-bubble" id="bubble"><span class="say"></span><svg class="tail" viewBox="0 0 16 14" aria-hidden="true"><path d="M0 1.5C6 3 10.5 7 15 13 9.5 11 5 10 0 10.5"/></svg></div>
+      <div class="pet story-flip" id="flip" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="ctl" id="play" type="button"><svg viewBox="0 0 14 14" aria-hidden="true"><path id="playIcon" d="M3 2h3v10H3zM8 2h3v10H8z" fill="currentColor"/></svg><span id="playLabel">Pause</span></button>
+    <button class="ctl quiet" id="restart" type="button">Replay</button>
+    <ol class="chapters" id="chapters" aria-label="Chapters"></ol>
+  </div>
+  <p class="visually-hidden" id="live" aria-live="polite"></p>
+
+  <div class="after">
+    <p>Your turn: is your record an edge, or luck?</p>
+    <a class="btn" href="/">Check your trades</a>
+    <a class="btn quiet" href="/guides/why-the-judge-is-strict">Why the judge is so strict</a>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div><p><b>Not financial advice.</b> edge or luck judges past results. It doesn't tell you what to trade or how much.</p>
+      <p>The record in the film is made up. The lines are real coin-flip copies of it, and the bar is the judge's own formula.</p></div>
+    <div><p>Open source under the MIT licence. <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">Source on GitHub</a></p></div>
+  </div>
+</footer>
+
+<script src="/assets/site.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var NS = "http://www.w3.org/2000/svg";
+  function svgEl(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    parent.appendChild(e);
+    return e;
+  }
+  function clamp(x) { return x < 0 ? 0 : x > 1 ? 1 : x; }
+  var linear = function (p) { return p; };
+  var easeInOut = function (p) { return p < .5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; };
+  var easeOut = function (p) { return 1 - Math.pow(1 - p, 3); };
+
+  /* ---------- the record, its coin-flip copies, and the bar ---------- */
+  function mulberry32(a) {
+    return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  }
+  var rnd = mulberry32(20261014);
+  function gauss() { var u = 1 - rnd(), v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  var N1 = 60, N = 300, COPIES = 60, t, k;
+  var you = [0];
+  for (t = 1; t <= N; t++) you.push(you[t - 1] + 0.3 + gauss());       // a small real edge: 0.3 spreads a trade
+  var d1 = 18 - you[N1], d2 = 90 - you[N] - d1;                          // the same story on every screen
+  for (t = 1; t <= N; t++) you[t] += t <= N1 ? d1 * t / N1 : d1 + d2 * (t - N1) / (N - N1);
+  var inc = [];
+  for (t = 1; t <= N; t++) inc.push(you[t] - you[t - 1]);
+  var mean = inc.reduce(function (s, x) { return s + x; }, 0) / N;
+  var sd = Math.sqrt(inc.reduce(function (s, x) { return s + (x - mean) * (x - mean); }, 0) / (N - 1));
+  var copies = [];                       // luck: the same trades, each sign flipped at random
+  for (k = 0; k < COPIES; k++) {
+    var c = [0];
+    for (t = 1; t <= N; t++) c.push(c[t - 1] + (rnd() < .5 ? -1 : 1) * inc[t - 1]);
+    copies.push(c);
+  }
+  var top = copies.map(function (c, i) { return i; }).sort(function (a, b) { return copies[b][N1] - copies[a][N1]; }).slice(0, 3);
+  // The judge's evidence is a mixture of edge sizes; it reaches the bar when the running total
+  // passes this curve (the mixture's closed form, one-sided). Luck almost never crosses it.
+  var RHO2 = 0.03;
+  function barAt(n, bar) { var v = 1 + RHO2 * n; return sd * Math.sqrt(2 * v / RHO2 * Math.log(bar * Math.sqrt(v) / 2)); }
+
+  /* ---------- drawing ---------- */
+  var PX = { x0: 200, x1: 948, y0: 492, y1: 40 };
+  var view, barNow, barVis, youEnd, versions;
+  function X(i) { return PX.x0 + (PX.x1 - PX.x0) * i / view.n; }
+  function Y(v) { return PX.y0 - (PX.y0 - PX.y1) * (v - view.lo) / (view.hi - view.lo); }
+  function line(arr, a, b) {
+    var s = "M" + X(a).toFixed(1) + " " + Y(arr[a]).toFixed(1);
+    for (var i = a + 1; i <= b; i++) s += "L" + X(i).toFixed(1) + " " + Y(arr[i]).toFixed(1);
+    return s;
+  }
+  var fanA = [], fanB = [], hi = [];
+  top.forEach(function () { hi.push(svgEl("path", { "class": "lucky", pathLength: 1 }, $("hi"))); });
+  copies.forEach(function () {
+    fanA.push(svgEl("path", { "class": "luck", pathLength: 1 }, $("fan")));
+    fanB.push(svgEl("path", { "class": "luck", pathLength: 1 }, $("fan")));
+  });
+  (function () {                           // a hand-drawn x axis with an arrow
+    var r = mulberry32(7), s = "M" + (PX.x0 - 6) + " 512";
+    for (var x = PX.x0 + 40; x <= PX.x1 + 20; x += 40) s += "L" + x + " " + (512 + (r() - .5) * 2.4).toFixed(1);
+    $("xAxis").setAttribute("d", s + "M" + (PX.x1 + 6) + " 505l14 7-14 7");
+  })();
+
+  function render() {
+    copies.forEach(function (c, i) { fanA[i].setAttribute("d", line(c, 0, N1)); fanB[i].setAttribute("d", line(c, N1, N)); });
+    top.forEach(function (i, j) { hi[j].setAttribute("d", line(copies[i], 0, N1)); });
+    $("youA").setAttribute("d", line(you, 0, N1));
+    $("youB").setAttribute("d", line(you, N1, N));
+    var y0 = Y(0).toFixed(1);
+    $("zero").setAttribute("d", "M" + PX.x0 + " " + y0 + "H" + PX.x1);
+    $("lbl0").setAttribute("x", PX.x0 - 10); $("lbl0").setAttribute("y", +y0 + 7);
+    $("lblN").setAttribute("x", PX.x1); $("lblN").setAttribute("y", 548);
+    $("lblN").textContent = Math.round(view.n) + " trades";
+    var best = copies[top[0]], at = 0;
+    for (var i = 1; i <= N1; i++) if (best[i] > best[at]) at = i;
+    var lx = X(at), ly = Y(best[at]);
+    $("luckText").setAttribute("x", lx); $("luckText").setAttribute("y", ly - 40);
+    $("luckArrow").setAttribute("d", "M" + (lx + 3) + " " + (ly - 33) + "q6 12-2 24m-7-7 7 7 6-8");
+    drawBar();
+  }
+  // Labels sit on the far side from the other line: "you" below the ink while the ink is under the
+  // bar, above it once it clears the bar (and the bar's label moves below its curve).
+  function youAbove() { return you[youEnd] > barAt(youEnd, barNow); }
+  function drawBar() {
+    var up = youAbove();
+    $("lblYou").setAttribute("x", X(youEnd) - 4);
+    $("lblYou").setAttribute("y", Y(you[youEnd]) + (up ? -16 : 34));
+    if (barVis < 1) { $("bar").setAttribute("d", ""); $("lblBar").setAttribute("x", -99); return; }
+    var s = "", last = Math.floor(barVis);
+    for (var i = 1; i <= last; i++) s += (i === 1 ? "M" : "L") + X(i).toFixed(1) + " " + Y(barAt(i, barNow)).toFixed(1);
+    $("bar").setAttribute("d", s);
+    var bx = X(last) - 4, by = Y(barAt(last, barNow));
+    var one = $("barLine1"), two = $("barLine2");
+    two.textContent = versions > 1 ? versions + " versions tried" : "";
+    var fs = parseFloat(getComputedStyle(one).fontSize) || 25;   // bigger on phones
+    var top = up ? by + fs + 9 : by - (versions > 1 ? fs * 1.6 + 2 : 14);   // away from the ink
+    one.setAttribute("x", bx); one.setAttribute("y", top);
+    two.setAttribute("x", bx); two.setAttribute("y", top + fs * 0.96);
+  }
+  function show(id, p) { $(id).style.opacity = p; }
+  function draw(el, p) { el.style.strokeDashoffset = 1 - p; }
+
+  /* ---------- Flip ---------- */
+  var flip = EOL.makeFlip($("flip"), $("bubble"));
+  function walkTo(p) { $("flip").style.transform = "translateX(" + (-170 * (1 - p)).toFixed(1) + "%)"; }
+  function say(text, mood) {
+    if (mood) flip.mood(mood);
+    $("bubble").classList.add("on");
+    flip.say(text);
+    $("live").textContent = text;
+  }
+  $("flip").addEventListener("click", function () { flip.hop(); });
+  if (!EOL.reduce) {
+    var mx = 0, my = 0, q = false;
+    window.addEventListener("pointermove", function (e) {
+      mx = e.clientX; my = e.clientY;
+      if (q) return; q = true;
+      requestAnimationFrame(function () { q = false; flip.look(mx, my); });
+    }, { passive: true });
+  }
+  function stamp(text, kind, still) {
+    var s = $("stamp");
+    s.className = "big-stamp " + kind + (still ? " on still" : "");
+    s.textContent = text;
+    if (!still) { void s.offsetWidth; s.classList.add("on"); }
+  }
+  function unstamp() { $("stamp").className = "big-stamp"; }
+
+  /* ---------- a clock that can pause, and scenes written against it ---------- */
+  var clock = { t: 0, last: 0, playing: true, waits: [], tweens: [] };
+  var gen = 0, fast = false, CANCEL = { cancelled: true };
+  function tick(now) {
+    var dt = clock.last ? Math.min(now - clock.last, 80) : 16;
+    clock.last = now;
+    if (clock.playing) clock.t += dt;
+    clock.tweens = clock.tweens.filter(function (tw) { return tw(); });
+    var due = clock.waits.filter(function (w) { return clock.t >= w.at; });
+    clock.waits = clock.waits.filter(function (w) { return clock.t < w.at; });
+    due.forEach(function (w) { w.res(); });
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+  function guard(g) { return function () { if (g !== gen) throw CANCEL; }; }
+  function W(ms) {
+    var g = gen;
+    if (fast) return Promise.resolve().then(guard(g));
+    return new Promise(function (res) { clock.waits.push({ at: clock.t + ms, res: res }); }).then(guard(g));
+  }
+  function T(ms, fn, ease) {
+    var g = gen;
+    ease = ease || easeInOut;
+    if (fast) { fn(1); return Promise.resolve().then(guard(g)); }
+    var start = clock.t;
+    return new Promise(function (res) {
+      clock.tweens.push(function () {
+        if (g !== gen) { res(); return false; }
+        var p = clamp((clock.t - start) / ms);
+        fn(ease(p));
+        if (p >= 1) { res(); return false; }
+        return true;
+      });
+    }).then(guard(g));
+  }
+
+  var falseRate = "rarely";
+  fetch("/api/validation").then(function (r) { return r.ok ? r.json() : null; }).then(function (v) {
+    var x = v && v.headline && v.headline.false_real_edge_typical;
+    if (typeof x === "number") falseRate = (x * 100).toFixed(2).replace(/0+$/, "").replace(/\.$/, "") + "% of the time";
+  }).catch(function () {});
+
+  var SCENES = [
+    { title: "Meet Flip", play: async function () {
+      await T(700, function (p) { show("axes", p); });
+      flip.svg.classList.add("walking");
+      await T(1800, walkTo, easeOut);
+      flip.svg.classList.remove("walking");
+      say("Hi, I'm Flip. I check whether a trading record is skill, or just luck.", "happy");
+      await W(3400);
+    } },
+    { title: "What luck looks like", play: async function () {
+      say("First I flip the signs of your trades at random. Each copy is a record pure luck could have made.", "flipping");
+      await T(3300, function (p) {
+        fanA.forEach(function (el, i) { draw(el, clamp((p * 3300 - i * 32) / 1300)); });
+      }, linear);
+      flip.mood("idle");
+      await W(1800);
+    } },
+    { title: "Luck can look brilliant", play: async function () {
+      say("See the best ones? Pure luck, and they look brilliant. That's the trap.", "shrug");
+      await T(900, function (p) { hi.forEach(function (el) { draw(el, p); }); });
+      await T(400, function (p) { show("lblLuck", p); });
+      await W(3300);
+    } },
+    { title: "Your record", play: async function () {
+      say("Now your own trades, in ink. Right up there with the lucky ones. So: skill?", "excited");
+      await T(300, function (p) { show("lblLuck", 1 - p); });
+      await T(1900, function (p) { draw($("youA"), p); }, linear);
+      await T(300, function (p) { show("lblYou", p); });
+      await W(2800);
+    } },
+    { title: "The bar", play: async function () {
+      say("Luck almost never reaches this curve, however often you look. Cross it, and that's an edge.", "idle");
+      await T(1400, function (p) { barVis = 1 + (N1 - 1) * p; drawBar(); });
+      await T(300, function (p) { show("lblBar", p); });
+      await W(2600);
+      say("Tried 20 versions? Then luck had 20 chances, so the bar goes up.", "worried");
+      await T(2300, function (p) { versions = Math.max(1, Math.round(1 + 19 * p)); barNow = 40 * (1 + 19 * p); drawBar(); });
+      await W(2300);
+    } },
+    { title: "Can't tell yet", play: async function () {
+      stamp("Can't tell yet", "cant", fast);
+      say("60 trades in: good so far, but luck makes records like this too often. Keep going.", "shrug");
+      await W(3800);
+    } },
+    { title: "More trades", play: async function () {
+      unstamp();
+      say("Now 300 trades. Luck spreads out slowly. A real edge keeps climbing.", "wait");
+      await T(400, function (p) { show("lblYou", 1 - p); });
+      await T(1900, function (p) {
+        view.n = N1 + (N - N1) * p; view.lo = -30 - 30 * p; view.hi = 38 + 62 * p; render();
+      });
+      youEnd = N;
+      await T(3200, function (p) {
+        fanB.forEach(function (el) { draw(el, p); });
+        draw($("youB"), p);
+        barVis = N1 + (N - N1) * p; drawBar();
+      }, linear);
+      render();
+      await T(300, function (p) { show("lblYou", p); });
+      stamp("Real edge", "real", fast);
+      say("The ink clears the bar, even after 20 versions. That's an edge, not luck.", "happy");
+      await W(3000);
+      say("And when there is no edge, I say “real edge” " + falseRate + ".", "idle");
+      await W(3200);
+    } },
+    { title: "Your turn", play: async function () {
+      say("Luck makes beautiful records. I tell them apart. Bring me yours!", "happy");
+      await W(600);
+    } }
+  ];
+
+  /* ---------- running it ---------- */
+  var chapters = $("chapters"), current = -1, ended = false, nextResolve = null;
+  SCENES.forEach(function (s, i) {
+    var li = document.createElement("li"), b = document.createElement("button");
+    b.type = "button";
+    b.innerHTML = '<span class="dot">' + (i + 1) + '</span><span class="t"></span>';
+    b.querySelector(".t").textContent = s.title;
+    b.setAttribute("aria-label", "Chapter " + (i + 1) + ": " + s.title);
+    b.addEventListener("click", function () { start(i); });
+    li.appendChild(b); chapters.appendChild(li);
+  });
+  function mark(i) {
+    current = i;
+    chapters.querySelectorAll("button").forEach(function (b, j) {
+      if (j === i) b.setAttribute("aria-current", "step"); else b.removeAttribute("aria-current");
+      b.classList.toggle("done", j < i);
+    });
+  }
+  function reset() {
+    view = { n: N1, lo: -30, hi: 38 }; barNow = 40; barVis = 0; youEnd = N1; versions = 1;
+    fanA.concat(fanB, hi, [$("youA"), $("youB")]).forEach(function (el) { draw(el, 0); });
+    ["axes", "lblLuck", "lblYou", "lblBar"].forEach(function (id) { show(id, 0); });
+    unstamp();
+    $("bubble").classList.remove("on");
+    flip.svg.classList.remove("walking");
+    flip.mood("idle");
+    walkTo(0);
+    render();
+  }
+  function setPlaying(on) {
+    clock.playing = on;
+    $("stage").classList.toggle("paused", !on);
+    $("playLabel").textContent = EOL.reduce ? "Next" : on ? "Pause" : "Play";
+    $("playIcon").setAttribute("d", on && !EOL.reduce ? "M3 2h3v10H3zM8 2h3v10H8z" : "M3 1.5v11l9.5-5.5z");
+  }
+  async function start(from) {
+    var g = ++gen;
+    clock.waits = []; clock.tweens = [];
+    ended = false; nextResolve = null;
+    reset();
+    setPlaying(true);
+    try {
+      fast = true;
+      for (var i = 0; i < from; i++) { mark(i); await SCENES[i].play(); }
+      fast = EOL.reduce;
+      for (i = from; i < SCENES.length; i++) {
+        mark(i);
+        await SCENES[i].play();
+        if (EOL.reduce && i < SCENES.length - 1) {
+          await new Promise(function (res) { nextResolve = res; });
+          if (g !== gen) throw CANCEL;
+        }
+      }
+      fast = false;
+      ended = true;
+      chapters.querySelectorAll("button").forEach(function (b) { b.classList.add("done"); });
+      $("playLabel").textContent = "Watch again";
+      $("playIcon").setAttribute("d", "M3 1.5v11l9.5-5.5z");
+    } catch (e) {
+      fast = false;
+      if (e !== CANCEL) throw e;
+    }
+  }
+  $("play").addEventListener("click", function () {
+    if (ended) { start(0); return; }
+    if (EOL.reduce) { if (nextResolve) { var r = nextResolve; nextResolve = null; r(); } return; }
+    setPlaying(!clock.playing);
+  });
+  $("restart").addEventListener("click", function () { start(0); });
+  document.addEventListener("keydown", function (e) {
+    if (e.key === " " && e.target === document.body) { e.preventDefault(); $("play").click(); }
+  });
+  document.addEventListener("eol:theme", render);
+  window.EOLStory = { start: start, pause: function () { setPlaying(false); } };   // for screenshots and tests
+  setTimeout(function () { start(0); }, 350);
+})();
+</script>
+</body>
+</html>

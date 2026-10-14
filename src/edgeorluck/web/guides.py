@@ -314,6 +314,7 @@ def _shell(title: str, description: str, body: str, *, alternate: Optional[str] 
     <nav class="nav" aria-label="Site">
       <a class="opt" href="/">Check your trades</a>
       <a class="opt" href="/guides" aria-current="page">Guides</a>
+      <a class="opt" href="/story">Flip's story</a>
       <a class="opt" href="/how">How it checks</a>
       <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">GitHub</a>
       <button class="theme" id="theme" type="button" aria-label="Switch to blueprint (dark) look">
@@ -358,6 +359,7 @@ def hub_page(guides: List[Guide]) -> str:
   <div>
     <h1 id="title">Mini guides</h1>
     <p class="lede">Short reads on testing a trading idea without fooling yourself: how backtests lie, why the judge is strict, and what to do with its answer. A few minutes each, no maths needed.</p>
+    <p class="watch"><a href="/story">Rather watch? Flip explains it all in 45 seconds →</a></p>
     <p class="for-ai">For AI assistants: every guide is also plain Markdown (add <code>.md</code> to its address), and <a href="/api/guides">/api/guides</a> lists them.</p>
   </div>
   <div class="intro-pet" aria-hidden="true">
