@@ -1,6 +1,6 @@
 {
  "schema_version": "1.0",
- "engine_version": "2.3.0",
+ "engine_version": "2.4.0",
  "status": "need_input",
  "input_fingerprint": null,
  "verdict": null,
@@ -78,7 +78,7 @@
   "The comparison with buying and holding is rough: it assumes the price moved at a steady pace.",
   "It judges the trades it is given. It can't see a bug in the backtest, only signs of one."
  ],
- "markdown": "## Edge or luck: need the trades\n\n**We couldn't judge this yet.** We couldn't find a profit/P&L column, or buy/sell fills. Columns we saw: a, b.\n\n**What we need:** One row per closed trade with its result (money or %), ideally with the close date. Or one row per fill with time, pair, side (buy/sell), price, quantity and fee. Or a plain list of results per trade.\n\n**Ask the trader:** Can you export the closed trades? In TradingView: Strategy Tester, then 'List of trades', then export. On an exchange: spot trade history (fills), as CSV.\n\n_edge or luck 2.3.0 (schema 1.0), input n/a. The same input always gets the same answer. Not financial advice: a statistical check of past trades._",
+ "markdown": "## Edge or luck: need the trades\n\n**We couldn't judge this yet.** We couldn't find a profit/P&L column, or buy/sell fills. Columns we saw: a, b.\n\n**What we need:** One row per closed trade with its result (money or %), ideally with the close date. Or one row per fill with time, pair, side (buy/sell), price, quantity and fee. Or a plain list of results per trade.\n\n**Ask the trader:** Can you export the closed trades? In TradingView: Strategy Tester, then 'List of trades', then export. On an exchange: spot trade history (fills), as CSV.\n\n_edge or luck 2.4.0 (schema 1.0), input n/a. The same input always gets the same answer. Not financial advice: a statistical check of past trades._",
  "sample": null,
  "track_record": {
   "predictions": 0,

@@ -389,20 +389,40 @@ def price_csv(tmp_path):
     return path
 
 
-def test_mcp_backtest_and_tune_tools_called_directly(price_csv):
-    from edgeorluck.mcp_server import backtest_rule, rule_language, tune_rule
-    md = backtest_rule(buy="rsi(3) < 15", sell="rsi(3) > 60", prices_file=str(price_csv), variants_tried=3)
-    assert md.startswith("## Honest backtest:") and "## Edge or luck" in md
+def test_mcp_tools_called_directly_count_every_version_they_judge(price_csv):
+    from edgeorluck import mcp_server as m
+    m.SESSION.clear()
+    a, b = [1.0, -0.5, 2.0] * 20, [1.0, -0.4, 2.0] * 20
+    assert "This session" not in m.judge_trades(pnl=a) + m.judge_trades(pnl=a, fees_included=True)  # one version
+    full, short = m.judge_trades(pnl=b, detail="full"), m.judge_trades(pnl=b)
+    assert "This session has judged 2" in full and '"variants_tried": 2' in full and "```json" not in short
+    md = m.backtest_rule(buy="rsi(3) < 15", sell="rsi(3) > 60", prices_file=str(price_csv), variants_tried=3)
+    assert md.startswith("## Honest backtest:") and "## Edge or luck" in md and "has judged 3" in md
     for grid in ({"low": [10, 20], "high": [60, 70]}, '{"low": [10, 20], "high": [60, 70]}'):
-        md = tune_rule(buy="rsi(3) < {low}", sell="rsi(3) > {high}", grid=grid, prices_file=str(price_csv))
+        md = m.tune_rule(buy="rsi(3) < {low}", sell="rsi(3) > {high}", grid=grid, prices_file=str(price_csv))
         assert md.startswith("## Honest tuning:") and "Tried 4 settings" in md
-    assert backtest_rule(buy="close.__class__ > 1", prices_file=str(price_csv)).startswith("Couldn't run")
-    assert backtest_rule(buy="close > 1", sell="close < 1", prices_file="nope.csv").startswith("Couldn't run")
-    assert tune_rule(buy="rsi(3) < {low}", sell="rsi(3) > 70", grid="not json",
-                     prices_file=str(price_csv)).startswith("Couldn't tune")
-    doc = rule_language()
-    for name in eol.RULE_FUNCTIONS:
-        assert f"{name}(" in doc
+    assert m.backtest_rule(buy="close.__class__ > 1", prices_file=str(price_csv)).startswith("Couldn't run")
+    assert m.backtest_rule(buy="close > 1", sell="close < 1", prices_file="nope.csv").startswith("Couldn't run")
+    assert m.tune_rule(buy="rsi(3) < {low}", sell="rsi(3) > 70", grid="not json",
+                       prices_file=str(price_csv)).startswith("Couldn't tune") and len(m.SESSION) == 5  # failed: none
+    assert all(f"{name}(" in m.rule_language() for name in eol.RULE_FUNCTIONS)
+
+
+def test_a_frozen_rule_is_judged_on_its_later_trades_only(price_csv, tmp_path, monkeypatch):
+    from edgeorluck import mcp_server as m
+    monkeypatch.setattr(m, "FROZEN", str(tmp_path / "frozen.json"))
+    assert "needs prices with dates" in m.forward_test(m.backtest_rule(
+        buy="rsi(3) < 15", max_hold_bars=5, prices_file=str(price_csv), freeze=True).split("Frozen as `")[1][:8])
+    walk(2500, seed=4).rename_axis("time").reset_index().to_csv(price_csv, index=False)
+    key = m.backtest_rule(buy="rsi(3) < 15", sell="rsi(3) > 60", prices_file=str(price_csv), freeze=True)
+    key = key.split("Frozen as `")[1][:8]
+    assert "No trades since it was frozen yet" in m.forward_test(key) and "No frozen rule 'x'" in m.forward_test("x")
+    book = json.loads((tmp_path / "frozen.json").read_text(encoding="utf-8"))
+    book[key]["since"] = "2024-03-01T00:00:00+00:00"                           # as if it had been frozen then
+    (tmp_path / "frozen.json").write_text(json.dumps(book), encoding="utf-8")
+    later = eol.backtest(walk(2500, seed=4), {"buy": "rsi(3) < 15", "sell": "rsi(3) > 60"}, since="2024-03-01")
+    assert later["trades"] and min(t["entry_time"] for t in later["trades"]) >= "2024-03-01"
+    assert "entered after 2024-03-01" in (fwd := m.forward_test(key)) and f"{later['stats']['trades']:,} trades" in fwd
 
 
 def test_cli_backtest_and_tune(price_csv, capsys):

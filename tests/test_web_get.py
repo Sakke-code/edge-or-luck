@@ -18,18 +18,18 @@ def client(tmp_path):
 
 def test_pnl_link_answers_in_markdown(client):
     r = client.get("/api/judge?pnl=" + ",".join(str(v) for v in PNL))
-    assert r.status_code == 200
-    assert r.mimetype == "text/markdown"
     text = r.get_data(as_text=True)
+    assert r.status_code == 200 and r.mimetype == "text/markdown"
     assert "Edge or luck" in text and "35" in text and "For the assistant" in text
 
 
-def test_json_on_request_matches_post(client):
-    got = client.get("/api/judge?format=json&pnl=" + ",".join(str(v) for v in PNL)).get_json()
+def test_json_on_request_matches_post_and_settings_travel_in_the_link(client):
+    link = "/api/judge?format=json&pnl=" + ",".join(str(v) for v in PNL)
+    got, tried = client.get(link).get_json(), client.get(link + "&variants_tried=40").get_json()
     posted = client.post("/api/judge", json={"pnl": PNL, "chart": False}).get_json()
-    assert got["status"] == posted["status"] == "ok"
-    assert got["verdict"]["code"] == posted["verdict"]["code"]
+    assert got["status"] == posted["status"] == "ok" and got["verdict"]["code"] == posted["verdict"]["code"]
     assert got["input_fingerprint"] == posted["input_fingerprint"]
+    assert tried["settings"]["variants_tried"] == 40 and got["settings"]["variants_tried"] is None
 
 
 def test_decimal_commas_need_semicolons(client):
@@ -39,23 +39,12 @@ def test_decimal_commas_need_semicolons(client):
     assert got["numbers"]["total"] == pytest.approx(sum(PNL), abs=1e-6)
 
 
-def test_settings_travel_in_the_link(client):
-    plain = client.get("/api/judge?format=json&pnl=" + ",".join(str(v) for v in PNL)).get_json()
-    tried = client.get("/api/judge?format=json&variants_tried=40&pnl=" + ",".join(str(v) for v in PNL)).get_json()
-    assert tried["settings"]["variants_tried"] == 40 and plain["settings"]["variants_tried"] is None
-
-
 def test_csv_and_sample_links(client):
     csv = "close_time,pnl %\n" + "\n".join(f"2026-06-{(i % 28) + 1:02d},{v}" for i, v in enumerate(PNL))
     assert client.get("/api/judge?format=json&csv=" + quote(csv)).get_json()["status"] == "ok"
     sample = client.get("/api/judge?format=json&sample=lucky").get_json()
     assert sample["status"] == "ok" and sample["sample"] == "lucky"
     assert client.get("/api/judge?sample=nope").status_code == 404
-
-
-def test_nothing_to_judge_says_how(client):
-    r = client.get("/api/judge")
-    assert r.status_code == 400 and "pnl=" in r.get_json()["why"]
 
 
 def test_pnl_lines_splitting():

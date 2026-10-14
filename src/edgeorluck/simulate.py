@@ -26,11 +26,9 @@ What makes them honest:
 """
 from __future__ import annotations
 
-import copy
 import itertools
-import json
 import math
-from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -303,40 +301,10 @@ def _sim_delay_check(base: Sequence[Dict[str, Any]], later: Sequence[Dict[str, A
 
 # ── the backtest ──────────────────────────────────────────────────────────────
 
-class _SimMapping(Mapping):
-    def __init__(self, data: Dict[str, Any]) -> None:
-        self._data = data
-
-    def __getitem__(self, key: str) -> Any:
-        return self._data[key]
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(self._data)
-
-    def __len__(self) -> int:
-        return len(self._data)
-
-    def to_dict(self) -> Dict[str, Any]:
-        return copy.deepcopy(self._data)
-
-    def to_json(self, indent: Optional[int] = 2) -> str:
-        return json.dumps(self._data, indent=indent, ensure_ascii=False, allow_nan=False, default=str)
-
-    def _repr_markdown_(self) -> str:
-        return self.to_markdown()  # type: ignore[attr-defined]
-
-    def __str__(self) -> str:
-        return self.to_markdown()  # type: ignore[attr-defined]
-
-
-class Backtest(_SimMapping):
+class Backtest(Result):
     """An honest backtest and its verdict: read it like a dict, or call
     .to_markdown(), .to_dict(), .to_json(); .judgement is the judge's Result and
     .trades the trades as a table."""
-
-    @property
-    def status(self) -> str:
-        return self._data["status"]
 
     @property
     def judgement(self) -> Optional[Result]:
@@ -349,10 +317,6 @@ class Backtest(_SimMapping):
 
     def to_markdown(self) -> str:
         return _sim_markdown(self._data)
-
-    def __repr__(self) -> str:
-        j = self._data.get("judgement") or {}
-        return f"<edgeorluck.Backtest {self.status}: {(j.get('verdict') or {}).get('headline', self._data['headline'])!r}>"
 
 
 def _sim_describe_rule(rule: Any) -> Dict[str, Any]:
@@ -425,7 +389,7 @@ def _sim_rule(rule: Any) -> Any:
 
 def backtest(prices: Any, rule: Any, *, fee_pct: float = DEFAULT_FEE_PCT, slippage_pct: float = DEFAULT_SLIPPAGE_PCT,
              allow_short: bool = False, variants_tried: Any = None, check_peeking: bool = True,
-             name: Optional[str] = None) -> Backtest:
+             name: Optional[str] = None, since: Any = None) -> Backtest:
     """Run a rule honestly on prices and judge the trades.
 
     prices: edgeorluck.prices(...), a DataFrame with a close column (open, high, low,
@@ -436,6 +400,8 @@ def backtest(prices: Any, rule: Any, *, fee_pct: float = DEFAULT_FEE_PCT, slippa
         (1 long, 0 flat, -1 short with allow_short=True, or True/False).
     fee_pct, slippage_pct: per fill, in percent (0.1 = 0.1%).
     variants_tried: how many rules or settings were tried in all before this one.
+    since: a forward test: only trades entered after this time count (the rule was
+        frozen then, so none of them could have shaped it); earlier bars only warm up.
 
     A decision at a bar's close is filled at the next bar's open. A Python rule that
     looks into the future is caught and not judged."""
@@ -445,13 +411,17 @@ def backtest(prices: Any, rule: Any, *, fee_pct: float = DEFAULT_FEE_PCT, slippa
     label = name or (rule.name if isinstance(rule, Rule) and rule.name else None) or "Backtest"
     decisions, trades, peek, fills = _sim_run(frame, rule, delay=1, fee_pct=fee_pct, slippage_pct=slippage_pct,
                                               allow_short=allow_short, check_peeking=check_peeking)
+    if since is not None and not isinstance(frame.index, pd.DatetimeIndex):
+        raise PriceError("A forward test needs prices with dates: only the trades after the freeze count.")
+    lo = 0 if since is None else int((frame.index < pd.Timestamp(since, tz="UTC").tz_convert(frame.index.tz)).sum())
+    trades = [t for t in trades if t["entry_bar"] >= lo]
     _, fill_text = _sim_fill_prices(frame)
     data = {"source": frame.attrs.get("source", "your prices"), "bars": int(len(frame)),
             "first": _sim_when(frame, 0), "last": _sim_when(frame, len(frame) - 1), "filled_at": fill_text}
     out: Dict[str, Any] = {"status": "ok", "headline": "", "rule": _sim_describe_rule(rule), "data": data,
                            "costs": {"fee_pct": fee_pct, "slippage_pct": slippage_pct,
                                      "round_trip_pct": round(2 * (fee_pct + slippage_pct), 6)},
-                           "stats": _sim_stats(trades, frame, fills, 1), "checks": [], "trades": trades,
+                           "stats": _sim_stats(trades, frame, fills, 1, lo), "checks": [], "trades": trades,
                            "judgement": None, "for_the_assistant": list(SIM_FOR_THE_ASSISTANT)}
     for note in frame.attrs.get("notes", []):
         out["checks"].append(_sim_check("prices", "warn", note, "The backtest runs bar by bar in time order."))
@@ -471,13 +441,18 @@ def backtest(prices: Any, rule: Any, *, fee_pct: float = DEFAULT_FEE_PCT, slippa
         out["checks"].append(_sim_check(
             "no_look_ahead", "pass", "Written in the rule language, which only looks back.",
             "A rule that uses later bars looks better in a backtest than it can ever be live."))
+    if since is not None:
+        out["checks"].append(_sim_check("forward", "pass", f"A forward test: only trades entered after "
+                                        f"{_sim_show(str(since))} count, so none of them could have shaped the rule.",
+                                        "Trades a rule never saw while it was being chosen are the honest test of it."))
     if not trades:
         out["status"] = "no_trades"
-        out["headline"] = "The rule never traded on these prices."
+        out["headline"] = ("No trades since it was frozen yet." if since is not None else
+                           "The rule never traded on these prices: check its thresholds against them.")
         return Backtest(out)
     _, later, _, _ = _sim_run(frame, rule, delay=2, fee_pct=fee_pct, slippage_pct=slippage_pct,
                               allow_short=allow_short, check_peeking=False)
-    delay_check = _sim_delay_check(trades, later)
+    delay_check = _sim_delay_check(trades, [t for t in later if t["entry_bar"] >= lo])
     out["checks"].append(delay_check)
     free = fee_pct + slippage_pct == 0
     out["checks"].append(_sim_check(
@@ -505,15 +480,11 @@ def backtest(prices: Any, rule: Any, *, fee_pct: float = DEFAULT_FEE_PCT, slippa
 
 # ── tuning on one part, judging on the other ─────────────────────────────────
 
-class Tuned(_SimMapping):
+class Tuned(Result):
     """Honest tuning: the settings chosen on the first part of the data, judged once
     on the part it never saw. .judgement is that verdict; .in_sample the judge's
     view of the chosen settings on the data that chose them, with the bar raised
     for every setting tried; .table every setting's results."""
-
-    @property
-    def status(self) -> str:
-        return self._data["status"]
 
     @property
     def best(self) -> Optional[Dict[str, float]]:
@@ -535,9 +506,6 @@ class Tuned(_SimMapping):
 
     def to_markdown(self) -> str:
         return _sim_tune_markdown(self._data)
-
-    def __repr__(self) -> str:
-        return f"<edgeorluck.Tuned {self.status}: {self._data['headline']!r}>"
 
 
 def _sim_grid(grid: Mapping[str, Sequence[Any]]) -> List[Dict[str, Any]]:
@@ -572,7 +540,7 @@ def _sim_t(r: np.ndarray, min_n: int) -> float:
 
 def tune(prices: Any, rule: Any, grid: Mapping[str, Sequence[Any]], *, holdout: float = 0.3,
          fee_pct: float = DEFAULT_FEE_PCT, slippage_pct: float = DEFAULT_SLIPPAGE_PCT, allow_short: bool = False,
-         min_trades: int = MIN_TUNE_TRADES, name: Optional[str] = None) -> Tuned:
+         min_trades: int = MIN_TUNE_TRADES, name: Optional[str] = None, variants_tried: Any = None) -> Tuned:
     """Try every combination of settings on the first part of the prices, pick the
     best there, and judge it once on the last part (holdout, 30% by default), which
     played no part in the choice.
@@ -581,6 +549,7 @@ def tune(prices: Any, rule: Any, grid: Mapping[str, Sequence[Any]], *, holdout: 
         "sell": "rsi(14) > {high}"}, or a Python function taking the settings and
         returning a rule (a dict or a Python rule).
     grid: the values to try for each setting, like {"low": [20, 25, 30], "high": [65, 70, 75]}.
+    variants_tried: rules judged on these prices in all, this one included (the others saw the unseen part).
 
     Don't tune again after seeing the verdict on the unseen part: that turns it into
     tuning data too."""
@@ -661,7 +630,7 @@ def tune(prices: Any, rule: Any, grid: Mapping[str, Sequence[Any]], *, holdout: 
         out["headline"] = ("The chosen settings barely traded in the unseen part, so it can't judge them. Keep more "
                            "data unseen (a bigger holdout) or use a longer history.")
         return Tuned(out)
-    j = _sim_judge(outs, label + " (unseen part)", unseen_stats["hold_pct"], 1)
+    j = _sim_judge(outs, label + " (unseen part)", unseen_stats["hold_pct"], variants_tried or 1)
     out["out_of_sample"] = j.to_dict()
     out["headline"] = j.headline
     _, later, _, _ = _sim_run(frame, best, delay=2, fee_pct=fee_pct, slippage_pct=slippage_pct,
@@ -702,7 +671,7 @@ def _sim_markdown(d: Dict[str, Any]) -> str:
               f"{_sim_pct(st['hold_pct'])} for simply holding; in the market {100 * st['time_in_market']:.0f}% of the "
               "time.", ""]
     if d["status"] == "no_trades":
-        lines += [f"**{d['headline']}** Check the rule's thresholds against these prices.", ""]
+        lines += [f"**{d['headline']}**", ""]
     lines += ["### Honesty checks", ""] + _sim_checks_md(d["checks"]) + [""]
     if d.get("judgement"):
         lines += [Result(d["judgement"]).to_markdown().rstrip(), ""]

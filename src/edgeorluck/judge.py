@@ -37,9 +37,14 @@ from .compare import compare_runs
 from .readers import ReadResult, Trades, _normalize_unit, number, read_any
 from .words import count, day, fmt, how_often, iso_day, join_and, one_in, rnd, round_list, share
 
-ENGINE_VERSION = "2.3.0"
+ENGINE_VERSION = "2.4.0"
 SCHEMA_VERSION = "1.0"
 CHANGELOG = [
+    {"version": "2.4.0", "date": "2026-10-14",
+     "change": "For assistants: the MCP server counts every record and rule it judges in a session as a version "
+               "tried, so the bar rises even when nobody says. backtest_rule(freeze=true) keeps a rule, and the new "
+               "forward_test judges it on the trades it made after that only (backtest(since=...) in Python). "
+               "judge_trades answers in Markdown alone unless asked for the JSON; result_schema is gone."},
     {"version": "2.3.0", "date": "2026-10-14",
      "change": "Every measured error rate is now under 1%. Streaky records checked every 10 trades: wrongly real "
                "0.8% (was 1.9%), from an allowance of 12/n for the noise in the streakiness estimate. A steady "
@@ -618,7 +623,7 @@ def _card(st: Trades, m: Dict[str, Any], *, up: bool, down: bool, settings: Sett
         card.update(verdict=_verdict("too_early", "No trades to judge.", "We found no closed trades."),
                     checks=[], ask_the_user=[], what_would_change_it=[], next_step=None, numbers=None)
         return card
-    mean, total, sd_eff = m["mean"], m["total"], m["sd_eff"]
+    mean, total = m["mean"], m["total"]
     wins, losses = x[x > 0], x[x < 0]
     win_rate = len(wins) / n
     worst_dd, current_dd, since_peak = _drawdown(x)
@@ -1065,15 +1070,11 @@ def _checks(st, read, settings, n, code, mean, unit, fees, top3, drawdown, recen
             out.append(_check("versions_tried", "pass", f"Counted the {count(versions, 'version')} you tried.",
                               "Trying many versions and keeping the best one makes luck look like skill. The bar is "
                               "raised to match."))
-        elif strategies > 1:
-            out.append(_check("versions_tried", "warn", f"Judged across your {strategies} strategies, but we don't "
-                                                        "know how many versions you tried in total.",
-                              "Each version you tried is another chance for luck to look good.",
-                              "Tell us how many versions or settings you tried (variants_tried)."))
         else:
-            out.append(_check("versions_tried", "warn", "We don't know how many versions you tried before this one.",
-                              "If you tried 40 versions, one of them looks good by luck alone, so the bar for "
-                              "'real' must be higher.",
+            out.append(_check("versions_tried", "warn", f"Judged across your {strategies} strategies, but we don't "
+                              "know how many versions you tried in total." if strategies > 1 else "We don't know how "
+                              "many versions you tried before this one.", "If you tried 40 versions, one of them looks "
+                              "good by luck alone, so the bar for 'real' must be higher.",
                               "Tell us how many versions or settings you tried (variants_tried)."))
     fees_known = settings.fees_included if settings.fees_included is not None else st.fees_included
     if "fees_subtracted" in st.notes:

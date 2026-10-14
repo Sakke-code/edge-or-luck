@@ -165,9 +165,10 @@ A versioned JSON result (`schema_version` 1.0; `edgeorluck.schema()` or `edgeorl
 
 The MCP server runs on your machine, so the assistant can pass the path of your export. Its tools:
 
-- `judge_trades` takes `file_path`, `csv_text` or `pnl`, plus `variants_tried`, `benchmark_return_pct`, `fees_included`, `source`, `unit` and the `backtest_...` fields.
-- `backtest_rule` and `tune_rule` test an idea honestly, on fetched prices or a local price file.
+- `judge_trades` takes `file_path`, `csv_text` or `pnl`, plus `variants_tried`, `benchmark_return_pct`, `fees_included`, `source`, `unit` and the `backtest_...` fields. It answers in Markdown (`detail="full"` adds the JSON).
+- `backtest_rule` and `tune_rule` test an idea honestly, on fetched prices or a local price file. `freeze=true` keeps a rule, and `forward_test` later judges only the trades it made after that: the honest way to a verdict after many tries.
 - `rule_language` lists the rule language.
+- The server counts every record and rule it judges in a session as a version tried, so the bar rises with them even when nobody says.
 
 These use [uv](https://docs.astral.sh/uv/)'s `uvx`, which fetches the package from PyPI on first use:
 

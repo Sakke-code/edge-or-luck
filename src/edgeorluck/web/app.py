@@ -157,28 +157,14 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
     limiter = RateLimiter(rate_limit)
     app.config["EDGEORLUCK_LEDGER"] = book
 
-    @app.get("/")
-    def page():
-        if (STATIC / "index.html").exists():
-            return send_from_directory(STATIC, "index.html")
-        return "<!doctype html><title>edge or luck</title><p>edge or luck: the page is not built yet. The API is at " \
-               "<a href='/api/samples'>/api/samples</a>.</p>"
+    @app.get("/", defaults={"name": "index"})
+    @app.get("/<any(how, story, play):name>")
+    def page(name: str):
+        return send_from_directory(STATIC, f"{name}.html")
 
     @app.get("/assets/<path:name>")
     def assets(name: str):
         return send_from_directory(STATIC / "assets", name)
-
-    @app.get("/how")
-    def how_page():
-        return send_from_directory(STATIC, "how.html")
-
-    @app.get("/story")
-    def story_page():
-        return send_from_directory(STATIC, "story.html")
-
-    @app.get("/play")
-    def play_page():
-        return send_from_directory(STATIC, "play.html")
 
     @app.get("/guides")
     def guides_hub():
@@ -446,24 +432,14 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
         result["privacy"] = PRIVACY
         return result
 
-    @app.errorhandler(500)
-    def server_error(_):
-        return _error("something went wrong on our side", "This is our bug. Try again, or try a CSV export of the "
-                                                         "closed trades.", 500)
-
-    @app.errorhandler(413)
-    def too_large(_):
-        return _error("too large", f"Files over {MAX_UPLOAD // (1024 * 1024)} MB are not read. Export a shorter "
-                                   "period, or only the closed trades.", 413)
-
-    @app.errorhandler(404)
-    def not_found(_):
-        return _error("not found", "See / for the page and /api/samples for the API.", 404)
-
-    @app.errorhandler(405)
-    def wrong_method(_):
-        return _error("method not allowed", "GET or POST /api/judge; GET everything else.", 405)
-
+    for code, error, why in (
+            (500, "something went wrong on our side", "This is our bug. Try again, or try a CSV export of the closed "
+                                                      "trades."),
+            (413, "too large", f"Files over {MAX_UPLOAD // (1024 * 1024)} MB are not read. Export a shorter period, or "
+                               "only the closed trades."),
+            (404, "not found", "See / for the page and /api/samples for the API."),
+            (405, "method not allowed", "GET or POST /api/judge; GET everything else.")):
+        app.register_error_handler(code, lambda _, c=code, e=error, w=why: _error(e, w, c))
     return app
 
 

@@ -138,7 +138,7 @@ def test_the_samples_engine_schema_health_and_llms(client):
     info = client.get("/api/engine").get_json()
     assert info["version"] and info["changelog"]
     assert client.get("/api/schema").get_json()["title"].startswith("edge or luck")
-    assert client.get("/healthz").get_json()["ok"] is True
+    assert client.get("/healthz").get_json()["ok"] and "false_real_edge" in client.get("/api/validation").get_json()
     llms = client.get("/llms.txt")
     assert llms.status_code == 200 and llms.mimetype == "text/plain" and b"edge or luck" in llms.data.lower()
 
@@ -229,16 +229,10 @@ def test_the_rate_limit(tmp_path):
 def test_the_page_assets_and_the_one_file_download(client):
     page = client.get("/")
     assert page.status_code == 200 and b"edge or luck" in page.data.lower()
+    assert all(client.get(p).status_code == 200 for p in ("/how", "/story", "/play"))
     single = client.get("/edgeorluck_single.py")
     assert single.status_code == 200 and "attachment" in single.headers["Content-Disposition"]
     compile(single.data.decode("utf-8"), "edgeorluck_single.py", "exec")
-
-
-def test_validation_endpoint(client):
-    r = client.get("/api/validation")
-    assert r.status_code in (200, 404)
-    if r.status_code == 200:
-        assert "false_real_edge" in r.get_json()
 
 
 def test_private_samples_load_from_outside_the_repo(tmp_path, monkeypatch):

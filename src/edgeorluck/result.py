@@ -36,13 +36,13 @@ class Result(Mapping):
     @property
     def headline(self) -> str:
         v = self._data.get("verdict")
-        return v["headline"] if v else self._data["summary"]["headline"]
+        return v["headline"] if v else self._data.get("summary", self._data)["headline"]
 
     def to_dict(self) -> Dict[str, Any]:
         return copy.deepcopy(self._data)
 
     def to_json(self, indent: Optional[int] = 2) -> str:
-        return json.dumps(self._data, indent=indent, ensure_ascii=False, allow_nan=False)
+        return json.dumps(self._data, indent=indent, ensure_ascii=False, allow_nan=False, default=str)
 
     def to_markdown(self) -> str:
         return to_markdown(self._data)
@@ -52,7 +52,7 @@ class Result(Mapping):
 
     def __repr__(self) -> str:
         code = (self._data.get("verdict") or {}).get("code", self.status)
-        return f"<edgeorluck.Result {code}: {self.headline!r}>"
+        return f"<edgeorluck.{type(self).__name__} {code}: {self.headline!r}>"
 
     def __str__(self) -> str:
         return self.to_markdown()

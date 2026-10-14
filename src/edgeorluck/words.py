@@ -44,14 +44,6 @@ def fmt(value: Optional[float], unit: str, signed: bool = True, ref: Optional[fl
     return f"{text} {unit}"
 
 
-def unit_words(unit: str) -> str:
-    if unit == "%":
-        return "percent per trade"
-    if unit == "money":
-        return "money (currency not given)"
-    return unit
-
-
 def share(value: Optional[float]) -> str:
     """A share as a whole percent, never rounded to 0% or 100% when it isn't one
     (1 loss in 300 trades is a win rate of "over 99%", not "100%")."""

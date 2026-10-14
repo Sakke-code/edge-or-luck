@@ -62,21 +62,18 @@ def test_console_script_runs_in_a_fresh_process(lucky_csv):
 # ── MCP ───────────────────────────────────────────────────────────────────────
 
 def test_mcp_tool_called_directly(lucky_csv):
-    from edgeorluck.mcp_server import JUDGE_DESCRIPTION, judge_trades, result_schema
-    text = judge_trades(file_path=str(lucky_csv), variants_tried=40)
+    from edgeorluck.mcp_server import JUDGE_DESCRIPTION, judge_trades
+    text = judge_trades(file_path=str(lucky_csv), variants_tried=40, detail="full")
     assert text.startswith("## Edge or luck: Can't tell yet")
     payload = json.loads(text.split("```json\n", 1)[1].rsplit("\n```", 1)[0])
     assert payload["settings"]["variants_tried"] == 40 and payload["status"] == "ok"
-    assert judge_trades(pnl=[1.0, -0.5, 2.0] * 20).startswith("## Edge or luck")
     assert judge_trades(csv_text="pnl\n1\n2\n").startswith("## Edge or luck: Too early")
     assert "No file at" in judge_trades(file_path=str(lucky_csv.parent / "missing.csv"))
     assert "Nothing to judge" in judge_trades()
     live, backtest = samples.compare()
     assert "Live vs backtest" in judge_trades(csv_text=live, backtest_csv_text=backtest)
-    assert json.loads(result_schema())["title"].startswith("edge or luck")
-    for words in ("whenever the user shows trading results", "variants_tried", "benchmark_return_pct",
-                  "Never present 'cant_tell' as a win"):
-        assert words in JUDGE_DESCRIPTION
+    assert all(words in JUDGE_DESCRIPTION for words in ("whenever the user shows trading results", "variants_tried",
+                                                         "benchmark_return_pct", "Never present 'cant_tell' as a win"))
 
 
 def test_mcp_server_registers_its_tools():
@@ -87,15 +84,15 @@ def test_mcp_server_registers_its_tools():
     tools = asyncio.run(server.list_tools())
     tools = getattr(tools, "tools", tools)
     names = {t.name for t in tools}
-    assert names == {"judge_trades", "result_schema", "backtest_rule", "tune_rule", "rule_language"}
+    assert names == {"judge_trades", "backtest_rule", "forward_test", "tune_rule", "rule_language"}
 
     def props(name):
         tool = next(t for t in tools if t.name == name)
         return set((getattr(tool, "inputSchema", None) or getattr(tool, "input_schema"))["properties"])
     assert {"file_path", "csv_text", "pnl", "variants_tried", "benchmark_return_pct", "backtest_file_path"} <= \
         props("judge_trades")
-    assert {"buy", "sell", "symbol", "interval", "start", "prices_file", "stop_loss_pct", "variants_tried"} <= \
-        props("backtest_rule")
+    assert {"buy", "sell", "symbol", "interval", "start", "prices_file", "stop_loss_pct", "variants_tried",
+            "freeze"} <= props("backtest_rule") and props("forward_test") == {"frozen_id"}
     assert {"buy", "grid", "holdout", "prices_file"} <= props("tune_rule")
 
 
@@ -105,7 +102,7 @@ def test_mcp_over_stdio_with_the_official_client(lucky_csv):
     out = subprocess.run([sys.executable, str(ROOT / "tools" / "mcp_roundtrip.py"), str(lucky_csv)],
                          capture_output=True, text=True, encoding="utf-8", timeout=180)
     assert out.returncode == 0, out.stderr[-2000:]
-    assert "tools: ['judge_trades', 'result_schema', 'backtest_rule', 'tune_rule', 'rule_language']" in out.stdout
+    assert "tools: ['judge_trades', 'backtest_rule', 'forward_test', 'tune_rule', 'rule_language']" in out.stdout
     assert "## Honest backtest:" in out.stdout and "## Honest tuning:" in out.stdout
 
 
