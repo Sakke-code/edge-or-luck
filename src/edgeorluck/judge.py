@@ -41,13 +41,12 @@ ENGINE_VERSION = "2.5.0"
 SCHEMA_VERSION = "1.0"
 CHANGELOG = [
     {"version": "2.5.0", "date": "2026-10-14",
-     "change": "The league (/league): rules frozen in public, judged only on the trades they make after the freeze, "
-               "on Binance's public prices, with a verdict for the owner (counting every rule they froze) and one "
-               "across the league (e-BH over every rule anyone froze); hash-chained, and each rule's page shows how "
-               "to recompute it. One hosted app (edgeorluck[host], Dockerfile) serves the site and an MCP server "
-               "over HTTP at /mcp for chat assistants: no file access, a study id to count versions across calls, "
-               "freezes into the league. The MCP server is now built in: uvx edgeorluck mcp (server.json for the "
-               "MCP registry)."},
+     "change": "For assistants on the web: one hosted app (edgeorluck[host], Dockerfile) serves the site, the MCP "
+               "tools over HTTP at /mcp for chat assistants, and the same tools as plain JSON at /api/tools/ with an "
+               "OpenAPI description (/openapi.json) for GPT actions. No file access; versions are counted per study "
+               "id the answers hand out (the protocol keeps no session); a frozen rule comes back as a receipt the "
+               "server signs, and forward_test judges only its trades after that. The MCP server is built in: uvx "
+               "edgeorluck mcp (server.json for the MCP registry)."},
     {"version": "2.4.0", "date": "2026-10-14",
      "change": "For assistants: the MCP server counts every record and rule it judges in a session as a version "
                "tried, so the bar rises even when nobody says. backtest_rule(freeze=true) keeps a rule, and the new "

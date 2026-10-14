@@ -289,7 +289,7 @@ FAVICON = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox
            "%3E%3C/svg%3E")
 
 
-NAV = (("/", "Check your trades"), ("/guides", "Guides"), ("/league", "League"), ("/story", "Story"),
+NAV = (("/", "Check your trades"), ("/guides", "Guides"), ("/story", "Story"),
        ("/play", "Play"), ("/how", "How it checks"))
 
 

@@ -21,7 +21,7 @@ $ edgeorluck "BTC breakout.csv" --tried 40
 pip install edgeorluck            # the judge, the honest backtester and the MCP server for AI assistants
 pip install "edgeorluck[web]"     # + the web page and API
 pip install "edgeorluck[xlsx]"    # + Excel files
-pip install "edgeorluck[host]"    # + the hosted site: web page, league and MCP over HTTP in one app
+pip install "edgeorluck[host]"    # + the hosted site: web page, API and the assistant tools over HTTP
 ```
 
 The latest code, straight from GitHub: `pip install "edgeorluck[all] @ git+https://github.com/Sakke-code/edge-or-luck"`.
@@ -224,25 +224,20 @@ On Windows the Python is `C:\\path\\to\\edge-or-luck\\.venv\\Scripts\\python.exe
 
 [llms.txt](llms.txt) describes all of this for assistants in one page.
 
-## The league: rules frozen in public
+## Freeze a rule, then judge only what comes after
 
-A backtest, however honest, has seen its data. The league is the test that hasn't: a rule frozen in public is judged only on the trades it makes after the freeze, on Binance's public prices, so nobody could have tuned it on them. Every rule gets two verdicts:
-
-- **for its owner**, with the bar raised for every rule that owner froze (their tries, in the open);
-- **across the league**, with e-BH over every rule anyone froze, so tries hidden under other names can't help.
-
-The record is append-only and hash-chained (`/api/league/chain`), and each rule's page says how to recompute its trades with `backtest(..., since=frozen_at)`. Freeze from the page at `/league`, with `POST /api/league/freeze`, or from an assistant on the hosted MCP server with `backtest_rule(freeze=true)`; check with `forward_test`.
+A backtest, however honest, has seen its data. After many tries the honest test is the one that hasn't: freeze the rule, and judge only the trades it makes from then on. Nobody can tune a rule on trades that hadn't happened yet. `backtest_rule(freeze=true)` freezes it and `forward_test` judges it later; in Python, `backtest(prices, rule, since=frozen_at)`. On your machine the frozen rules are kept in `~/.edgeorluck/frozen.json`. On a hosted server nothing is kept: the freeze returns a receipt the server signs (the rule, its market, the time), and `forward_test(receipt)` checks the signature first, so a changed rule or an earlier date fails. Nothing is public.
 
 ## Host it
 
-One app serves the page, the guides, the league, the API and the MCP server for chat assistants that connect to a URL (ChatGPT, Claude) at `/mcp`:
+One app serves the page, the guides, the API and the assistant tools, for chat assistants that connect to a URL (ChatGPT, Claude) at `/mcp`, and as plain JSON at `/api/tools/...` for GPT actions (described at `/openapi.json`):
 
 ```bash
 docker build -t edgeorluck . && docker run -p 8080:8080 -v eol-data:/data edgeorluck
 # or: pip install "edgeorluck[host]" && uvicorn --factory edgeorluck.web.remote:make_app --port 8080
 ```
 
-Keep `/data` (`EDGEORLUCK_DATA_DIR`) on a volume: the league and the forecast ledger live there. `EDGEORLUCK_HOSTS` (your host names, comma-separated) turns on the MCP server's host check. Over the web the tools never read files on anyone's computer, and since the protocol keeps no session, each answer names a study id for the assistant to pass back, so every version tried in a conversation still counts.
+Keep `/data` (`EDGEORLUCK_DATA_DIR`) on a volume: the forecast ledger lives there. Set `EDGEORLUCK_SECRET` (any long random text) so receipts outlive a restart, and `EDGEORLUCK_HOSTS` (your host names, comma-separated) to turn on the MCP server's host check. Over the web the tools never read files on anyone's computer, and since the protocol keeps no session, each answer names a study id for the assistant to pass back, so every version tried in a conversation still counts.
 
 ## How it judges (the short version)
 
