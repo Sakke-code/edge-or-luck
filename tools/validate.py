@@ -291,7 +291,8 @@ def write(results: Dict, quick: bool) -> None:
         f"- Normal trades: {pct(often['normal'])}",
         f"- Autocorrelated trades: {pct(often['autocorrelated'])} (with Newey-West alone it was "
         f"{pct(results['checked_often_newey_west_only']['autocorrelated'])}: Newey-West under-corrects at a few "
-        "dozen trades, so the spread is now widened by at least a bias-corrected AR(1) factor)",
+        "dozen trades, so the spread is now widened by at least a bias-corrected AR(1) factor, with an allowance "
+        "of 12/n for the noise in that factor's estimate)",
         "",
         "## 3. The best of many versions",
         "",

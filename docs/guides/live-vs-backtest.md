@@ -22,7 +22,7 @@ edgeorluck live.csv --backtest backtest.csv
 
 Measured on made-up strategies:
 
-- When live really is worse, the judge catches it by 200 live trades 66% of the time.
+- When live really is worse, the judge catches it by 200 live trades 59% of the time.
 - When live is as good as the backtest, it wrongly says "worse" 0.4% of the time, even when checked every 10 trades.
 
 ## What to do with the answer

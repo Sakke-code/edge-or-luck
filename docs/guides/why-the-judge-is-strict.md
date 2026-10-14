@@ -17,15 +17,15 @@ So the judge starts from "this is luck". It only moves when the record is too st
 
 The judge turns the record into one number, **the evidence**. With no edge, the evidence averages exactly 1 (that is proved, see [How it checks](../../README.md#how-it-judges-the-short-version)). A "real edge" needs evidence of at least **40**, and 40 × N when you tried N versions.
 
-That bar is what keeps it honest. On thousands of made-up strategies with no edge, it called a real edge 0.15% of the time. Checked again and again as the trades came in, it was fooled at most 1.9% of the time.
+That bar is what keeps it honest. On thousands of made-up strategies with no edge, it called a real edge 0.1% of the time. Checked again and again as the trades came in, it was fooled at most 0.8% of the time.
 
 ## The price: it's slow
 
 Strict means slow. Take a small but real edge, where the average trade is a fifth of a typical trade's swing up or down. The judge finds it:
 
-- 12% of the time at 100 trades;
-- 60% of the time at 300 trades;
-- 99.7% of the time at 1,000 trades.
+- 9% of the time at 100 trades;
+- 58% of the time at 300 trades;
+- 100% of the time at 1,000 trades.
 
 Until then it says **"can't tell yet"**, and when it can, it estimates how many more trades would settle it if the average holds.
 

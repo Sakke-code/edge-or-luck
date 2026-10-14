@@ -53,6 +53,7 @@ T_STAR = 100             # the mixture decides soonest around this many trades
 BASE_BAR = 2.0 / Q       # one strategy, one version: e >= 40
 SERIAL_ADJUST = True     # widen the spread when neighbouring trades move together (Newey-West)
 SERIAL_AR1_FLOOR = True  # ...and never by less than the bias-corrected AR(1) factor
+SERIAL_NOISE = 12.0      # ...with 12/n added to its lag-1 correlation, for that estimate's own noise
 SKEW_ADJUST = True       # raise a claim's bar when the trades are skewed against it (Edgeworth)
 SKEW_CAP = 6.0
 
@@ -292,10 +293,13 @@ def serial_factor(x: "np.ndarray") -> float:
     """How much neighbouring trades moving together widens the spread of the
     average: the larger of the Newey-West long-run variance ratio (Bartlett
     weights, 4 (n/100)^(2/9) lags) and the AR(1) ratio (1 + r) / (1 - r) with
-    Kendall's small-sample bias correction of the lag-1 correlation r. Newey-
-    West alone under-corrects at a few dozen trades (validation: 3.4% instead
-    of under 2.5% for AR 0.3 trades checked every 10 trades). Never below 1: a
-    negative correlation is not allowed to narrow the spread."""
+    Kendall's small-sample bias correction of the lag-1 correlation r, plus
+    SERIAL_NOISE / n (0.4 at 30 trades, 0.04 at 300). At a few dozen trades the
+    estimate of r is noisy, and a streaky record that happens to look calm
+    passes too easily. Validation, AR 0.3 trades checked every 10 trades:
+    Newey-West alone 3.4%, with Kendall's correction 1.9%, with the allowance
+    under 1%. Never below 1: a negative correlation is not allowed to narrow
+    the spread."""
     n = len(x)
     if not SERIAL_ADJUST or n < 20:
         return 1.0
@@ -309,7 +313,7 @@ def serial_factor(x: "np.ndarray") -> float:
         rho = float(np.dot(d[lag:], d[:-lag])) / n / var
         newey_west += 2.0 * (1.0 - lag / (lags + 1.0)) * rho
     r1 = float(np.dot(d[1:], d[:-1])) / n / var
-    r1 = min(0.8, r1 + (1.0 + 3.0 * r1) / n)
+    r1 = min(0.8, r1 + (1.0 + 3.0 * r1 + SERIAL_NOISE) / n)
     ar1 = (1.0 + r1) / (1.0 - r1) if (r1 > 0 and SERIAL_AR1_FLOOR) else 1.0
     return float(min(10.0, max(1.0, newey_west, ar1)))
 

@@ -37,9 +37,16 @@ from .compare import compare_runs
 from .readers import ReadResult, Trades, _normalize_unit, number, read_any
 from .words import count, day, fmt, how_often, iso_day, join_and, one_in, rnd, round_list, share
 
-ENGINE_VERSION = "2.2.1"
+ENGINE_VERSION = "2.3.0"
 SCHEMA_VERSION = "1.0"
 CHANGELOG = [
+    {"version": "2.3.0", "date": "2026-10-14",
+     "change": "Every measured error rate is now under 1%. Streaky records checked every 10 trades: wrongly real "
+               "0.8% (was 1.9%), from an allowance of 12/n for the noise in the streakiness estimate. A steady "
+               "edge called faded: 0.6% (was 1.4%), because the fade test now starts each resampled stretch "
+               "from an earlier average drawn from its own uncertainty, at 1 in 1,000 per window. The worst "
+               "single-look cell is 0.35% (was 0.8%). The cost is some power at small counts: a 0.3-sd edge is "
+               "found at 100 trades 34% of the time (was 43%), at 300 trades 97% (unchanged)."},
     {"version": "2.2.1", "date": "2026-10-14",
      "change": "The rest of the audit's reader fixes: cells like 'EUR 12.50', rare minus signs, 1.234.567 and clock "
                "times; one day-or-month reading per date column; open trades and pasted-together exports in "
@@ -83,7 +90,7 @@ MIN_LOSSES = 5            # "real edge" needs this many losing trades: an unseen
 FEW_TRADES = 100
 RECENT = 30
 FADED_WINDOWS = (30, 60)
-FADED_P = 0.0025          # each window; two windows -> about 0.5% for a false "faded"
+FADED_P = 0.001           # each window; two windows -> about 0.2% for a false "faded" (measured: 0.5%)
 STREAK_DRAWS = 20_000
 COIN_FLIPS = 1000
 FAN_PATHS = 40
@@ -257,6 +264,12 @@ def _stretch(earlier: np.ndarray, recent: np.ndarray, salt: str) -> Dict[str, fl
     rng = _rng(np.concatenate((earlier, recent)), salt)
     idx = rng.integers(0, len(earlier), size=(STREAK_DRAWS, w))
     paths = earlier[idx]
+    # The earlier average is itself uncertain (and lucky, for a record that passed): each stretch starts from an
+    # average drawn from that uncertainty, not the one observed. Taking it as exact made "faded" too easy
+    # (validation: a steady edge called faded 1.2% of the time, with this 0.5%).
+    if len(earlier) >= 2:
+        spread = float(np.std(earlier, ddof=1)) / math.sqrt(len(earlier))
+        paths = paths + rng.normal(0.0, spread, STREAK_DRAWS)[:, None]
     sums = paths.sum(axis=1)
     curve = np.concatenate((np.zeros((STREAK_DRAWS, 1)), np.cumsum(paths, axis=1)), axis=1)
     falls = (np.maximum.accumulate(curve, axis=1) - curve).max(axis=1)
@@ -1434,7 +1447,8 @@ HOW_WE_KNOW = [
     "'below zero' and positive skew. Skew never lowers a bar.",
     "Coin-flip copies flip the sign of each trade at random: same trades, same sizes, zero edge by construction.",
     "'Faded' needs the record to pass (as a whole, or its earlier trades on their own) and the latest 30 or 60 "
-    "trades to be worse than 99.75% of stretches resampled from the earlier trades.",
+    "trades to be worse than 99.9% of stretches resampled from the earlier trades, each starting from an earlier "
+    "average drawn from its own uncertainty.",
 ]
 
 

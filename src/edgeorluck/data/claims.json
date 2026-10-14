@@ -24,7 +24,7 @@
          "lean": ["Mixture.eMix_expectation_eq_one", "Mixture.eMix_expectation_le_one"]},
         {"status": "proved", "text": "More profit always means more evidence, never less.",
          "lean": ["Mixture.eMix_strictMono", "Mixture.logEStd_strictMono"]},
-        {"status": "measured", "text": "Real trades are not perfectly normal, and their spread has to be estimated. So we test it: on 42,000 made-up strategies with no edge, it called one a real edge 0.15% of the time, and at most 1.9% in the hardest case.",
+        {"status": "measured", "text": "Real trades are not perfectly normal, and their spread has to be estimated. So we test it: on 42,000 made-up strategies with no edge, it called one a real edge 0.1% of the time, and at most 0.8% in the hardest case.",
          "link": "VALIDATION.md"}
       ]
     },
@@ -63,7 +63,7 @@
          "lean": ["Selection.single_strategy_rule_q05"], "python": "evidence.describe_family"},
         {"status": "proved", "text": "Keeping the best of N versions and dividing its evidence by N is still fair evidence.",
          "lean": ["Selection.best_div_isEValue", "Selection.best_of_N_markov"]},
-        {"status": "measured", "text": "Keep the best of 1,000 random versions without saying so and I'm fooled 51% of the time. Say you tried 1,000 and it falls to 0.2%. That's why I ask.",
+        {"status": "measured", "text": "Keep the best of 1,000 random versions without saying so and I'm fooled 39% of the time. Say you tried 1,000 and it falls to 0.2%. That's why I ask.",
          "link": "VALIDATION.md"}
       ]
     },
@@ -83,7 +83,7 @@
         {"status": "proved", "text": "So the 95% range holds at every number of trades at once, and a strategy with no edge, or a losing one, is ever called real at most 1 time in 40.",
          "assumes": "Independent normal trades with a known spread.",
          "lean": ["Anytime.anytime_range_95", "Anytime.above_zero_false_alarm"]},
-        {"status": "measured", "text": "With the spread estimated from your trades and a check every 10 trades: wrongly “real” 0.5% of the time for ordinary trades, 1.9% for streaky ones.",
+        {"status": "measured", "text": "With the spread estimated from your trades and a check every 10 trades: wrongly “real” 0.4% of the time for ordinary trades, 0.8% for streaky ones.",
          "link": "VALIDATION.md"},
         {"status": "choice", "text": "No range before 30 trades. A spread measured on a handful of trades is too unsteady to promise anything (see my mistakes below)."}
       ]
@@ -160,7 +160,7 @@
     }
   ],
   "limits": [
-    {"status": "measured", "text": "Real trades are not normal, their spread is estimated, and they can depend on each other. The proofs above assume the textbook case; for real trades I measure instead. That is where 0.15%, and 1.9% at worst, come from.",
+    {"status": "measured", "text": "Real trades are not normal, their spread is estimated, and they can depend on each other. The proofs above assume the textbook case; for real trades I measure instead. That is where 0.1%, and 0.8% at worst, come from.",
      "link": "VALIDATION.md"},
     {"status": "unchecked", "text": "I can't see your code. A backtest that peeks at future prices or skips fees hands me trades that look better than they were. When the shape looks too good, I flag it and give you a prompt to have the code checked. Or test the idea with my own backtester, which can't use later prices."},
     {"status": "unchecked", "text": "The past is not the future. A real edge can stop working, which is why I check whether it has faded, and why you should come back."},
@@ -203,6 +203,10 @@
     {"date": "2026-10-14", "title": "Three kinds of records fooled me in testing.",
      "impact": "Lopsided records were wrongly called real 3.4% of the time, martingale-like ones 37% at 30 trades, streaky ones checked often 3.4%.",
      "found": "The validation run on records whose truth is known.",
-     "fix": "A higher bar for lopsided trades, five losses before “real”, and a streakiness floor. Now under 1%, 0% and 1.9%."}
+     "fix": "A higher bar for lopsided trades, five losses before “real”, and a streakiness floor. Then under 1%, 0% and 1.9%; the last is 0.8% now (next entry)."},
+    {"date": "2026-10-14", "title": "Two of my error rates were still above 1%.",
+     "impact": "Streaky records checked every 10 trades were wrongly called real 1.9% of the time, and a steady edge was called “faded” 1.4% of the time.",
+     "found": "The validation run, read for its worst cells rather than its typical one.",
+     "fix": "At a few dozen trades I now allow for the noise in my own streakiness estimate, and the fade test no longer treats the earlier average as exact. Now 0.8% and 0.6%. The cost: a little less power at small counts (a 0.3-sd edge found at 100 trades 34% of the time, was 43%)."}
   ]
 }

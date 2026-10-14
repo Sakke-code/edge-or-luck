@@ -310,7 +310,7 @@ def test_every_strategy_called_real_shows_a_range_above_zero():
     # e-BH picks the 2nd and 3rd of several strategies at a lower bar than 40 N; their ranges used to be shown
     # at 40 N and could reach below zero while the sentence said "all above zero".
     rng = np.random.default_rng(2)
-    rows = [{"strategy": f"S{k}", "pnl": float(v)} for k in range(3) for v in rng.normal(0.45, 1.0, 60)]
+    rows = [{"strategy": f"S{k}", "pnl": float(v)} for k in range(3) for v in rng.normal(0.45, 1.0, 80)]
     r = judge_dict(pd.DataFrame(rows))
     real = [c for c in r["strategies"] if c["verdict"]["code"] == "real_edge"]
     assert len(real) == 3

@@ -229,7 +229,7 @@ def _serial_model(x: np.ndarray) -> float:
     lags = max(int(math.floor(4.0 * (n / 100.0) ** (2.0 / 9.0))), 1)
     acf = [float(d[k:] @ d[:-k]) / n / var for k in range(1, lags + 1)]
     nw = 1.0 + 2.0 * sum((1.0 - k / (lags + 1.0)) * acf[k - 1] for k in range(1, lags + 1))
-    r = min(0.8, acf[0] + (1.0 + 3.0 * acf[0]) / n)
+    r = min(0.8, acf[0] + (1.0 + 3.0 * acf[0] + 12.0) / n)    # evidence.SERIAL_NOISE = 12
     ar1 = (1.0 + r) / (1.0 - r) if r > 0 else 1.0
     assert 1.0 <= ar1 <= 9.0 + 1e-12                          # ar1Floor_mem
     return min(10.0, max(1.0, nw, ar1))

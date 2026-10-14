@@ -1,6 +1,6 @@
 # How often is the judge wrong?
 
-Measured by `tools/validate.py` on simulated trade records whose truth is known (engine 2.0.0, 2026-10-14). Rerun it to check every number. Rates show a 95% range for simulation noise in brackets.
+Measured by `tools/validate.py` on simulated trade records whose truth is known (engine 2.3.0, 2026-10-14). Rerun it to check every number. Rates show a 95% range for simulation noise in brackets.
 
 ## 1. Records with no edge: how often are they called a "real edge"?
 
@@ -8,20 +8,20 @@ The target is at most 2.5% (one side of a 5% error budget shared by "real edge" 
 
 | Trades look like | 30 trades | 100 trades | 300 trades | 1000 trades |
 |---|---|---|---|---|
-| Normal | 0.1% (0.1-0.4) | 0.1% (0.0-0.4) | 0.1% (0.0-0.4) | 0.0% (0.0-0.2) |
-| Heavy tails (Student t, 3 d.f.) | 0.0% (0.0-0.2) | 0.0% (0.0-0.2) | 0.1% (0.0-0.3) | 0.1% (0.0-0.4) |
-| Autocorrelated (AR 0.3) | 0.3% (0.1-0.7) | 0.3% (0.1-0.7) | 0.1% (0.1-0.4) | 0.0% (0.0-0.2) |
-| Small wins, big losses (skewed) | 0.8% (0.5-1.2) | 0.4% (0.2-0.7) | 0.5% (0.3-0.9) | 0.1% (0.0-0.4) |
+| Normal | 0.1% (0.0-0.3) | 0.1% (0.0-0.3) | 0.1% (0.0-0.4) | 0.0% (0.0-0.2) |
+| Heavy tails (Student t, 3 d.f.) | 0.0% (0.0-0.2) | 0.0% (0.0-0.2) | 0.1% (0.0-0.3) | 0.1% (0.0-0.3) |
+| Autocorrelated (AR 0.3) | 0.0% (0.0-0.2) | 0.2% (0.1-0.5) | 0.1% (0.1-0.4) | 0.0% (0.0-0.2) |
+| Small wins, big losses (skewed) | 0.1% (0.1-0.4) | 0.2% (0.1-0.5) | 0.4% (0.2-0.7) | 0.1% (0.0-0.4) |
 | Martingale (3% big losses) | 0.0% (0.0-0.2) | 0.0% (0.0-0.2) | 0.0% (0.0-0.2) | 0.1% (0.1-0.4) |
 
-Worst cell: 0.8%. "Any label" (real edge or losing, the whole 5% budget):
+Worst cell: 0.4%. "Any label" (real edge or losing, the whole 5% budget):
 
 | Trades look like | 30 trades | 100 trades | 300 trades | 1000 trades |
 |---|---|---|---|---|
-| Normal | 0.2% (0.1-0.5) | 0.1% (0.1-0.4) | 0.2% (0.1-0.5) | 0.1% (0.1-0.4) |
-| Heavy tails (Student t, 3 d.f.) | 0.1% (0.0-0.3) | 0.1% (0.0-0.3) | 0.1% (0.1-0.4) | 0.1% (0.1-0.4) |
-| Autocorrelated (AR 0.3) | 0.7% (0.4-1.1) | 0.5% (0.3-0.9) | 0.2% (0.1-0.6) | 0.1% (0.1-0.4) |
-| Small wins, big losses (skewed) | 0.8% (0.5-1.2) | 0.4% (0.2-0.8) | 0.5% (0.3-0.9) | 0.1% (0.0-0.4) |
+| Normal | 0.1% (0.0-0.3) | 0.1% (0.0-0.4) | 0.1% (0.0-0.4) | 0.1% (0.1-0.4) |
+| Heavy tails (Student t, 3 d.f.) | 0.0% (0.0-0.2) | 0.0% (0.0-0.2) | 0.1% (0.1-0.4) | 0.1% (0.0-0.4) |
+| Autocorrelated (AR 0.3) | 0.0% (0.0-0.2) | 0.2% (0.1-0.6) | 0.1% (0.1-0.4) | 0.1% (0.1-0.4) |
+| Small wins, big losses (skewed) | 0.1% (0.1-0.4) | 0.2% (0.1-0.6) | 0.4% (0.2-0.7) | 0.1% (0.0-0.4) |
 | Martingale (3% big losses) | 0.0% (0.0-0.2) | 0.0% (0.0-0.2) | 0.0% (0.0-0.2) | 0.2% (0.1-0.5) |
 
 ### What the corrections buy
@@ -40,8 +40,8 @@ Honest remainder: autocorrelated and skewed records are still called real more o
 
 A trader who re-checks after every 10 trades, from 30 to 300 trades, on a record with no edge. How often is it EVER called a real edge? A normal confidence interval read this way fails far more often than its stated rate; the anytime-valid range is built for it.
 
-- Normal trades: 0.5% (0.2-1.2)
-- Autocorrelated trades: 1.9% (1.2-2.9) (with Newey-West alone it was 3.4% (2.4-4.7): Newey-West under-corrects at a few dozen trades, so the spread is now widened by at least a bias-corrected AR(1) factor)
+- Normal trades: 0.4% (0.2-1.0)
+- Autocorrelated trades: 0.8% (0.4-1.6) (with Newey-West alone it was 3.4% (2.4-4.7): Newey-West under-corrects at a few dozen trades, so the spread is now widened by at least a bias-corrected AR(1) factor, with an allowance of 12/n for the noise in that factor's estimate)
 
 ## 3. The best of many versions
 
@@ -50,8 +50,8 @@ Try N versions of a strategy with no edge (200 trades each), keep the best one, 
 | Versions tried | Called real, not told | Called real, told `variants_tried=N` |
 |---|---|---|
 | 10 | 0.4% (0.1-1.4) | 0.0% (0.0-0.8) |
-| 100 | 8.8% (6.6-11.6) | 0.0% (0.0-0.8) |
-| 1000 | 51.2% (46.8-55.6) | 0.2% (0.0-1.1) |
+| 100 | 7.6% (5.6-10.3) | 0.0% (0.0-0.8) |
+| 1000 | 39.2% (35.0-43.5) | 0.2% (0.0-1.1) |
 
 ## 4. Power: how often is a real edge found?
 
@@ -59,18 +59,18 @@ Normal trades with a true edge of 0.1, 0.2 or 0.3 standard deviations per trade 
 
 | Edge per trade | 30 trades | 100 trades | 300 trades | 1000 trades |
 |---|---|---|---|---|
-| 0.1 SD | 0.4% (0.2-1.0) | 1.5% (0.9-2.5) | 7.9% (6.4-9.7) | 44.8% (41.7-47.9) |
-| 0.2 SD | 1.1% (0.6-2.0) | 12.1% (10.2-14.3) | 60.3% (57.2-63.3) | 99.7% (99.1-99.9) |
-| 0.3 SD | 4.3% (3.2-5.7) | 42.9% (39.9-46.0) | 97.0% (95.7-97.9) | 99.5% (98.8-99.8) |
+| 0.1 SD | 0.1% (0.0-0.6) | 0.6% (0.3-1.3) | 7.6% (6.1-9.4) | 44.5% (41.4-47.6) |
+| 0.2 SD | 0.2% (0.1-0.7) | 9.0% (7.4-10.9) | 58.0% (54.9-61.0) | 100.0% (99.6-100.0) |
+| 0.3 SD | 0.7% (0.3-1.4) | 34.1% (31.2-37.1) | 97.2% (96.0-98.1) | 100.0% (99.6-100.0) |
 
 This is the price of an answer that stays valid however often you check, and of a strict error budget: small edges need many trades. The judge says so ("about N more trades would settle it") instead of guessing.
 
 ## 5. Faded, and live vs backtest
 
-- A steady edge (0.25 SD, 400 trades) wrongly called "faded": 1.4% (0.7-2.9).
-- A real fade (340 good trades, then 60 at -0.4 SD) called "faded": 62.0% (57.7-66.1).
+- A steady edge (0.25 SD, 400 trades) wrongly called "faded": 0.6% (0.2-1.7).
+- A real fade (340 good trades, then 60 at -0.4 SD) called "faded": 57.8% (53.4-62.1).
 - Live trades as good as the backtest, compared every 10 trades up to 200, ever called "worse than the backtest": 0.4% (0.1-2.2).
-- Live trades 0.4 SD worse than the backtest, caught within 200 trades: 66.0% (59.9-71.6).
+- Live trades 0.4 SD worse than the backtest, caught within 200 trades: 58.8% (52.6-64.7).
 
 ## 6. Same file, same answer
 
@@ -78,7 +78,7 @@ Every sample was judged twice in one process and once in a fresh process: identi
 
 ## 7. Speed
 
-Median `judge()` time with every check and picture: 11 ms for 100 trades, 55 ms for 1,000 (on the machine that ran this).
+Median `judge()` time with every check and picture: 9 ms for 100 trades, 34 ms for 1,000 (on the machine that ran this).
 
 ## Method in one paragraph
 

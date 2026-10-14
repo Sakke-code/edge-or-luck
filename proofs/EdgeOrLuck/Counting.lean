@@ -82,7 +82,8 @@ computes, on many inputs, within float tolerance.
   verdict comes from the e-values. The null "the trades' law is unchanged by sign flips" (e.g.
   independent, each symmetric about zero) is stronger than "the mean is zero".
 * Kendall's bias correction `r + (1 + 3r)/n` and the Newey-West estimate with Bartlett weights
-  are cited approximations; only the safety facts about the returned factor are proved.
+  are cited approximations, and the noise allowance `12/n` is set by measurement; only the safety
+  facts about the returned factor are proved.
 * FIFO: quote-currency fees only (a base-coin fee shrinks the lot; a third-coin fee is ignored by
   the code), and the code's float tolerances (`1e-15`, `1e-9`) are not modelled. The dust rule
   (`left <= DUST * peak`) is modelled as an arbitrary per-sell decision, so the identities hold
@@ -815,9 +816,9 @@ theorem ar1Factor_le_nine {r : ℝ} (h : r ≤ 0.8) : ar1Factor r ≤ 9 := by
   norm_num at h ⊢
   linarith
 
-/-- The lag-one correlation after Kendall's correction and the cap at 0.8:
-`min(0.8, r + (1 + 3r) / n)`. -/
-def kendallCapped (r : ℝ) (n : ℕ) : ℝ := min 0.8 (r + (1 + 3 * r) / n)
+/-- The lag-one correlation after Kendall's correction, the allowance `12/n` for its own noise
+(`SERIAL_NOISE`) and the cap at 0.8: `min(0.8, r + (1 + 3r + 12) / n)`. -/
+def kendallCapped (r : ℝ) (n : ℕ) : ℝ := min 0.8 (r + (1 + 3 * r + 12) / n)
 
 /-- The AR(1) floor exactly as `serial_factor` computes it: `(1 + r)/(1 - r)` when `r > 0`,
 else 1. -/

@@ -20,7 +20,7 @@ Take a strategy that wins 55% of its trades, a good one. Over 200 trades, the ch
 
 - it had an edge before;
 - its latest 30 or 60 trades lose money;
-- and that drop is so unlikely from its own history that luck explains it less than once in 400 times.
+- and that drop is so unlikely from its own history that luck explains it less than once in 1,000 times.
 
 Measured on made-up strategies, a real fade is caught {{faded_caught}} of the time. A steady edge is wrongly called faded {{faded_false}} of the time.
 

@@ -15,9 +15,9 @@ Take a strategy that wins 55% of its trades, a good one. Over 200 trades, the ch
 
 - it had an edge before;
 - its latest 30 or 60 trades lose money;
-- and that drop is so unlikely from its own history that luck explains it less than once in 400 times.
+- and that drop is so unlikely from its own history that luck explains it less than once in 1,000 times.
 
-Measured on made-up strategies, a real fade is caught 62% of the time. A steady edge is wrongly called faded 1.4% of the time.
+Measured on made-up strategies, a real fade is caught 58% of the time. A steady edge is wrongly called faded 0.6% of the time.
 
 :::flip worried
 The classic mistake is changing the strategy in the middle of a normal losing run. Then you've tuned it to the bad streak.

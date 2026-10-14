@@ -10,8 +10,8 @@ Test 100 settings of a strategy that has no edge, and the best one will still lo
 | Versions tried | Called a "real edge" if you don't say | ...if you do say |
 |---|---|---|
 | 10 | 0.4% | 0% |
-| 100 | 8.8% | 0% |
-| 1,000 | 51% | 0.2% |
+| 100 | 7.6% | 0% |
+| 1,000 | 39% | 0.2% |
 
 The judge can't see how many versions you tried. It only knows if you tell it.
 
