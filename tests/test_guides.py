@@ -131,6 +131,14 @@ def test_flips_story_is_served_and_linked(client):
         assert 'href="/story"' in client.get(path).get_data(as_text=True), path
 
 
+def test_the_flip_game_is_served_and_linked(client):
+    page = client.get("/play")
+    text = page.get_data(as_text=True)
+    assert page.status_code == 200 and "Flip Flip" in text and "crypto.getRandomValues" in text
+    for path in ("/", "/how", "/story", "/guides", f"/guides/{GUIDES[0].slug}"):
+        assert 'href="/play"' in client.get(path).get_data(as_text=True), path
+
+
 def test_numbers_come_from_the_validation_run():
     values = guides.numbers()
     strict = next(g for g in GUIDES if g.slug == "why-the-judge-is-strict")

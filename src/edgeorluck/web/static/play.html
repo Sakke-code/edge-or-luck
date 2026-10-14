@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flip Flip: when does luck even out?</title>
+<meta name="description" content="Call heads or tails and flip Flip. Watch hot streaks come and go, and watch luck slowly even out, exactly like a trading record.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12.5' fill='%23F3F7F4' stroke='%2316294A' stroke-width='2.6'/%3E%3Cpath d='M8.5 20.5 13 16.5l3 2.4 7-8.4' fill='none' stroke='%2316294A' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+.game{padding-top:clamp(20px,4vh,44px)}
+.game-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 30px;margin-bottom:22px}
+.game-head h1{margin:0;font-size:clamp(34px,4.6vw,60px);line-height:1.02;letter-spacing:-.028em}
+.game-head p{margin:0;max-width:54ch;color:var(--ink-2)}
+.sheet{border:1.5px solid var(--rule);border-radius:12px 16px 11px 15px;background:color-mix(in srgb,var(--paper-raised) 88%,transparent);box-shadow:0 18px 40px -34px var(--ink)}
+.arena{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:24px;align-items:stretch}
+
+/* ---- The table: Flip, the calls ---- */
+.table{position:relative;display:flex;flex-direction:column;align-items:center;padding:22px 20px 22px;text-align:center}
+.game-bubble{position:relative;max-width:380px;min-height:62px;display:flex;align-items:center;justify-content:center}
+.game-bubble .tail{left:50%;right:auto;bottom:-13px;transform:translateX(-50%) rotate(90deg)}
+.tosser{width:168px;height:180px;margin:82px auto 0;perspective:800px;cursor:pointer}
+.coin3d{position:relative;width:100%;height:100%;transform-style:preserve-3d;transform-origin:50% 51%}
+.face{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;color:var(--ink)}
+.face svg{display:block;width:100%;height:100%;overflow:visible}
+.face.back{transform:rotateX(180deg)}
+.shadow{width:118px;height:14px;margin:4px auto 0;border-radius:50%;opacity:.5;
+  background:radial-gradient(closest-side,color-mix(in srgb,var(--ink) 34%,transparent),transparent)}
+.landed{display:block;min-height:30px;margin-top:6px;font-family:var(--hand);font-weight:700;font-size:22px;letter-spacing:.04em;color:var(--ink-3)}
+.calls{display:flex;flex-wrap:wrap;gap:14px;justify-content:center;margin-top:10px}
+.call{min-width:136px;min-height:56px;padding:6px 18px;font-family:var(--hand);font-size:25px;font-weight:700;color:var(--ink);cursor:pointer;
+  border:2px solid var(--ink);border-radius:14px 18px 13px 17px / 17px 13px 18px 14px;background:var(--paper);transition:transform .12s ease,box-shadow .12s ease}
+.call:hover{transform:translateY(-2px) rotate(-1deg);box-shadow:0 6px 0 -2px var(--ink)}
+.call:active{transform:translateY(1px)}
+.call:disabled{opacity:.45;cursor:default;transform:none;box-shadow:none}
+.call.h{background:var(--ink);color:var(--paper)}
+.hint{margin:16px 0 8px;font-size:14.5px;color:var(--ink-3)}
+.auto{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.auto button{min-height:38px;padding:5px 13px;border:1.5px solid var(--rule);border-radius:999px;background:none;cursor:pointer;font-size:14.5px;color:var(--ink-2)}
+.auto button:hover{border-color:var(--ink);color:var(--ink)}
+.auto button:disabled{opacity:.45;cursor:default}
+
+/* ---- The board: the record, the funnel, the meter ---- */
+.board{display:flex;flex-direction:column;gap:14px;padding:18px 20px 18px}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.stat{padding:8px 12px 10px;border:1.5px dashed var(--rule);border-radius:10px}
+.stat .k{display:block;font-size:14px;color:var(--ink-3)}
+.stat .v{display:block;font-family:var(--hand);font-weight:700;font-size:clamp(28px,3vw,40px);line-height:1.1;color:var(--ink)}
+.stat .sub{display:block;font-size:14px;color:var(--ink-2);min-height:1.3em}
+.swing{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.swing span{color:var(--ink-2)}
+.swing b{font-family:var(--hand);font-size:clamp(28px,3.2vw,40px);line-height:1;color:var(--amber)}
+.swing small{color:var(--ink-3);font-size:14px}
+svg.chart{display:block;width:100%;height:auto;aspect-ratio:640/316}
+.legend{display:flex;gap:10px;align-items:flex-start;margin:-4px 0 0;font-size:14px;line-height:1.45;color:var(--ink-3)}
+.legend .sw{flex:none;width:22px;height:14px;margin-top:2px;border:1.6px dashed var(--amber);border-radius:3px;background:color-mix(in srgb,var(--amber) 13%,transparent)}
+.grid-l{stroke:var(--rule);stroke-width:1}
+.tick{font-family:var(--text);font-size:13px;fill:var(--ink-3)}
+.half{stroke:var(--slate);stroke-width:1.4;stroke-dasharray:4 6}
+.funnel{fill:color-mix(in srgb,var(--amber) 13%,transparent);stroke:var(--amber);stroke-width:1.6;stroke-dasharray:7 6}
+.mile{stroke:var(--amber);stroke-width:1.2;stroke-dasharray:2 5}
+.mile-t{font-family:var(--hand);font-size:15px;fill:var(--amber);font-weight:700}
+.rate{fill:none;stroke:var(--ink);stroke-width:2.6;stroke-linejoin:round;stroke-linecap:round}
+.now{fill:var(--paper);stroke:var(--ink);stroke-width:2.4}
+.chart-note{font-family:var(--hand);font-size:17px;fill:var(--ink-2)}
+.meter{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;font-size:15px;color:var(--ink-2)}
+.meter .track{position:relative;height:14px;border:1.5px solid var(--ink);border-radius:8px 10px 7px 9px;overflow:hidden;background:var(--paper)}
+.meter .track i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--green);opacity:.75;transition:width .25s ease}
+.meter b{font-family:var(--hand);font-size:22px;color:var(--ink);min-width:6ch;text-align:right}
+
+/* ---- Lessons ---- */
+.lessons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:clamp(36px,6vh,60px)}
+.lesson{padding:18px 20px}
+.lesson h2{margin:0 0 8px;font-size:21px;letter-spacing:-.01em;line-height:1.2}
+.lesson p{margin:0;font-size:16.5px;color:var(--ink-2)}
+.lesson .n{display:inline-grid;place-items:center;width:34px;height:34px;margin-bottom:8px;font-family:var(--hand);font-weight:700;font-size:19px;
+  border:2px solid var(--ink);border-radius:54% 46% 52% 48% / 47% 55% 45% 53%}
+.after{display:flex;flex-wrap:wrap;gap:12px;margin-top:30px;align-items:center}
+.after p{margin:0 12px 0 0;color:var(--ink-2)}
+
+@media (max-width:980px){
+  .arena,.lessons{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:520px){
+  .tick{font-size:22px}
+  .mile-t{font-size:24px}
+  .stats{gap:8px}
+  .stat{padding:6px 8px 8px}
+  .call{min-width:120px}
+  .meter{grid-template-columns:minmax(0,1fr) auto}
+  .meter > span{grid-column:1 / -1}
+}
+@media (prefers-reduced-motion:reduce){.call,.meter .track i{transition:none}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="edge or luck, home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.6 20.4c1.4-1.2 2.9-2.6 4.3-3.8.9.7 1.9 1.6 2.9 2.3 2.3-2.6 4.6-5.6 6.8-8.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      edge or luck
+    </a>
+    <nav class="nav" aria-label="Site">
+      <a class="opt" href="/">Check your trades</a>
+      <a class="opt" href="/guides">Guides</a>
+      <a class="opt" href="/story">Story</a>
+      <a class="opt" href="/play" aria-current="page">Play</a>
+      <a class="opt" href="/how">How it checks</a>
+      <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">GitHub</a>
+      <button class="theme" id="theme" type="button" aria-label="Switch to blueprint (dark) look">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.8a6.2 6.2 0 0 1 0 12.4z" fill="currentColor"/></svg>
+        <span id="themeLabel">Blueprint</span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<main class="game wrap">
+  <div class="game-head">
+    <h1>Flip Flip</h1>
+    <p>Call heads or tails, then flip Flip. Watch luck run hot, run cold, and slowly even out, the same way it does in a trading record.</p>
+  </div>
+
+  <div class="arena">
+    <section class="table sheet" aria-label="The coin">
+      <div class="bubble game-bubble" id="bubble"><span class="say">Heads or tails? Call it, and I'll flip myself.</span><svg class="tail" viewBox="0 0 16 14" aria-hidden="true"><path d="M0 1.5C6 3 10.5 7 15 13 9.5 11 5 10 0 10.5"/></svg></div>
+      <div class="tosser" id="tosser" title="Flip me (heads)">
+        <div class="coin3d" id="coin">
+          <div class="face front" id="front"></div>
+          <div class="face back" aria-hidden="true">
+            <svg class="flip" viewBox="-42 -50 84 90"><g class="all">
+              <path class="ln" d="M-8 20.5-10 35.5h-5.5"/><path class="ln" d="M8 20.5l2 15h5.5"/>
+              <path class="ln" d="M-24.5 1q-7 5-8.5 13M24.5 1q7 5 8.5 13"/>
+              <path class="ln" d="M17.5 13.5q8 6.5 13 3.5 4.5-3 1.5-7-3-3.5-6 .5"/>
+              <circle class="coin" cx="0" cy="-4" r="25"/><circle class="rim" cx="0" cy="-4" r="19.5"/>
+              <text class="hand-t" x="0" y="5" font-size="25" text-anchor="middle">T</text>
+              <path class="soft" d="M-12-16q4-4 8-1M5-19q4-1 7 3"/>
+            </g></svg>
+          </div>
+        </div>
+      </div>
+      <div class="shadow" id="shadow"></div>
+      <span class="landed" id="landed" aria-hidden="true"></span>
+      <div class="calls">
+        <button class="call h" id="callH" type="button">Heads</button>
+        <button class="call" id="callT" type="button">Tails</button>
+      </div>
+      <p class="hint">Keys: H or T. Or let me flip for you (I'll call heads):</p>
+      <div class="auto">
+        <button type="button" data-auto="10">10 flips</button>
+        <button type="button" data-auto="100">100 flips</button>
+        <button type="button" data-auto="1000">1,000 flips</button>
+        <button type="button" id="reset">Start over</button>
+      </div>
+    </section>
+
+    <section class="board sheet" aria-label="Your record">
+      <div class="stats">
+        <div class="stat"><span class="k">Flips</span><span class="v" id="sN">0</span><span class="sub" id="sHT"></span></div>
+        <div class="stat"><span class="k">Called right</span><span class="v" id="sRate">–</span><span class="sub" id="sHits"></span></div>
+        <div class="stat"><span class="k">Streak</span><span class="v" id="sStreak">0</span><span class="sub" id="sBest"></span></div>
+      </div>
+      <div class="swing"><span>Luck can still swing your score</span><b id="swing">anywhere</b><small id="swingNote">from 0% to 100%, even with no skill at all</small></div>
+      <svg class="chart" id="chart" viewBox="0 0 640 316" role="img" aria-label="Your share of right calls after each flip, inside the funnel where luck alone can keep it."></svg>
+      <p class="legend"><span class="sw"></span>Where luck alone can keep you, even checking after every flip (95%). Flips run left to right; each step is 10 times more.</p>
+      <div class="meter"><span>Evidence you can beat the coin</span><span class="track"><i id="evFill"></i></span><b id="ev">1.0 / 40</b></div>
+    </section>
+  </div>
+  <p class="visually-hidden" id="live" aria-live="polite"></p>
+
+  <section class="lessons" aria-label="What this has to do with trading">
+    <div class="lesson sheet"><span class="n">1</span><h2>Hot streaks are normal</h2><p id="lesson1">Long runs of right calls happen to everyone. Traders frame them and call them a strategy.</p></div>
+    <div class="lesson sheet"><span class="n">2</span><h2>Luck evens out, slowly</h2><p id="lesson2">The funnel narrows with the square root of the flips: four times the flips for half the swing.</p></div>
+    <div class="lesson sheet"><span class="n">3</span><h2>A strategy is a coin until proven otherwise</h2><p>The judge draws the same kind of funnel around your trades and waits until your record leaves it. That is why it is strict, and why it is rarely fooled.</p></div>
+  </section>
+
+  <div class="after">
+    <p>Your strategy has a funnel too.</p>
+    <a class="btn" href="/">Check your trades</a>
+    <a class="btn quiet" href="/story">Watch Flip's story</a>
+    <a class="btn quiet" href="/guides/why-the-judge-is-strict">Why the judge is so strict</a>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div><p><b>Not financial advice.</b> edge or luck judges past results. It doesn't tell you what to trade or how much.</p>
+      <p>Every flip is fair: your browser's own random numbers, nothing stored. The funnel and the evidence use the judge's maths for a coin.</p></div>
+    <div><p>Open source under the MIT licence. <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">Source on GitHub</a></p></div>
+  </div>
+</footer>
+
+<script src="/assets/site.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  var NS = "http://www.w3.org/2000/svg";
+  function svgEl(tag, attrs, parent) {
+    var e = document.createElementNS(NS, tag);
+    Object.keys(attrs).forEach(function (k) { e.setAttribute(k, attrs[k]); });
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+
+  /* ---------- the maths: the judge's mixture, for a fair coin ---------- */
+  // Each flip scores +1 (called right) or -1 (wrong). S is the running total.
+  var RHO2 = 0.05, ALPHA = 0.05, BAR = 40;
+  function swingAt(n) {             // half-width of the 95% range for the share right, valid however often you look
+    var v = 1 + RHO2 * n;
+    return Math.sqrt(2 * v / RHO2 * Math.log(Math.sqrt(v) / ALPHA)) / (2 * n);
+  }
+  function firstN(w) {              // the first flip count where luck's swing is under w
+    var lo = 1, hi = 10000000;
+    while (hi - lo > 1) { var mid = Math.floor((lo + hi) / 2); if (swingAt(mid) <= w) hi = mid; else lo = mid; }
+    return hi;
+  }
+  function erfc(x) {
+    var z = Math.abs(x), t = 1 / (1 + 0.5 * z);
+    var r = t * Math.exp(-z * z - 1.26551223 + t * (1.00002368 + t * (0.37409196 + t * (0.09678418 + t * (-0.18628806 +
+      t * (0.27886807 + t * (-1.13520398 + t * (1.48851587 + t * (-0.82215223 + t * 0.17087277)))))))));
+    return x >= 0 ? r : 2 - r;
+  }
+  function logPhi(z) { return z > -8 ? Math.log(0.5 * erfc(-z / Math.SQRT2)) : -z * z / 2 - Math.log(-z) - 0.5 * Math.log(2 * Math.PI); }
+  function evidence(n, S) {         // one-sided: "you call coins better than half"
+    if (!n) return 1;
+    var v = 1 + RHO2 * n;
+    return Math.exp(Math.min(700, Math.log(2) - 0.5 * Math.log(v) + RHO2 * S * S / (2 * v) + logPhi(Math.sqrt(RHO2) * S / Math.sqrt(v))));
+  }
+  function pRun(n, k) {             // chance of a run of k or more (right, or wrong) within n fair flips
+    if (k > n) return 0;
+    var dp = new Float64Array(k); dp[0] = 1;
+    for (var i = 0; i < n; i++) {
+      var nd = new Float64Array(k), total = 0, j;
+      for (j = 0; j < k; j++) total += dp[j];
+      nd[0] = total * 0.5;
+      for (j = 0; j < k - 1; j++) nd[j + 1] = dp[j] * 0.5;
+      dp = nd;
+    }
+    var s = 0;
+    for (var j2 = 0; j2 < k; j2++) s += dp[j2];
+    return 1 - s;
+  }
+  function swingText(w) { return w >= .5 ? "anywhere" : "±" + pct(w, w < .1 ? 1 : 0); }
+  function chance(p) { return p >= 0.095 ? Math.round(p * 100) + "% of the time" : "about 1 time in " + Math.round(1 / p); }
+  function pct(x, d) { return (x * 100).toFixed(d == null ? 0 : d) + "%"; }
+  var MILES = [0.25, 0.10, 0.05].map(function (w) { return { w: w, n: firstN(w) }; });
+
+  $("lesson1").textContent = "Within 100 flips, a fair coin gives you 6 right calls in a row " + chance(pRun(100, 6)) +
+    ". On a trading chart, a run like that looks like a strategy.";
+  $("lesson2").textContent = "Four times the flips for about half the swing: luck can move you ±" + pct(swingAt(100)) +
+    " after 100 flips, ±" + pct(swingAt(400)) + " after 400, ±" + pct(swingAt(1600)) + " after 1,600.";
+
+  /* ---------- state ---------- */
+  var st, token = 0;
+  function fresh() { return { n: 0, hits: 0, heads: 0, streak: 0, bestRight: 0, bestWrong: 0, S: 0, rates: [], said: {}, busy: false }; }
+  st = fresh();
+  var angle = 0;
+  var coin = $("coin"), flip = EOL.makeFlip($("front"), $("bubble"));
+  function rand() { var a = new Uint32Array(1); crypto.getRandomValues(a); return a[0] & 1 ? "H" : "T"; }
+  function say(text, mood) { if (mood) flip.mood(mood); flip.say(text); $("live").textContent = text; }
+
+  function record(call, res) {
+    var right = call === res;
+    st.n++; if (res === "H") st.heads++;
+    if (right) { st.hits++; st.S++; st.streak = st.streak > 0 ? st.streak + 1 : 1; }
+    else { st.S--; st.streak = st.streak < 0 ? st.streak - 1 : -1; }
+    if (st.streak > st.bestRight) st.bestRight = st.streak;
+    if (-st.streak > st.bestWrong) st.bestWrong = -st.streak;
+    st.rates.push(st.hits / st.n);
+    return right;
+  }
+
+  /* ---------- the toss ---------- */
+  function showFace(res) { angle = angle - (((angle % 360) + 360) % 360) + (res === "H" ? 0 : 180); coin.style.transform = "rotateX(" + angle + "deg)"; }
+  function toss(res, quick) {
+    var from = angle, base = from - (((from % 360) + 360) % 360);
+    var to = base + 360 * (quick ? 2 : 3 + (Math.random() < .5 ? 1 : 0)) + (res === "H" ? 0 : 180);
+    angle = to;
+    if (EOL.reduce || !coin.animate) { coin.style.transform = "rotateX(" + to + "deg)"; return Promise.resolve(); }
+    var h = quick ? 64 : 104, dur = quick ? 480 : 980;
+    flip.mood("excited");
+    var a = coin.animate([
+      { transform: "translateY(0) rotateX(" + from + "deg)", easing: "cubic-bezier(.22,.75,.5,1)" },
+      { transform: "translateY(-" + h + "px) rotateX(" + ((from + to) / 2) + "deg)", offset: .5, easing: "cubic-bezier(.5,0,.78,.35)" },
+      { transform: "translateY(0) rotateX(" + to + "deg)" }], { duration: dur });
+    $("shadow").animate([{ transform: "scale(1)", opacity: .5 }, { transform: "scale(.42)", opacity: .18, offset: .5 },
+      { transform: "scale(1)", opacity: .5 }], { duration: dur });
+    return a.finished.then(function () {
+      coin.style.transform = "rotateX(" + to + "deg)";
+      $("tosser").animate([{ transform: "scale(1,1)" }, { transform: "scale(1.06,.92)", offset: .4 }, { transform: "scale(1,1)" }],
+        { duration: 220, easing: "ease-out" });
+    });
+  }
+
+  /* ---------- what Flip says ---------- */
+  var RIGHT = ["Called it!", "Right!", "Yes! Lucky, or good?", "Got it.", "Nice call."];
+  var WRONG = ["Nope!", "Missed.", "Not this time.", "Wrong side.", "Ha, no."];
+  function pick(list) { return list[st.n % list.length]; }
+  function comment(right, res) {
+    var side = res === "H" ? "heads" : "tails", k = Math.abs(st.streak);
+    for (var i = 0; i < MILES.length; i++) {
+      var m = MILES[i];
+      if (st.n >= m.n && !st.said["m" + i]) {
+        st.said["m" + i] = true;
+        return ["Luck can only swing you ±" + pct(m.w) + " now. Your " + pct(st.hits / st.n, 1) + " is getting honest.", "idle"];
+      }
+    }
+    if (evidence(st.n, st.S) >= BAR && !st.said.ev) {
+      st.said.ev = true;
+      return ["Evidence 40! Either you see the future, or this is the rare luck the bar allows, about 1 time in 40.", "worried"];
+    }
+    if (st.n === 10 && st.hits >= 7) return [st.hits + " of 10 right! On a trading chart, that would look like a real strategy.", "excited"];
+    if (st.n === 10 && st.hits <= 3) return ["Only " + st.hits + " of 10. A trader would call that broken. It's a fair coin.", "shrug"];
+    if (k >= 3) {
+      var p = pRun(st.n, k);
+      return st.streak > 0
+        ? [k + " right in a row! Within " + st.n + " flips, a fair coin does that " + chance(p) + ".", "happy"]
+        : [k + " wrong in a row. Broken? No: within " + st.n + " flips a fair coin does that " + chance(p) + ".", "worried"];
+    }
+    return [(right ? pick(RIGHT) : pick(WRONG)) + " It's " + side + ".", right ? "happy" : "meh"];
+  }
+
+  /* ---------- the board ---------- */
+  var PLOT = { x0: 52, x1: 624, y0: 292, y1: 18 };
+  function xmaxFor(n) { return Math.max(10, Math.pow(10, Math.ceil(Math.log10(Math.max(n, 1))))); }
+  function X(n, xm) { return PLOT.x0 + (PLOT.x1 - PLOT.x0) * Math.log10(n) / Math.log10(xm); }
+  function Y(r) { return PLOT.y0 - (PLOT.y0 - PLOT.y1) * r; }
+  var drawnMax = 0;
+  var chart = $("chart"), gStatic = svgEl("g", {}, chart), rateLine = svgEl("path", { "class": "rate" }, chart),
+      nowDot = svgEl("circle", { "class": "now", r: 5.5, cx: -20, cy: -20 }, chart);
+  function drawStatic(xm) {
+    gStatic.textContent = "";
+    [0, .25, .5, .75, 1].forEach(function (r) {
+      svgEl("line", { "class": r === .5 ? "half" : "grid-l", x1: PLOT.x0, x2: PLOT.x1, y1: Y(r), y2: Y(r) }, gStatic);
+      var t = svgEl("text", { "class": "tick", x: PLOT.x0 - 8, y: Y(r) + 4, "text-anchor": "end" }, gStatic);
+      t.textContent = Math.round(r * 100) + "%";
+    });
+    var up = "", down = "";
+    for (var i = 0; i <= 160; i++) {
+      var n = Math.pow(xm, i / 160), w = swingAt(n);
+      up += (i ? "L" : "M") + X(n, xm).toFixed(1) + " " + Y(Math.min(1, .5 + w)).toFixed(1);
+      down = "L" + X(n, xm).toFixed(1) + " " + Y(Math.max(0, .5 - w)).toFixed(1) + down;
+    }
+    svgEl("path", { "class": "funnel", d: up + down + "Z" }, gStatic);
+    MILES.forEach(function (m) {
+      if (m.n > xm) return;
+      var x = X(m.n, xm);
+      svgEl("line", { "class": "mile", x1: x, x2: x, y1: Y(.5 + m.w) - 4, y2: PLOT.y1 + 16 }, gStatic);
+      var t = svgEl("text", { "class": "mile-t", x: x, y: PLOT.y1 + 12, "text-anchor": "middle" }, gStatic);
+      t.textContent = "±" + Math.round(m.w * 100) + "%";
+    });
+    for (var p = 1; p <= xm; p *= 10) {
+      var tx = svgEl("text", { "class": "tick", x: X(p, xm), y: PLOT.y0 + 22, "text-anchor": p === 1 ? "start" : p === xm ? "end" : "middle" }, gStatic);
+      tx.textContent = p.toLocaleString("en");
+    }
+    drawnMax = xm;
+  }
+  function drawRate() {
+    var n = st.rates.length, xm = xmaxFor(n);
+    if (xm !== drawnMax) drawStatic(xm);
+    if (!n) { rateLine.setAttribute("d", ""); nowDot.setAttribute("cx", -20); return; }
+    var idx = [], i;
+    if (n <= 500) for (i = 1; i <= n; i++) idx.push(i);
+    else { var last = 0; for (i = 0; i <= 500; i++) { var k = Math.max(1, Math.round(Math.pow(n, i / 500))); if (k !== last) idx.push(last = k); } }
+    var d = "";
+    idx.forEach(function (k, j) { d += (j ? "L" : "M") + X(k, xm).toFixed(1) + " " + Y(st.rates[k - 1]).toFixed(1); });
+    rateLine.setAttribute("d", d);
+    nowDot.setAttribute("cx", X(n, xm)); nowDot.setAttribute("cy", Y(st.rates[n - 1]));
+  }
+  function board() {
+    $("sN").textContent = st.n.toLocaleString("en");
+    $("sHT").textContent = st.n ? st.heads.toLocaleString("en") + " heads, " + (st.n - st.heads).toLocaleString("en") + " tails" : "";
+    $("sRate").textContent = st.n ? pct(st.hits / st.n, st.n >= 100 ? 1 : 0) : "–";
+    $("sHits").textContent = st.n ? st.hits.toLocaleString("en") + " of " + st.n.toLocaleString("en") : "";
+    $("sStreak").textContent = st.streak > 0 ? st.streak + " right" : st.streak < 0 ? -st.streak + " wrong" : "0";
+    $("sBest").textContent = st.n ? "longest: " + st.bestRight + " right, " + st.bestWrong + " wrong" : "";
+    var w = st.n ? swingAt(st.n) : 1;
+    $("swing").textContent = swingText(w);
+    $("swingNote").textContent = w >= .5 ? "from 0% to 100%, even with no skill at all"
+      : "around 50%, even with no skill: " + pct(Math.max(0, .5 - w)) + " to " + pct(Math.min(1, .5 + w));
+    var e = evidence(st.n, st.S);
+    $("ev").textContent = (e >= 100 ? Math.round(e) : e.toFixed(1)) + " / " + BAR;
+    $("evFill").style.width = pct(Math.max(0, Math.min(1, Math.log(Math.max(e, 1)) / Math.log(BAR))), 1);
+    drawRate();
+  }
+
+  /* ---------- playing ---------- */
+  function setBusy(on) {
+    st.busy = on;
+    document.querySelectorAll(".call, .auto [data-auto]").forEach(function (b) { b.disabled = on; });
+  }
+  async function play(call) {
+    if (st.busy) return;
+    var my = token;
+    setBusy(true);
+    var res = rand();
+    $("landed").textContent = "";
+    await toss(res, false);
+    if (my !== token) return;
+    var right = record(call, res);
+    $("landed").textContent = res === "H" ? "HEADS" : "TAILS";
+    var c = comment(right, res);
+    say(c[0], c[1]);
+    board();
+    setBusy(false);
+  }
+  function frame() { return new Promise(function (r) { requestAnimationFrame(r); }); }
+  async function auto(count) {
+    if (st.busy) return;
+    var my = token;
+    setBusy(true);
+    say("I'll call heads every time. Watch the funnel.", "flipping");
+    if (count <= 10) {
+      for (var i = 0; i < count; i++) {
+        var res = rand();
+        await toss(res, true);
+        if (my !== token) return;
+        record("H", res);
+        $("landed").textContent = res === "H" ? "HEADS" : "TAILS";
+        board();
+      }
+    } else {
+      var per = Math.max(1, Math.ceil(count / (EOL.reduce ? 1 : 140))), done = 0, last = "H";
+      while (done < count) {
+        for (var j = 0; j < per && done < count; j++, done++) { last = rand(); record("H", last); }
+        showFace(last);
+        $("landed").textContent = last === "H" ? "HEADS" : "TAILS";
+        board();
+        await frame();
+        if (my !== token) return;
+      }
+    }
+    MILES.forEach(function (m, i) { if (st.n >= m.n) st.said["m" + i] = true; });
+    var w = swingAt(st.n);
+    say(st.n.toLocaleString("en") + " flips: " + pct(st.hits / st.n, st.n >= 100 ? 1 : 0) + " right. " +
+        (w >= .5 ? "Luck could still have put you anywhere. More flips, narrower funnel."
+         : "Luck can still swing that " + swingText(w) +
+           (w <= .05 ? ". The hot streaks are still there, but they've evened out in the average." : ". More flips, narrower funnel.")),
+        w <= .1 ? "happy" : "idle");
+    setBusy(false);
+  }
+  function reset() {
+    token++;
+    st = fresh();
+    angle = 0; coin.getAnimations && coin.getAnimations().forEach(function (a) { a.cancel(); });
+    coin.style.transform = "rotateX(0deg)";
+    $("landed").textContent = "";
+    setBusy(false);
+    say("Fresh start. Heads or tails?", "idle");
+    drawnMax = 0;
+    board();
+  }
+
+  $("callH").addEventListener("click", function () { play("H"); });
+  $("callT").addEventListener("click", function () { play("T"); });
+  $("tosser").addEventListener("click", function () { play("H"); });
+  document.querySelectorAll("[data-auto]").forEach(function (b) {
+    b.addEventListener("click", function () { auto(+b.getAttribute("data-auto")); });
+  });
+  $("reset").addEventListener("click", reset);
+  document.addEventListener("keydown", function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey || /input|textarea|select/i.test(e.target.tagName)) return;
+    if (e.key === "h" || e.key === "H") play("H");
+    if (e.key === "t" || e.key === "T") play("T");
+  });
+  if (!EOL.reduce) {
+    var mx = 0, my2 = 0, q = false;
+    window.addEventListener("pointermove", function (e) {
+      mx = e.clientX; my2 = e.clientY;
+      if (q) return; q = true;
+      requestAnimationFrame(function () { q = false; flip.look(mx, my2); });
+    }, { passive: true });
+  }
+  coin.style.transform = "rotateX(0deg)";
+  board();
+  window.EOLPlay = { auto: function (n) { void auto(n); }, reset: reset, play: function (c) { void play(c); } };  // for screenshots and tests
+})();
+</script>
+</body>
+</html>

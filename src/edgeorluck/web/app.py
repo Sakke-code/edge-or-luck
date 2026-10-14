@@ -10,6 +10,7 @@ GET  /api/engine            {version, changelog}
 GET  /api/track-record      how good the app's own forecasts have been
 GET  /api/validation        how often the judge is wrong, measured (VALIDATION.md)
 GET  /story                 Flip's 45-second animation: luck, the bar, and a record that clears it
+GET  /play                  Flip Flip: call coin flips and watch luck even out inside the funnel
 GET  /guides                the mini guides; /guides/<slug> one guide, /guides/<slug>.md its Markdown
 GET  /api/guides            [{slug, title, summary, minutes, group, url, markdown_url}]
 GET  /how                   the page where Flip shows how it checks and where it can be wrong
@@ -164,6 +165,10 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
     @app.get("/story")
     def story_page():
         return send_from_directory(STATIC, "story.html")
+
+    @app.get("/play")
+    def play_page():
+        return send_from_directory(STATIC, "play.html")
 
     @app.get("/guides")
     def guides_hub():

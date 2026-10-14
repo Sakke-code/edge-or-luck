@@ -314,7 +314,8 @@ def _shell(title: str, description: str, body: str, *, alternate: Optional[str] 
     <nav class="nav" aria-label="Site">
       <a class="opt" href="/">Check your trades</a>
       <a class="opt" href="/guides" aria-current="page">Guides</a>
-      <a class="opt" href="/story">Flip's story</a>
+      <a class="opt" href="/story">Story</a>
+      <a class="opt" href="/play">Play</a>
       <a class="opt" href="/how">How it checks</a>
       <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">GitHub</a>
       <button class="theme" id="theme" type="button" aria-label="Switch to blueprint (dark) look">
