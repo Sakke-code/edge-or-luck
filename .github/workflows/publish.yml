@@ -1,10 +1,13 @@
 name: publish
 
-# Publishes to PyPI when a GitHub release is published, with PyPI's trusted
-# publishing: no password or token is stored anywhere. One-time setup on PyPI:
-# add a pending publisher for project "edgeorluck", owner "Sakke-code",
-# repository "edge-or-luck", workflow "publish.yml", environment "pypi".
+# Publishes to PyPI when a version tag (v2.0.0, ...) is pushed or a GitHub release
+# is published, with PyPI's trusted publishing: no password or token is stored
+# anywhere. One-time setup on PyPI: a trusted publisher for project "edgeorluck",
+# owner "Sakke-code", repository "edge-or-luck", workflow "publish.yml",
+# environment "pypi". The tag must match the package version.
 on:
+  push:
+    tags: ["v*"]
   release:
     types: [published]
 
@@ -15,10 +18,15 @@ jobs:
     permissions:
       id-token: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
       - name: Build
         run: python -m pip install build && python -m build
+      - name: The tag matches the version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          version=$(python -c "import re,pathlib; print(re.search(r'ENGINE_VERSION = \"(.+?)\"', pathlib.Path('src/edgeorluck/judge.py').read_text()).group(1))")
+          test "${GITHUB_REF_NAME}" = "v${version}" || { echo "tag ${GITHUB_REF_NAME} != v${version}"; exit 1; }
       - uses: pypa/gh-action-pypi-publish@release/v1
