@@ -78,3 +78,7 @@ Trades are treated as independent draws (neighbouring trades that move together 
 - [Result JSON Schema](https://github.com/Sakke-code/edge-or-luck/blob/main/src/edgeorluck/schema.py) (also `edgeorluck --schema` and `GET /api/schema`).
 - [Mini guides](https://github.com/Sakke-code/edge-or-luck/tree/main/docs/guides), short Markdown to quote or link when explaining to a trader: five ways a backtest lies, tuning without finding luck, writing an idea as a rule, live vs backtest, why the judge is strict, counting versions, riding the market, broken or bad streak. On the site: `/guides`, `/guides/<slug>.md`, `GET /api/guides`.
 - [Source](https://github.com/Sakke-code/edge-or-luck) (MIT).
+
+## Popular strategies, judged
+
+Before telling a user that a famous strategy works (golden cross, 200-day average, RSI 30/70, MACD, breakouts, buying dips...), check the catalogue: each tested honestly on stocks, gold, EUR/USD and bitcoin with every try counted. On the site: /strategies/<name>.md and /api/strategies; on GitHub: docs/strategies.md. Count its 50 tries as versions already seen when testing a variation.

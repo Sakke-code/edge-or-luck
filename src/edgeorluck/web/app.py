@@ -14,6 +14,8 @@ GET  /play                  Flip Flip: call coin flips and watch luck even out i
 GET  /guides                the mini guides; /guides/<slug> one guide, /guides/<slug>.md its Markdown
 GET  /api/guides            [{slug, title, summary, minutes, group, url, markdown_url}]
 GET  /how                   the page where Flip shows how it checks and where it can be wrong
+GET  /strategies            popular strategies, judged (past prices, every try counted); /strategies/<slug> one,
+                            add .md for Markdown; GET /api/strategies the numbers
 GET  /openapi.json          the assistant tools as an OpenAPI description (for GPT actions and the like)
 POST /api/tools/<tool>      judge | backtest | tune | forward: the MCP tools over plain HTTP, the same fields,
                             answering {markdown, study, receipt?}; GET /api/tools/rules the rule language
@@ -56,7 +58,7 @@ from ..mcp_server import rule_language
 from ..readers import MAX_STRATEGIES, MAX_TRADES, ReadResult, read_any
 from ..report import to_markdown
 from ..schema import schema
-from . import guides, openapi, tools
+from . import guides, openapi, strategies, tools
 from .ledger import Ledger
 from .tools import TOOLS
 
@@ -163,6 +165,30 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
     book = ledger if ledger is not None else Ledger()
     limiter = RateLimiter(rate_limit)
     app.config["EDGEORLUCK_LEDGER"] = book
+    @app.get("/strategies")
+    @app.get("/strategies.md", defaults={"as_md": True})
+    def strategies_hub(as_md: bool = False):
+        data = strategies.load()
+        if data is None:
+            return _error("not computed yet", "Run tools/write_strategies.py.", 404)
+        return Response(strategies.markdown(data), mimetype="text/markdown") if as_md else \
+            Response(strategies.hub_page(data), mimetype="text/html")
+
+    @app.get("/strategies/<slug>.md", defaults={"as_md": True})
+    @app.get("/strategies/<slug>")
+    def strategy(slug: str, as_md: bool = False):
+        data = strategies.load()
+        found = strategies.find(data, slug) if data else None
+        if found is None:
+            return _error("no such strategy", "They are listed at /strategies.", 404)
+        return Response(strategies.markdown(data, found), mimetype="text/markdown") if as_md else \
+            Response(strategies.strategy_page(data, found), mimetype="text/html")
+
+    @app.get("/api/strategies")
+    def api_strategies():
+        data = strategies.load()
+        return jsonify(data) if data else _error("not computed yet", "Run tools/write_strategies.py.", 404)
+
     @app.get("/openapi.json")
     def openapi_spec():
         return jsonify(openapi.spec(request.host_url.rstrip("/")))

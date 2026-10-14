@@ -286,6 +286,10 @@ Measured on simulated records whose truth is known ([VALIDATION.md](VALIDATION.m
 - Trades are treated as independent draws. Trades that move together (open at the same time, the same market move) count more than they should. It warns when trades overlap.
 - The buy-and-hold comparison is rough: it assumes the price moved at a steady pace.
 
+## Popular strategies, judged
+
+Ten rules you will hear again and again (the golden cross, the 200-day average, RSI 30/70, RSI(2) dips, Bollinger bounces, MACD, EMA 9/21, breakouts, buying dips), tested honestly on the S&P 500, the Nasdaq 100, gold, EUR/USD and bitcoin, with costs on every fill. Each strategy on each market is one of 50 tries, and every verdict counts all of them. Not one shows a real edge, and most made less than simply holding: [the results](docs/strategies.md). The site serves them at `/strategies` (and `.md` for assistants); `python tools/write_strategies.py` recomputes them. Past prices only: nothing there says what to trade now.
+
 ## Mini guides
 
 Short reads, a few minutes each, for traders and for the AI explaining things to them: [five ways a backtest lies](docs/guides/five-ways-a-backtest-lies.md), [tune settings without finding luck](docs/guides/tune-without-finding-luck.md), [write your idea as a rule](docs/guides/write-your-idea-as-a-rule.md), [is live keeping the backtest's promise?](docs/guides/live-vs-backtest.md), [why the judge is so strict](docs/guides/why-the-judge-is-strict.md), [count your versions](docs/guides/count-your-versions.md), [did it just ride the market?](docs/guides/did-it-just-ride-the-market.md) and [broken, or just a bad streak?](docs/guides/broken-or-bad-streak.md).

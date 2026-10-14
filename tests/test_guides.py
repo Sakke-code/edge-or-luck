@@ -172,3 +172,30 @@ def test_render_escapes_and_keeps_links_safe():
     assert nested == "<ul><li>way in</li><li>way out:<ul><li>sell</li><li>stop</li></ul></li><li>last</li></ul>"
     assert toc == [("a-b-title", "A <b> title")]          # plain text: the page escapes it once
     assert '<h2 id="a-b-title">A &lt;b&gt; title</h2>' in html
+
+
+# ── popular strategies, judged ────────────────────────────────────────────────
+
+def test_the_strategy_catalogue_matches_its_definitions_and_serves_pages(tmp_path):
+    from edgeorluck.web import strategies
+    from edgeorluck.web.app import create_app
+    from edgeorluck.web.ledger import Ledger
+    data = strategies.load()
+    assert data["tries"] == len(strategies.STRATEGIES) * len(strategies.MARKETS)
+    assert [s["slug"] for s in data["strategies"]] == [s["slug"] for s in strategies.STRATEGIES]
+    assert all(d["rule"] == s["rule"] for d, s in zip(data["strategies"], strategies.STRATEGIES))
+    assert all([r["symbol"] for r in s["results"]] == [m["symbol"] for m in strategies.MARKETS]
+               for s in data["strategies"])
+    client = create_app(Ledger(tmp_path)).test_client()
+    hub = client.get("/strategies").get_data(as_text=True)
+    assert all(s["title"] in hub for s in data["strategies"]) and "aria-current=page>Strategies" in hub
+    one = data["strategies"][0]
+    page = client.get(f"/strategies/{one['slug']}").get_data(as_text=True)
+    assert one["lesson"] in page and f"variants_tried={data['tries'] + 1}" in page
+    md = client.get(f"/strategies/{one['slug']}.md").get_data(as_text=True)
+    assert md.startswith(f"# {one['title']}, judged") and "| Market |" in md
+    assert client.get("/strategies.md").get_data(as_text=True).count("**The claim:**") == len(data["strategies"])
+    assert client.get("/api/strategies").get_json()["tries"] == data["tries"]
+    assert client.get("/strategies/nope").status_code == 404 and client.get("/strategies/nope.md").status_code == 404
+    docs = strategies.PACKAGE.parents[1] / "docs" / "strategies.md"
+    assert docs.read_text(encoding="utf-8").count("**The claim:**") == len(data["strategies"])

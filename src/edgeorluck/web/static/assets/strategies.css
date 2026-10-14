@@ -1,0 +1,31 @@
+/* edge or luck: popular strategies, judged (the catalogue and each strategy). Shares site.css and guides.css. */
+
+.catalogue{padding-top:clamp(28px,5vh,52px)}
+.chip{display:inline-block;padding:2px 10px 3px;border:1.5px solid currentColor;border-radius:999px;font-size:14px;line-height:1.35;white-space:nowrap}
+.chip.good{color:var(--green)}
+.chip.warn{color:var(--amber)}
+.chip.bad{color:var(--red)}
+.chip.wait,.chip.flat{color:var(--slate)}
+
+.matrix table{min-width:860px}
+.matrix th[scope="row"]{min-width:240px;font-weight:600}
+.matrix th[scope="row"] a{color:var(--ink)}
+.matrix th small{display:block;margin-top:3px;font-weight:400;font-size:14px;line-height:1.4;color:var(--ink-3)}
+.matrix td{vertical-align:top}
+.matrix .vs{display:block;margin-top:6px;font-size:15px;font-variant-numeric:tabular-nums;color:var(--ink)}
+.matrix .vs small{display:block;font-size:13px;color:var(--ink-3)}
+.fine{max-width:96ch;margin:16px 0 0;font-size:14.5px;line-height:1.55;color:var(--ink-3)}
+
+.strategy{padding-top:clamp(20px,4vh,40px)}
+.strategy .guide-head{grid-template-columns:minmax(0,1fr)}
+.results{list-style:none;margin:28px 0 8px;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+.result{padding:16px 16px 12px;border:1.5px solid var(--rule);border-radius:9px 12px 8px 11px;background:color-mix(in srgb,var(--paper-raised) 85%,transparent)}
+.result h3{margin:0 0 8px;font-size:17px}
+.result .nums{margin:10px 0 6px;font-size:15px;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.result .nums b{color:var(--ink)}
+.result .head{margin:6px 0 0;font-size:14px;line-height:1.45;color:var(--ink-3)}
+.spark{display:block;width:100%;height:40px}
+.spark polyline{fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linejoin:round}
+.spark line{stroke:var(--rule);stroke-width:1;stroke-dasharray:3 3}
+.spark.down polyline{stroke:var(--red)}
+.strategy .prose{margin-top:30px}
