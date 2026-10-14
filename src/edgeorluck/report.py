@@ -35,10 +35,13 @@ def _num_rows(numbers: Dict[str, Any], card: Dict[str, Any]) -> List[str]:
     rows.append(("Win rate", f"{share(wr['value'])} ({share(wr['range_95'][0])} to {share(wr['range_95'][1])})"))
     coin = numbers.get("coin_flip") or {}
     if coin:
-        need = coin.get("needed_at_most")
-        need_text = f"{need:,} or fewer" if need else "none"
+        # The pass bar as odds, never as a count of copies: the verdict's test is stricter than this picture
+        # and the two can differ by a few copies (see judge._coin_sentence).
+        rare = coin.get("needed_one_in")
+        rare = int(float(f"{rare:.2g}")) if rare and rare >= 100 else rare
+        need_text = f"passing needs odds rarer than about 1 in {rare:,}" if rare else "too few trades to pass yet"
         rows.append(("Coin-flip copies", f"{coin['ended_higher']:,} of {coin['copies']:,} ended higher "
-                                         f"(a pass needs {need_text})"))
+                                         f"({need_text})"))
     top3 = numbers.get("top_3")
     if top3:
         rows.append(("Best 3 trades", f"{share(top3['share_of_profit'])} of the profit; without them "

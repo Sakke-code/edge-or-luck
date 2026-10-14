@@ -43,10 +43,11 @@ from pathlib import Path
 from typing import Any, Deque, Dict, List, Optional, Tuple
 
 from flask import Flask, Request, Response, jsonify, request, send_from_directory
+from werkzeug.exceptions import HTTPException
 
 from .. import samples
 from ..judge import CHANGELOG, ENGINE_VERSION, analyze, make_settings
-from ..readers import ReadResult, read_any
+from ..readers import MAX_STRATEGIES, MAX_TRADES, ReadResult, read_any
 from ..report import to_markdown
 from ..schema import schema
 from . import guides
@@ -82,19 +83,23 @@ class RateLimiter:
         self.limit, self.window = limit, window_s
         self.hits: Dict[str, Deque[float]] = {}
         self.lock = threading.Lock()
+        self.swept = time.monotonic()
 
     def allow(self, key: str) -> bool:
         now = time.monotonic()
         with self.lock:
+            # Forget every address idle for a full window, at least once a window: the privacy note promises
+            # addresses are held for a minute, not until 10,000 have piled up.
+            if now - self.swept > self.window:
+                for k in [k for k, v in self.hits.items() if not v or now - v[-1] > self.window]:
+                    del self.hits[k]
+                self.swept = now
             q = self.hits.setdefault(key, deque())
             while q and now - q[0] > self.window:
                 q.popleft()
             if len(q) >= self.limit:
                 return False
             q.append(now)
-            if len(self.hits) > 10_000:
-                for k in [k for k, v in self.hits.items() if not v or now - v[-1] > self.window]:
-                    del self.hits[k]
             return True
 
 
@@ -142,6 +147,11 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
     app = Flask(__name__, static_folder=None)
     app.request_class = InMemoryRequest
     app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD
+    app.config["MAX_FORM_MEMORY_SIZE"] = MAX_UPLOAD     # a pasted csv_text form field may be as big as a file
+    proxies = int(os.environ.get("EDGEORLUCK_PROXIES", "0") or 0)
+    if proxies > 0:                                     # behind N trusted proxies: their view of the visitor
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=proxies)  # type: ignore[method-assign]
     app.json.sort_keys = False  # type: ignore[attr-defined]
     book = ledger if ledger is not None else Ledger()
     limiter = RateLimiter(rate_limit)
@@ -246,11 +256,38 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
         return Response(_single_cache[ENGINE_VERSION], mimetype="text/x-python",
                         headers={"Content-Disposition": "attachment; filename=edgeorluck_single.py"})
 
+    def _visitor() -> str:
+        # The connecting address. Behind a proxy, set EDGEORLUCK_PROXIES to the number of proxies in front of the
+        # app: ProxyFix then takes the address the nearest trusted proxy saw. A raw X-Forwarded-For header is
+        # whatever the visitor typed, so it is never used directly.
+        return request.remote_addr or "?"
+
+    def _bad_fields(fields: Dict[str, Any]) -> Optional[Tuple[Response, int]]:
+        for key, limit in (("name", 80), ("kind", 20), ("unit", 10), ("source", 20)):
+            value = fields.get(key)
+            if value is not None and not isinstance(value, str):
+                return _error(f"{key} must be text", f"Send {key} as a short string.", 400)
+            if isinstance(value, str) and len(value) > limit:
+                return _error(f"{key} is too long", f"{key} is at most {limit} characters.", 400)
+        return None
+
     @app.post("/api/judge")
     def api_judge():
-        if not limiter.allow(request.headers.get("X-Forwarded-For", request.remote_addr or "?").split(",")[0]):
+        if not limiter.allow(_visitor()):
             return _error("too many requests", f"Up to {limiter.limit} checks a minute per visitor. Wait a minute "
                                                "and try again.", 429)
+        try:
+            return _judge_post()
+        except HTTPException:     # 413 too large and the like: their own handlers answer
+            raise
+        except RecursionError:
+            return _error("the request is nested too deeply", "Send a flat list of results or a CSV.", 400)
+        except Exception:  # never a bare 500 for a trader's file
+            logger.exception("judge request failed")
+            return _error("the judge failed on this input", "This is our bug, not your file. Try a CSV export of "
+                                                            "the closed trades.", 422)
+
+    def _judge_post():
         payload: Dict[str, Any] = {}
         backtest = None
         source_kind = "upload"
@@ -260,6 +297,9 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
             payload = request.get_json(silent=True) or {}
             if not isinstance(payload, dict):
                 return _error("send a JSON object", "Expected {\"sample\": id} or {\"csv_text\": ...}.", 400)
+            bad = _bad_fields(payload)
+            if bad:
+                return bad
             include_chart = payload.get("chart", True) is not False
             sample_id = payload.get("sample")
             if sample_id:
@@ -281,13 +321,16 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
                 if isinstance(data, str) and len(data) > MAX_UPLOAD:
                     return _error("too large", "Up to 10 MB per check.", 413)
                 reads = [read_any(data, kind=_field(payload, "kind"), unit=_field(payload, "unit"),
-                                  name=_field(payload, "name"))]
+                                  name=_field(payload, "name"), allow_paths=False)]
                 bt = next((payload[k] for k in ("backtest_csv_text", "backtest_pnl", "backtest") if
                            payload.get(k) is not None), None)
                 if bt is not None:
-                    backtest = read_any(bt, name="Backtest")
+                    backtest = read_any(bt, name="Backtest", allow_paths=False)
         else:
             payload = {k: v for k, v in request.form.items()}
+            bad = _bad_fields(payload)
+            if bad:
+                return bad
             files = [(f.filename or "trades.csv", f.read()) for f in request.files.getlist("files")]
             files += [(f.filename or "trades.csv", f.read()) for f in request.files.getlist("file")]
             if not files and payload.get("csv_text"):
@@ -295,10 +338,10 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
             if not files:
                 return _error("no file", "Send one or more trade exports as 'files', or a sample.", 400)
             reads = [read_any(raw, unit=_field(payload, "unit"), kind=_field(payload, "kind"),
-                              name=_display_name(fname)) for fname, raw in files]
+                              name=_display_name(fname), allow_paths=False) for fname, raw in files]
             bt_files = [(f.filename or "backtest.csv", f.read()) for f in request.files.getlist("backtest")]
             if bt_files:
-                backtest = _merge([read_any(raw, name="Backtest") for _, raw in bt_files])
+                backtest = _merge([read_any(raw, name="Backtest", allow_paths=False) for _, raw in bt_files])
         result = _run(_merge(reads), payload, backtest, source_kind, sample_id, include_chart)
         return result if isinstance(result, tuple) else jsonify(result)
 
@@ -308,10 +351,22 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
         URLs: ?pnl=1.2,-0.8,0.5 (or separated by ; or spaces, which allows
         decimal commas) or ?csv=<url-encoded CSV> or ?sample=<id>, plus the
         usual fields. Markdown by default; format=json for the JSON result."""
-        if not limiter.allow(request.headers.get("X-Forwarded-For", request.remote_addr or "?").split(",")[0]):
+        if not limiter.allow(_visitor()):
             return _error("too many requests", f"Up to {limiter.limit} checks a minute per visitor. Wait a minute "
                                                "and try again.", 429)
+        try:
+            return _judge_get()
+        except HTTPException:
+            raise
+        except Exception:
+            logger.exception("judge request failed")
+            return _error("the judge failed on this input", "This is our bug, not your data.", 422)
+
+    def _judge_get():
         args = {k: v for k, v in request.args.items()}
+        bad = _bad_fields(args)
+        if bad:
+            return bad
         backtest = None
         source_kind, sample_id = "upload", None
         if _field(args, "sample"):
@@ -327,9 +382,10 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
             args.setdefault("source", given.get("source"))
         elif _field(args, "csv"):
             reads = [read_any(args["csv"], kind=_field(args, "kind"), unit=_field(args, "unit"),
-                              name=_field(args, "name"))]
+                              name=_field(args, "name"), allow_paths=False)]
         elif _field(args, "pnl"):
-            reads = [read_any(_pnl_lines(args["pnl"]), unit=_field(args, "unit"), name=_field(args, "name"))]
+            reads = [read_any(_pnl_lines(args["pnl"]), unit=_field(args, "unit"), name=_field(args, "name"),
+                              allow_paths=False)]
         else:
             return _error("nothing to judge", "Add ?pnl=1.2,-0.8,0.5 (one result per trade), ?csv=<url-encoded "
                                               "CSV> or ?sample=<id>. See /llms.txt.", 400)
@@ -344,6 +400,14 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
              sample_id: Optional[str], include_chart: bool):
         """Judge, let the ledger make its forecast for real uploads, and add what
         every answer carries: the Markdown, the track record, the privacy note."""
+        # The caps hold per check, after several files are merged (each file is capped on its own when read).
+        for part in (read, backtest):
+            if part is not None and len(part.strategies) > MAX_STRATEGIES:
+                part.strategies = part.strategies[:MAX_STRATEGIES]
+                part.warnings.append(f"Only the first {MAX_STRATEGIES} strategies were judged.")
+            if part is not None and sum(len(st.pnl) for st in part.strategies) > MAX_TRADES:
+                return _error("too many trades", f"Up to {MAX_TRADES:,} trades per check. Export a shorter period.",
+                              413)
         settings = make_settings(_field(payload, "variants_tried"), _field(payload, "benchmark_return_pct"),
                                  _field(payload, "fees_included"), _field(payload, "source"),
                                  _field(payload, "unit"), _field(payload, "kind"), include_chart)
@@ -368,6 +432,11 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
         result["track_record"] = book.track_record()
         result["privacy"] = PRIVACY
         return result
+
+    @app.errorhandler(500)
+    def server_error(_):
+        return _error("something went wrong on our side", "This is our bug. Try again, or try a CSV export of the "
+                                                         "closed trades.", 500)
 
     @app.errorhandler(413)
     def too_large(_):

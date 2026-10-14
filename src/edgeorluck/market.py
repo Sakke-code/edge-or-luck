@@ -10,6 +10,7 @@ high, low and volume when there are some).
 from __future__ import annotations
 
 import json
+import re
 import time
 import urllib.error
 import urllib.request
@@ -20,10 +21,13 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import pandas as pd
 
+from .readers import number
+
 KLINE_HOSTS = ("https://data-api.binance.vision", "https://api.binance.com")
 KLINE_LIMIT = 1000
 FETCH_WORKERS = 6
 MAX_BARS = 300_000
+CACHE_SIZE = 32
 INTERVAL_MS = {"1m": 60_000, "3m": 180_000, "5m": 300_000, "15m": 900_000, "30m": 1_800_000, "1h": 3_600_000,
                "2h": 7_200_000, "4h": 14_400_000, "6h": 21_600_000, "8h": 28_800_000, "12h": 43_200_000,
                "1d": 86_400_000, "3d": 259_200_000, "1w": 604_800_000}
@@ -79,14 +83,18 @@ def prices(symbol: str = "BTCUSDT", interval: str = "1h", start: Any = None, end
     bar's open time (UTC). Only finished bars: the one still forming is left out.
     start defaults to two years ago, end to now."""
     symbol = str(symbol).upper().replace("/", "").replace("-", "").strip()
+    if not re.fullmatch(r"[A-Z0-9]{2,20}", symbol):
+        raise PriceError(f"{symbol!r} isn't a Binance spot pair: use letters and digits, like BTCUSDT.")
     if interval not in INTERVAL_MS:
         raise PriceError(f"Unknown interval {interval!r}: use one of {', '.join(INTERVAL_MS)}.")
+    step = INTERVAL_MS[interval]
     now = datetime.now(timezone.utc)
     start_ms = _mk_ms(start, now - timedelta(days=730))
+    if start is None:
+        start_ms -= start_ms % step         # "two years ago" on a bar boundary, so repeated calls share the cache
     end_ms = min(_mk_ms(end, now), int(now.timestamp() * 1000))
     if start_ms >= end_ms:
         raise PriceError("start must be before end.")
-    step = INTERVAL_MS[interval]
     if (end_ms - start_ms) / step > MAX_BARS:
         raise PriceError(f"That is more than {MAX_BARS:,} bars: pick a later start or a longer interval.")
     key = (symbol, interval, start_ms, end_ms // step)
@@ -112,6 +120,8 @@ def prices(symbol: str = "BTCUSDT", interval: str = "1h", start: Any = None, end
     frame.index.name = "time"
     frame = frame[["open", "high", "low", "close", "volume"]]
     frame.attrs["source"] = f"Binance spot {symbol} {interval}"
+    while len(_mk_cache) >= CACHE_SIZE:           # a long-running MCP server must not grow without end
+        _mk_cache.pop(next(iter(_mk_cache)))
     _mk_cache[key] = frame
     return frame.copy()
 
@@ -165,22 +175,80 @@ def load_prices(data: Union[str, pd.DataFrame, pd.Series, list, tuple, np.ndarra
                 break
     if "close" not in picked:
         raise PriceError(f"The prices need a close column (found {', '.join(map(str, frame.columns))}).")
-    out = pd.DataFrame({role: pd.to_numeric(frame[col], errors="coerce") for role, col in picked.items()
-                        if role != "time"})
+    notes: List[str] = []
+    out = pd.DataFrame({role: _mk_numbers(frame[col]) for role, col in picked.items() if role != "time"})
+    out.index = frame.index
     if "time" in picked:
-        times = pd.to_datetime(frame[picked["time"]], utc=True, errors="coerce")
-        if times.notna().all():
-            out.index = pd.DatetimeIndex(times, name="time")
+        times = _mk_times(frame[picked["time"]])
+        good = times.notna().to_numpy()
+        if good.mean() >= 0.95:
+            if not good.all():          # a footer like "Total": drop the row, keep the dates
+                notes.append(f"{int((~good).sum()):,} row(s) without a readable date were left out.")
+            out = out[good]
+            out.index = pd.DatetimeIndex(times[good], name="time")
+        else:
+            notes.append("The dates couldn't be read, so the prices are used in the order given.")
     elif isinstance(frame.index, pd.DatetimeIndex):
         out.index = frame.index if frame.index.tz is not None else frame.index.tz_localize("UTC")
-    out = out[out["close"].notna()]
+    else:
+        out = out.reset_index(drop=True)
+    unreadable = out["close"].isna()
+    if unreadable.sum() > max(2, 0.01 * len(out)):
+        example = frame[picked["close"]][unreadable.to_numpy()].iloc[0] if len(frame) == len(unreadable) else ""
+        raise PriceError(f"{int(unreadable.sum()):,} closing prices couldn't be read (like {example!r}). Use plain "
+                         "numbers such as 1234.56.")
+    if unreadable.any():
+        notes.append(f"{int(unreadable.sum())} row(s) without a readable close were left out.")
+    out = out[~unreadable]
     if isinstance(out.index, pd.DatetimeIndex):
-        out = out[~out.index.duplicated()].sort_index()
+        if not out.index.is_monotonic_increasing:
+            notes.append("The prices were not in time order; they were sorted oldest first.")
+            out = out.sort_index(kind="stable")
+        out = out[~out.index.duplicated(keep="last")]
     if len(out) < 3:
         raise PriceError("Too few prices: a backtest needs a history of bars.")
     if (out["close"] <= 0).any():
         raise PriceError("Prices must be positive.")
+    out.attrs["notes"] = notes
     return out
 
 
-__all__ = ["prices", "load_prices", "PriceError", "INTERVAL_MS"]
+def _mk_numbers(col: pd.Series) -> pd.Series:
+    """Prices as numbers, including "1,010.25", "1.010,25" and "$12.50"."""
+    if pd.api.types.is_numeric_dtype(col):
+        return col.astype(float)
+    return col.map(number).astype(float)
+
+
+def _mk_times(col: pd.Series) -> pd.Series:
+    """Dates or epoch numbers; an epoch's unit (s, ms, us, ns) is read from its size."""
+    if pd.api.types.is_numeric_dtype(col):
+        size = float(np.nanmedian(np.abs(col.to_numpy(float)))) if col.notna().any() else 0.0
+        unit = "s" if size < 1e11 else "ms" if size < 1e14 else "us" if size < 1e17 else "ns"
+        return pd.Series(pd.to_datetime(col, unit=unit, utc=True, errors="coerce"), index=col.index)
+    return pd.Series(pd.to_datetime(col, utc=True, errors="coerce"), index=col.index)
+
+
+def between(frame: pd.DataFrame, start: Any = None, end: Any = None) -> pd.DataFrame:
+    """The part of a price history from start to end (either may be None)."""
+    if start is None and end is None:
+        return frame
+    if not isinstance(frame.index, pd.DatetimeIndex):
+        raise PriceError("These prices have no dates, so start and end can't pick a period.")
+
+    def stamp(value: Any) -> pd.Timestamp:
+        try:
+            ts = pd.Timestamp(value)
+        except (ValueError, TypeError):
+            raise PriceError(f"Can't read the date {value!r}: write it like 2024-01-31.") from None
+        return ts.tz_localize("UTC") if ts.tzinfo is None else ts.tz_convert("UTC")
+    lo = stamp(start) if start is not None else frame.index[0]
+    hi = stamp(end) if end is not None else frame.index[-1]
+    part = frame[(frame.index >= lo) & (frame.index <= hi)]
+    if len(part) < 3:
+        raise PriceError("There are almost no prices between that start and end.")
+    part.attrs = dict(frame.attrs)
+    return part
+
+
+__all__ = ["prices", "load_prices", "between", "PriceError", "INTERVAL_MS"]

@@ -37,11 +37,12 @@ import pandas as pd
 
 from .market import PriceError, load_prices
 from .result import Result, judge
-from .rulebook import Rule, RuleError, compile_rule, rule_from
+from .rulebook import RULE_SERIES, Rule, RuleError, compile_rule, rule_from
 
 DEFAULT_FEE_PCT = 0.1           # per fill: a typical spot taker fee
 DEFAULT_SLIPPAGE_PCT = 0.05     # per fill, against you
-PEEK_CHECKPOINTS = 20
+PEEK_CHECKPOINTS = 24           # evenly spread cuts, plus the first bars and the decision changes
+PEEK_CHANGES = 60               # at most this many decision changes are cut at (and the bars before them)
 MAX_COMBINATIONS = 1000
 MIN_TUNE_TRADES = 10
 
@@ -62,9 +63,35 @@ def _sim_frame(prices: Any) -> pd.DataFrame:
     else:
         frame = load_prices(prices)
     frame = frame[pd.to_numeric(frame["close"], errors="coerce") > 0].copy()
+    notes: List[str] = list(frame.attrs.get("notes", []))
+    if isinstance(frame.index, pd.DatetimeIndex):
+        # Oldest first, one row per time. A newest-first table would run the backtest backwards (trades exiting
+        # before they enter), and a repeated bar would fill a decision at the open it was made from.
+        if not frame.index.is_monotonic_increasing:
+            frame = frame.sort_index(kind="stable")
+            notes.append("The prices were not in time order; they were sorted oldest first.")
+        if frame.index.has_duplicates:
+            dupes = int(frame.index.duplicated(keep="last").sum())
+            frame = frame[~frame.index.duplicated(keep="last")]
+            notes.append(f"{dupes:,} repeated bar{'s' if dupes != 1 else ''} (the same time twice) were dropped.")
     if len(frame) < 30:
         raise PriceError("A backtest needs at least 30 bars of prices.")
+    frame.attrs["notes"] = notes
     return frame
+
+
+def _sim_view(frame: pd.DataFrame) -> pd.DataFrame:
+    """What a Python rule is given: the prices only (open, high, low, close, volume),
+    never other columns, so a signal computed in advance from later prices isn't there."""
+    return frame[[c for c in RULE_SERIES if c in frame.columns]].copy()
+
+
+def _sim_call(fn: Callable, view: pd.DataFrame) -> Any:
+    try:
+        return fn(view)
+    except KeyError as exc:
+        raise RuleError(f"your rule asked for the column {exc}: a Python rule gets only the prices (open, high, low, "
+                        "close, volume). Compute its signal inside the rule from them.") from None
 
 
 def _sim_fill_prices(frame: pd.DataFrame) -> Tuple[np.ndarray, str]:
@@ -123,7 +150,15 @@ def _sim_rule_decisions(frame: pd.DataFrame, rule: Rule, fills: np.ndarray, dela
 def _sim_values(out: Any, frame: pd.DataFrame, allow_short: bool, where: str) -> np.ndarray:
     if isinstance(out, pd.DataFrame):
         raise RuleError(f"{where}: return one position per bar (a Series or a list), not a table")
-    arr = out.reindex(frame.index).to_numpy() if isinstance(out, pd.Series) else np.asarray(out)
+    if isinstance(out, pd.Series):
+        if out.index.equals(frame.index) or out.index.isin(frame.index).any():
+            arr = out.reindex(frame.index).to_numpy()
+        elif len(out) == len(frame):
+            arr = out.to_numpy()                 # a plain 0..n-1 index: the positions in order
+        else:
+            raise RuleError(f"{where}: its positions are on other dates or bars than the prices it was given")
+    else:
+        arr = np.asarray(out)
     if arr.ndim != 1 or len(arr) != len(frame):
         raise RuleError(f"{where}: return one position per bar ({len(frame)} values, got "
                         f"{len(arr) if arr.ndim == 1 else arr.shape})")
@@ -133,21 +168,55 @@ def _sim_values(out: Any, frame: pd.DataFrame, allow_short: bool, where: str) ->
     return np.sign(vals) if allow_short else (vals > 0).astype(float)
 
 
-def _sim_peeks(frame: pd.DataFrame, fn: Callable, full: np.ndarray, allow_short: bool) -> Optional[Dict[str, Any]]:
-    """The look-ahead test: a decision at bar t must be the same whether or not
-    the bars after t exist. Checked at spread-out bars."""
+def _sim_peeks(frame: pd.DataFrame, fn: Callable, full: np.ndarray,
+               allow_short: bool) -> Tuple[Optional[Dict[str, Any]], int]:
+    """The look-ahead test: every decision up to bar t must be the same whether or
+    not the bars after t exist. Cut at spread-out bars, the earliest bars (where
+    warm-up tricks like a backward fill live), and around the bars where the
+    decisions change (where a peek pays). Returns (the first peek found, bars cut at)."""
     n = len(frame)
-    lo = max(1, int(n * 0.2))
-    spots = set(np.linspace(lo, n - 2, PEEK_CHECKPOINTS // 2).astype(int))
+    view = _sim_view(frame)
     rng = np.random.default_rng(n)
-    spots |= set(rng.integers(lo, n - 1, PEEK_CHECKPOINTS - len(spots)).tolist()) if n - 1 > lo else set()
+    spots = set(np.linspace(1, n - 2, PEEK_CHECKPOINTS).astype(int)) | set(range(1, min(n - 1, 12)))
+    changes = np.flatnonzero(np.diff(full) != 0) + 1
+    if len(changes):
+        pick = changes if len(changes) <= PEEK_CHANGES else rng.choice(changes, PEEK_CHANGES, replace=False)
+        spots |= {int(c) for c in pick if 0 < c < n - 1} | {int(c) - 1 for c in pick if 1 < c < n}
     for t in sorted(spots):
-        part = fn(frame.iloc[: t + 1].copy())
-        got = _sim_values(part, frame.iloc[: t + 1], allow_short, "your rule")[t]
-        if got != full[t]:
-            return {"bar": int(t), "time": _sim_when(frame, t), "with_all_bars": float(full[t]),
-                    "with_bars_so_far": float(got)}
-    return None
+        part = view.iloc[: t + 1].copy()
+        got = _sim_values(_sim_call(fn, part), part, allow_short, "your rule")
+        wrong = np.flatnonzero(got != full[: t + 1])
+        if len(wrong):
+            b = int(wrong[0])
+            return {"bar": b, "time": _sim_when(frame, b), "with_all_bars": float(full[b]),
+                    "with_bars_so_far": float(got[b])}, len(spots)
+    return None, len(spots)
+
+
+def _sim_ignores_prices(frame: pd.DataFrame, fn: Callable, full: np.ndarray, allow_short: bool) -> bool:
+    """True when a rule's (changing) decisions stay exactly the same on entirely
+    different prices: then it reads its signal from somewhere else (a variable
+    outside the function, a file), and no test on the prices can check it."""
+    if len(np.unique(full)) < 2:
+        return False                      # always in or always out: nothing to check
+    view = _sim_view(frame)
+    rng = np.random.default_rng(len(view) + 7)
+    close = float(view["close"].iloc[0]) * np.exp(np.cumsum(rng.normal(0, 0.02, len(view))))
+    other = view.copy()
+    other["close"] = close
+    if "open" in other:
+        other["open"] = np.r_[close[0], close[:-1]]
+    if "high" in other:
+        other["high"] = np.maximum(other["open"] if "open" in other else close, close) * 1.002
+    if "low" in other:
+        other["low"] = np.minimum(other["open"] if "open" in other else close, close) * 0.998
+    if "volume" in other:
+        other["volume"] = rng.permutation(view["volume"].to_numpy())
+    try:
+        got = _sim_values(fn(other), other, allow_short, "your rule")
+    except Exception:  # the rule failed on other prices: it does read them
+        return False
+    return bool(np.array_equal(got, full))
 
 
 # ── fills, trades and their costs ─────────────────────────────────────────────
@@ -201,12 +270,13 @@ def _sim_stats(trades: Sequence[Dict[str, Any]], frame: pd.DataFrame, fills: np.
             "hold_pct": float(hold), "time_in_market": float(in_market / max(1, hi - lo))}
 
 
-def _sim_judge(trades: Sequence[Dict[str, Any]], name: str, hold_pct: float, variants: Optional[int]) -> Result:
+def _sim_judge(trades: Sequence[Dict[str, Any]], name: str, hold_pct: float, variants: Optional[int],
+               fees_included: bool = True) -> Result:
     table = pd.DataFrame({"Entry time": [t["entry_time"] for t in trades], "Exit time": [t["exit_time"] for t in trades],
                           "Side": [t["side"] for t in trades], "Return %": [t["return_pct"] for t in trades]})
     if not isinstance(trades[0]["entry_time"], str):
         table = table.drop(columns=["Entry time", "Exit time"])
-    return judge(table, variants_tried=variants, benchmark_return_pct=round(hold_pct, 6), fees_included=True,
+    return judge(table, variants_tried=variants, benchmark_return_pct=round(hold_pct, 6), fees_included=fees_included,
                  source="backtest", unit="%", name=name)
 
 
@@ -296,15 +366,55 @@ def _sim_describe_rule(rule: Any) -> Dict[str, Any]:
 
 def _sim_run(frame: pd.DataFrame, rule: Any, *, delay: int, fee_pct: float, slippage_pct: float, allow_short: bool,
              check_peeking: bool) -> Tuple[np.ndarray, List[Dict[str, Any]], Optional[Dict[str, Any]], np.ndarray]:
+    """Decisions at each close and the trades they make, filled ``delay`` bars later.
+    The decisions are always the ones made with next-bar fills, so delay=2 runs the
+    very same trades one bar later (the one-bar-later check), for either kind of rule."""
     fills, _ = _sim_fill_prices(frame)
     peek = None
     if isinstance(rule, Rule):
-        decisions = _sim_rule_decisions(frame, rule, fills, delay)
+        decisions = _sim_rule_decisions(frame, rule, fills, 1)
     else:
-        decisions = _sim_values(rule(frame.copy()), frame, allow_short, "your rule")
+        decisions = _sim_values(_sim_call(rule, _sim_view(frame)), frame, allow_short, "your rule")
         if check_peeking:
-            peek = _sim_peeks(frame, rule, decisions, allow_short)
+            peek, checked = _sim_peeks(frame, rule, decisions, allow_short)
+            if peek is None and _sim_ignores_prices(frame, rule, decisions, allow_short):
+                peek = {"unchecked": True, "checked": checked}
+            elif peek is None:
+                peek = {"checked": checked, "ok": True}
     return decisions, _sim_trades(frame, decisions, fills, delay, fee_pct, slippage_pct), peek, fills
+
+
+def _sim_costs_ok(fee_pct: float, slippage_pct: float) -> None:
+    for label, value in (("fee_pct", fee_pct), ("slippage_pct", slippage_pct)):
+        if not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
+            raise RuleError(f"{label} is a cost per fill in percent, 0 or more (got {value!r})")
+
+
+def _sim_peek_stop(out: Dict[str, Any], peek: Dict[str, Any], frame: pd.DataFrame, chosen: bool = False) -> None:
+    """Stop: a Python rule that peeks, or one that can't be checked."""
+    what = "the chosen rule" if chosen else "the rule"
+    if peek.get("unchecked"):
+        out["status"] = "rule_unchecked"
+        out["headline"] = (f"Stopped: {what}'s decisions don't change when the prices do, so it reads its signal from "
+                           "somewhere else and can't be checked for looking ahead.")
+        out["checks"].append(_sim_check(
+            "no_look_ahead", "fail", "On completely different prices the rule made exactly the same decisions.",
+            "The look-ahead test checks how a rule uses the prices it's given. A signal computed beforehand (a "
+            "variable outside the function, a column from a file) may have used later prices, and nothing here "
+            "can tell.",
+            "Compute the signal inside the rule from the prices it's given (f['close'] and so on), or write it in "
+            "the rule language."))
+        return
+    out["status"] = "rule_peeks"
+    out["headline"] = f"Stopped: {what} looks into the future, so its backtest can't be trusted."
+    out["checks"].append(_sim_check(
+        "no_look_ahead", "fail",
+        f"At bar {peek['bar']} ({_sim_show(peek['time'])}) the rule decides {peek['with_all_bars']:g} when it can see "
+        f"the whole history, but {peek['with_bars_so_far']:g} when it only sees the bars up to then.",
+        "A real bot only knows the bars that have closed. A rule whose decision changes when later bars are "
+        "added is using the future, and its backtest looks better than any live result can be.",
+        "Look for shift(-1), centred rolling windows, backward fills, values normalised over the whole series, or "
+        "labels computed from later prices. Or write the rule in the rule language, which can't look ahead."))
 
 
 def _sim_rule(rule: Any) -> Any:
@@ -329,6 +439,7 @@ def backtest(prices: Any, rule: Any, *, fee_pct: float = DEFAULT_FEE_PCT, slippa
 
     A decision at a bar's close is filled at the next bar's open. A Python rule that
     looks into the future is caught and not judged."""
+    _sim_costs_ok(fee_pct, slippage_pct)
     frame = _sim_frame(prices)
     rule = _sim_rule(rule)
     label = name or (rule.name if isinstance(rule, Rule) and rule.name else None) or "Backtest"
@@ -342,23 +453,20 @@ def backtest(prices: Any, rule: Any, *, fee_pct: float = DEFAULT_FEE_PCT, slippa
                                      "round_trip_pct": round(2 * (fee_pct + slippage_pct), 6)},
                            "stats": _sim_stats(trades, frame, fills, 1), "checks": [], "trades": trades,
                            "judgement": None, "for_the_assistant": list(SIM_FOR_THE_ASSISTANT)}
-    if peek is not None:
-        out["status"] = "rule_peeks"
-        out["headline"] = "Stopped: the rule looks into the future, so its backtest can't be trusted."
-        out["checks"].append(_sim_check(
-            "no_look_ahead", "fail",
-            f"At bar {peek['bar']} ({_sim_show(peek['time'])}) the rule decides {peek['with_all_bars']:g} when it can see the "
-            f"whole history, but {peek['with_bars_so_far']:g} when it only sees the bars up to then.",
-            "A real bot only knows the bars that have closed. A rule whose decision changes when later bars are "
-            "added is using the future, and its backtest looks better than any live result can be.",
-            "Look for shift(-1), centred rolling windows, values normalised over the whole series, or labels "
-            "computed from later prices. Or write the rule in the rule language, which can't look ahead."))
+    for note in frame.attrs.get("notes", []):
+        out["checks"].append(_sim_check("prices", "warn", note, "The backtest runs bar by bar in time order."))
+    if peek is not None and not peek.get("ok"):
+        _sim_peek_stop(out, peek, frame)
         out["trades"] = []
         return Backtest(out)
     if not isinstance(rule, Rule):
+        checked = f"at {peek['checked']} test bars " if peek else ""
         out["checks"].append(_sim_check(
-            "no_look_ahead", "pass", f"The rule decided the same at {PEEK_CHECKPOINTS} test bars with and without "
-            "the later bars.", "A rule that changes its mind when later bars are added is using the future."))
+            "no_look_ahead", "pass" if peek else "warn",
+            (f"The rule decided the same {checked}with and without the later bars, and its decisions follow the "
+             "prices it's given." if peek else "Not checked for looking ahead (check_peeking=False)."),
+            "A rule that changes its mind when later bars are added is using the future. A test like this can "
+            "miss a rule that peeks only now and then; the rule language can't peek at all."))
     else:
         out["checks"].append(_sim_check(
             "no_look_ahead", "pass", "Written in the rule language, which only looks back.",
@@ -369,18 +477,29 @@ def backtest(prices: Any, rule: Any, *, fee_pct: float = DEFAULT_FEE_PCT, slippa
         return Backtest(out)
     _, later, _, _ = _sim_run(frame, rule, delay=2, fee_pct=fee_pct, slippage_pct=slippage_pct,
                               allow_short=allow_short, check_peeking=False)
-    out["checks"].append(_sim_delay_check(trades, later))
+    delay_check = _sim_delay_check(trades, later)
+    out["checks"].append(delay_check)
+    free = fee_pct + slippage_pct == 0
     out["checks"].append(_sim_check(
-        "costs", "pass", f"Every fill pays {fee_pct:g}% fees and {slippage_pct:g}% slippage, "
-        f"{2 * (fee_pct + slippage_pct):.2f}% per round trip.",
-        "A small edge before costs is often a loss after them."))
+        "costs", "warn" if free else "pass",
+        "No fees or slippage were charged." if free else
+        f"Every fill pays {fee_pct:g}% fees and {slippage_pct:g}% slippage, {2 * (fee_pct + slippage_pct):.2f}% per "
+        "round trip.",
+        "A small edge before costs is often a loss after them.",
+        "Set fee_pct and slippage_pct to your exchange's real costs." if free else None))
     if trades[-1]["end_of_data"]:
         out["checks"].append(_sim_check(
             "open_at_end", "warn", "The last trade was still open when the prices ended; it's closed at the last "
             "close.", "Its result is not final."))
-    j = _sim_judge(trades, label, out["stats"]["hold_pct"], variants_tried)
+    j = _sim_judge(trades, label, out["stats"]["hold_pct"], variants_tried, fees_included=not free)
     out["judgement"] = j.to_dict()
     out["headline"] = j.headline
+    if delay_check["status"] == "fail":
+        # The verdict may say "real edge", but an edge that vanishes one bar later lives on instant fills or a
+        # hidden look-ahead: the headline (the line assistants quote) says so first.
+        out["status"] = "fragile"
+        out["headline"] = ("Don't trust this yet: with every fill one bar later, the edge disappears. The judge on "
+                           f"these trades: {j.headline}")
     return Backtest(out)
 
 
@@ -426,7 +545,9 @@ def _sim_grid(grid: Mapping[str, Sequence[Any]]) -> List[Dict[str, Any]]:
         raise RuleError('grid is a dict of settings to try, like {"low": [20, 25, 30], "high": [65, 70, 75]}')
     names, values = [], []
     for key, vals in grid.items():
-        vals = list(vals) if isinstance(vals, (list, tuple, range, np.ndarray)) else [vals]
+        vals = list(vals) if isinstance(vals, (list, tuple, range, np.ndarray, pd.Series, pd.Index)) else [vals]
+        vals = [v.item() if isinstance(v, np.generic) else v for v in vals]       # np.int64(10) -> 10
+        vals = list(dict.fromkeys(vals))                                          # 15, 15 and 15.0 are one value
         if not vals:
             raise RuleError(f"setting {key} has no values to try")
         names.append(str(key))
@@ -435,6 +556,11 @@ def _sim_grid(grid: Mapping[str, Sequence[Any]]) -> List[Dict[str, Any]]:
     if len(combos) > MAX_COMBINATIONS:
         raise RuleError(f"{len(combos):,} combinations is more than {MAX_COMBINATIONS:,}: try fewer values")
     return combos
+
+
+def _finite(v: float) -> Optional[float]:
+    """None for inf/nan: JSON has no infinity (identical results give a t of inf)."""
+    return v if math.isfinite(v) else None
 
 
 def _sim_t(r: np.ndarray, min_n: int) -> float:
@@ -458,17 +584,25 @@ def tune(prices: Any, rule: Any, grid: Mapping[str, Sequence[Any]], *, holdout: 
 
     Don't tune again after seeing the verdict on the unseen part: that turns it into
     tuning data too."""
+    _sim_costs_ok(fee_pct, slippage_pct)
     frame = _sim_frame(prices)
     if not 0.1 <= holdout <= 0.6:
         raise RuleError("holdout is the share kept unseen for the verdict: between 0.1 and 0.6 (0.3 = the last 30%)")
-    combos = _sim_grid(grid)
     n = len(frame)
     cut = int(round(n * (1.0 - holdout)))
     fills, _ = _sim_fill_prices(frame)
-    rows, best_i, best_score, built = [], None, -math.inf, []
-    for i, params in enumerate(combos):
+    rows, best_i, best_score, built, seen, combos = [], None, -math.inf, [], set(), []
+    for params in _sim_grid(grid):
         made = rule(**params) if (callable(rule) and not isinstance(rule, (Rule, Mapping))) else rule_from(rule, params)
         made = _sim_rule(made) if not isinstance(made, Rule) else made
+        if isinstance(made, Rule):
+            # a setting the rule doesn't use, or a repeated value, gives a rule already tried: it isn't another try
+            same = (made.buy, made.sell, made.stop_loss_pct, made.take_profit_pct, made.max_hold_bars, made.side)
+            if same in seen:
+                continue
+            seen.add(same)
+        i = len(combos)
+        combos.append(params)
         built.append(made)
         _, trades, _, _ = _sim_run(frame, made, delay=1, fee_pct=fee_pct, slippage_pct=slippage_pct,
                                    allow_short=allow_short, check_peeking=False)
@@ -479,7 +613,7 @@ def tune(prices: Any, rule: Any, grid: Mapping[str, Sequence[Any]], *, holdout: 
                      "in_sample_trades": int(len(ins)), "in_sample_mean_pct": float(ins.mean()) if len(ins) else None,
                      "in_sample_t": score if math.isfinite(score) else None,
                      "unseen_trades": int(len(outs)), "unseen_mean_pct": float(outs.mean()) if len(outs) else None,
-                     "unseen_t": _sim_t(outs, 2) if len(outs) >= 2 else None})
+                     "unseen_t": _finite(_sim_t(outs, 2)) if len(outs) >= 2 else None})
         if score > best_score:
             best_i, best_score = i, score
     first_part = {"from": _sim_when(frame, 0), "to": _sim_when(frame, cut - 1), "bars": cut}
@@ -505,13 +639,8 @@ def tune(prices: Any, rule: Any, grid: Mapping[str, Sequence[Any]], *, holdout: 
     out["rule"] = _sim_describe_rule(best)
     _, trades, peek, _ = _sim_run(frame, best, delay=1, fee_pct=fee_pct, slippage_pct=slippage_pct,
                                   allow_short=allow_short, check_peeking=not isinstance(best, Rule))
-    if peek is not None:
-        out["status"] = "rule_peeks"
-        out["headline"] = "Stopped: the chosen rule looks into the future, so nothing here can be trusted."
-        out["checks"].append(_sim_check("no_look_ahead", "fail",
-                                        f"At bar {peek['bar']} ({_sim_show(peek['time'])}) the rule's decision changes when "
-                                        "later bars are added.", "A real bot only knows the bars that have closed.",
-                                        "Remove the look-ahead, or write the rule in the rule language."))
+    if peek is not None and not peek.get("ok"):
+        _sim_peek_stop(out, peek, frame, chosen=True)
         return Tuned(out)
     ins = [t for t in trades if t["exit_bar"] < cut]
     outs = [t for t in trades if t["entry_bar"] >= cut]
@@ -566,7 +695,7 @@ def _sim_markdown(d: Dict[str, Any]) -> str:
              f"{data['bars']:,} bars of {data['source']}, {_sim_show(data['first'])} to {_sim_show(data['last'])}. Each decision is made at a "
              f"bar's close and filled at {data['filled_at']}, with {costs['fee_pct']:g}% fees and "
              f"{costs['slippage_pct']:g}% slippage on every fill.", ""]
-    if d["status"] == "rule_peeks":
+    if d["status"] in ("rule_peeks", "rule_unchecked"):
         lines += [f"**{d['headline']}**", "", "### Honesty checks", ""] + _sim_checks_md(d["checks"])
         return "\n".join(lines) + "\n"
     lines += [f"**Result:** {st['trades']:,} trades, {_sim_pct(st['total_pct'])} in total, against "
@@ -599,10 +728,11 @@ def _sim_tune_markdown(d: Dict[str, Any]) -> str:
         lines += ["### The verdict on the unseen part", "", Result(d["out_of_sample"]).to_markdown().rstrip(), ""]
     fam = d.get("family")
     if fam:
+        rank = (f"; the chosen one ranked {fam['chosen_rank_unseen']} of {fam['settings_with_unseen_trades']}"
+                if fam.get("chosen_rank_unseen") else "")
         lines += ["### How the other settings did on the unseen part", "",
-                  f"{fam['made_money_unseen']} of {fam['settings_with_unseen_trades']} settings made money there; the "
-                  f"chosen one ranked {fam['chosen_rank_unseen']} of {fam['settings_with_unseen_trades']}. When few "
-                  "settings make money on unseen data, the first-part winner was mostly luck.", ""]
+                  f"{fam['made_money_unseen']} of {fam['settings_with_unseen_trades']} settings made money there"
+                  f"{rank}. When few settings make money on unseen data, the first-part winner was mostly luck.", ""]
     if d.get("in_sample"):
         ins = d["in_sample"]
         lines += ["### The chosen settings on the data that chose them", "",

@@ -36,6 +36,7 @@ from .fills import round_trips, side_of, split_amount, split_pair
 
 MAX_TRADES = 200_000
 MAX_STRATEGIES = 50
+MAX_INFLATED = 50 * 1024 * 1024    # a ZIP or XLSX may unpack to at most this
 
 CURRENCIES = ("USDT", "USDC", "FDUSD", "BUSD", "USD", "EUR", "GBP", "JPY", "CHF", "AUD", "CAD", "BTC", "ETH",
               "BNB", "SEK", "NOK", "DKK", "PLN", "INR", "TRY", "BRL", "DAI")
@@ -148,7 +149,9 @@ def _currency_in(text: str) -> Optional[str]:
 
 # ── columns by role ───────────────────────────────────────────────────────────
 
-_NOT_RESULT = {"cum", "cumulative", "run", "runup", "drawdown", "max", "mae", "mfe", "excursion", "favorable",
+_NOT_RESULT = {"cum", "cumulative", "running", "accumulated", "acc", "rolling", "cash", "amount", "position",
+               "value", "notional", "proceeds",
+               "run", "runup", "drawdown", "max", "mae", "mfe", "excursion", "favorable",
                "adverse", "unrealized", "unrealised", "open", "fee", "fees", "commission", "total", "equity",
                "balance", "avg", "average", "best", "worst", "trade", "size", "price", "qty", "quantity"}
 _PERCENTISH = {"%", "pct", "percent", "percentage", "ratio", "return", "roi", "change"}
@@ -175,7 +178,10 @@ def find_result_columns(columns: Sequence[str]) -> Tuple[Optional[str], Optional
             continue
         if "trade" in blocked and not (toks & {"pnl", "p&l", "profit"}):
             continue
-        rank = 0 if toks & {"net", "realized", "realised", "closed"} else 1 if toks & {"pnl", "p&l", "profit"} else 2
+        core = toks & {"pnl", "p&l", "profit", "p/l", "pl", "profit/loss"}
+        # realized/closed P&L first, then net P&L; "net" alone (Net Amount, NetCash) is not a result
+        rank = (0 if core and toks & {"realized", "realised", "closed"} else 1 if core and "net" in toks
+                else 2 if core else 3)
         if _is_pct_name(name) or toks == {"return"} or toks <= {"return", "pct"}:
             pct.append((rank, col))
         elif toks & {"pnl", "p&l", "profit", "p/l", "pl", "gain", "result", "profit/loss", "loss", "net"}:
@@ -230,7 +236,7 @@ _FEE_COIN = ("fee coin", "fee currency", "fee asset", "commission asset", "fee c
 
 def _decode(raw: bytes) -> str:
     if raw[:2] in (b"\xff\xfe", b"\xfe\xff"):
-        return raw.decode("utf-16")
+        return raw.decode("utf-16", errors="replace")       # a cut-off file has an odd byte at the end
     for encoding in ("utf-8-sig", "cp1252", "latin-1"):
         try:
             return raw.decode(encoding)
@@ -252,6 +258,10 @@ def numbers_from_text(text: str) -> Optional[Tuple[List[float], Optional[str]]]:
     body = text.strip().strip("[]")
     if not body:
         return None
+    lines = [line for line in body.splitlines() if line.strip()]
+    if len(lines) >= 2 and sum(bool(re.match(r"\s*#?\d+[.):]\s+\S", line)) for line in lines) >= 0.8 * len(lines):
+        # a numbered list ("1. +2.5%", "2) -45"): the list numbers are not results
+        body = "\n".join(re.sub(r"^\s*#?\d+[.):]\s+", "", line) for line in lines)
     if ";" in body:
         parts = re.split(r"[;\n\r]+", body)
     elif "\t" in body:
@@ -629,18 +639,67 @@ def _looks_like_fills(cols: Sequence[str], frame: pd.DataFrame) -> Optional[Dict
     if qty is None and total is None:
         return None
     out = {"side": side, "price": price}
-    for key, value in (("qty", qty), ("quote_total", total), ("time", find_column(cols, _CLOSE_TIME)),
-                       ("pair", find_column(cols, _SYMBOL)), ("fee", find_column(cols, _FEE)),
-                       ("fee_coin", find_column(cols, _FEE_COIN))):
+    taken = [c for c in (side, price, qty, total) if c]
+    when = find_column(cols, _CLOSE_TIME) or _fill_time_column(cols, frame, taken)
+    pair = find_column(cols, _SYMBOL) or _fill_pair_column(cols, frame, taken)
+    for key, value in (("qty", qty), ("quote_total", total), ("time", when), ("pair", pair),
+                       ("fee", find_column(cols, _FEE)), ("fee_coin", find_column(cols, _FEE_COIN))):
         if value is not None:
             out[key] = value
     return out
 
 
+def _fill_time_column(cols: Sequence[str], frame: pd.DataFrame, taken: Sequence[str]) -> Optional[str]:
+    """A fill's time under another name (tradeCreatedAt, Created, Date(UTC)): a header
+    that says time or date, else a column whose cells are nearly all dates."""
+    rest = [c for c in cols if c not in taken and "price" not in norm(c)]
+    for c in rest:
+        if re.search(r"time|date|created|timestamp|(?:^|[^a-z])at$", norm(c)):
+            return c
+    for c in rest:
+        if not pd.api.types.is_numeric_dtype(frame[c]) and _times(frame[c]).notna().mean() >= 0.9:
+            return c
+    return None
+
+
+_PAIR_CELL = re.compile(r"[A-Z0-9]{2,12}[-/_]?(?:USDT|USDC|FDUSD|BUSD|USD|EUR|GBP|TRY|BTC|ETH|BNB)", re.I)
+
+
+def _fill_pair_column(cols: Sequence[str], frame: pd.DataFrame, taken: Sequence[str]) -> Optional[str]:
+    """The traded pair under another name (Spot Pairs, Contracts): a header with the
+    word pair or symbol in it, else a column whose cells nearly all look like pairs."""
+    rest = [c for c in cols if c not in taken]
+    for c in rest:
+        if set(_tokens(norm(c))) & {"pair", "pairs", "symbol", "symbols", "market", "instrument"}:
+            return c
+    for c in rest:
+        cells = frame[c].dropna().astype(str).str.strip()
+        if len(cells) and cells.map(lambda v: bool(_PAIR_CELL.fullmatch(v))).mean() >= 0.9:
+            return c
+    return None
+
+
 def _from_fills(frame: pd.DataFrame, colmap: Dict[str, str], name: str) -> ReadResult:
+    cols = list(map(str, frame.columns))
+    if "time" not in colmap:
+        # Exports are usually newest first, so pairing in file order would run backwards: don't guess.
+        return _need(cols, "These look like fills, but there is no time column, so buys can't be paired with the "
+                           "sells that came after them. Export the fills with their date and time.")
+    if "pair" not in colmap:
+        prices = numbers_of(frame[colmap["price"]])
+        if prices.gt(0).any() and prices[prices > 0].max() > 10 * prices[prices > 0].min():
+            return _need(cols, "These fills have prices far apart but no pair or symbol column, so they may be "
+                               "several coins mixed together. Export them with the pair (like BTCUSDT).")
     rows = []
     pair_col = colmap.get("pair")
-    times = _times(frame[colmap["time"]]) if "time" in colmap else pd.Series([pd.NaT] * len(frame))
+    times = _times(frame[colmap["time"]])
+    # Decimal commas are decided per column, not per cell: a price of "2,345" (EUR) next to "100,5" is 2.345.
+    commas = {k: _decimal_commas(frame[colmap[k]].map(lambda v: split_amount(v)[0]))
+              for k in ("price", "qty", "fee", "quote_total") if k in colmap}
+
+    def num(key: str, text: Any) -> float:
+        return _comma_number(text) if commas.get(key) and text is not None else number(text)
+
     for i, (_, r) in enumerate(frame.iterrows()):
         side = side_of(r[colmap["side"]])
         if side is None:
@@ -654,8 +713,8 @@ def _from_fills(frame: pd.DataFrame, colmap: Dict[str, str], name: str) -> ReadR
         if not pair and qty_coin and total_coin:
             pair = f"{qty_coin}/{total_coin}"
         rows.append({"time": times.iloc[i], "pair": pair or "?", "side": side,
-                     "price": number(r[colmap["price"]]), "qty": number(qty_text),
-                     "fee": number(fee_text), "fee_coin": fee_coin, "quote_total": number(total_text)})
+                     "price": num("price", r[colmap["price"]]), "qty": num("qty", qty_text),
+                     "fee": num("fee", fee_text), "fee_coin": fee_coin, "quote_total": num("quote_total", total_text)})
     trips, warnings, facts = round_trips(rows, number)
     quotes = [q for q in facts["quotes"] if q]
     unit = quotes[0] if len(quotes) == 1 else ("money" if not quotes else quotes[0])
@@ -680,13 +739,47 @@ def _from_fills(frame: pd.DataFrame, colmap: Dict[str, str], name: str) -> ReadR
                       columns_used=used, warnings=warnings, summary=summary)
 
 
+def numbers_of(series: pd.Series) -> pd.Series:
+    """A column of numbers. Whether a comma is a decimal comma is decided once for
+    the whole column: "0,750" and "1,25" mark decimal commas, so "1,250" in the
+    same column is 1.25, not 1,250."""
+    if pd.api.types.is_numeric_dtype(series):
+        return series.astype(float)
+    if _decimal_commas(series):
+        return series.astype(str).map(lambda v: _comma_number(v)).astype(float)
+    return series.map(number).astype(float)
+
+
+def _decimal_commas(series: pd.Series) -> bool:
+    """Does this column write decimals with a comma? Yes when no cell has a decimal
+    point and some cell has a comma that can't be a thousands separator."""
+    text = series.dropna().astype(str).str.strip()
+    if text.str.contains(r"\d\.\d").any():
+        return False
+    return bool(text.str.contains(r"(?:^|[^\d])0,\d").any() or text.str.contains(r"\d,(?:\d{1,2}|\d{4,})(?!\d)").any())
+
+
+def _comma_number(value: Any) -> float:
+    return number(str(value).replace(".", "").replace(",", "."))
+
+
+_TOTAL_ROW = re.compile(r"(?:grand\s+)?(?:sub)?totals?|sum|summary", re.I)
+
+
 def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Optional[str]) -> ReadResult:
     frame = frame.copy()
     frame.columns = [str(c) for c in frame.columns]
     cols = list(frame.columns)
     if frame.empty:
         return _need(cols, "The table has no rows.")
-    if kind in (None, "auto", "tradingview"):
+    notes: List[str] = []
+    # A "Total" row at the bottom of an export is not one more trade.
+    cells = frame.select_dtypes(exclude="number").astype(str).apply(lambda c: c.str.strip().str.strip("*").str.strip())
+    totals = cells.apply(lambda c: c.str.fullmatch(_TOTAL_ROW)).any(axis=1) if not cells.empty else None
+    if totals is not None and totals.any() and totals.sum() < len(frame):
+        frame = frame[~totals.to_numpy()]
+        notes.append(f"Left out {int(totals.sum())} total row{'s' if totals.sum() != 1 else ''}.")
+    if kind != "fills":                         # TradingView's entry/exit rows are paired whatever kind was given
         tv = _tradingview(frame)
         if tv is not None:
             canon, used = tv
@@ -701,9 +794,11 @@ def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Op
             for st in strategies:
                 st.strategy_return_pct = last
             return ReadResult(strategies, "tradingview", rows=len(frame), columns_seen=cols, columns_used=used,
-                              source_hint="backtest")
+                              source_hint="backtest", warnings=notes)
     money, pct = find_result_columns(cols)
-    if kind == "fills" or (kind in (None, "auto") and money is None and pct is None):
+    # A result column that is all empty or zero (a spot fills export with a "Realized PnL" column) is not the result.
+    blank_result = bool(money) and pct is None and numbers_of(frame[money]).fillna(0).eq(0).all()
+    if kind == "fills" or (kind in (None, "auto") and ((money is None and pct is None) or blank_result)):
         colmap = _looks_like_fills(cols, frame)
         if colmap is not None:
             return _from_fills(frame, colmap, name)
@@ -726,14 +821,20 @@ def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Op
     side = find_column(cols, ("side", "direction", "position side", "position"), avoid=[c for c in (money, pct) if c])
     symbol = find_column(cols, _SYMBOL, avoid=[c for c in (money, pct, group) if c])
     canon = pd.DataFrame(index=frame.index)
-    canon["pnl"] = frame[money].map(number) if money else np.nan
-    canon["pct"] = frame[pct].map(number) if pct else np.nan
-    if pct and "ratio" in norm(pct) and canon["pct"].abs().max() <= 5:
+    canon["pnl"] = numbers_of(frame[money]) if money else np.nan
+    canon["pct"] = numbers_of(frame[pct]) if pct else np.nan
+    if pct and "ratio" in norm(pct) and canon["pct"].abs().max() <= 5 \
+            and not frame[pct].astype(str).str.contains("%").any():
         canon["pct"] = canon["pct"] * 100.0
+    # Results in percent: the user said so, or the result cells end in "%" ("+1.5%").
+    pct_cells = bool(money) and frame[money].astype(str).str.contains("%").mean() >= 0.9
+    if money and (unit == "%" or pct_cells) and (pct is None or canon["pct"].isna().all()):
+        canon["pct"], canon["pnl"] = canon["pnl"], np.nan
+        pct, money = money, None
     canon["time"] = _times(frame[when]).to_numpy() if when else pd.NaT
     canon["entry_time"] = _times(frame[entry]).to_numpy() if entry else pd.NaT
     if fee:
-        canon["fee"] = frame[fee].map(number).abs()
+        canon["fee"] = numbers_of(frame[fee]).abs()
     if side:
         canon["side"] = frame[side].map(lambda v: {1: 1, -1: -1}.get(side_of(v)) if side_of(v) else np.nan)
     if symbol:
@@ -741,14 +842,21 @@ def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Op
     if group:
         canon["strategy"] = frame[group].astype(str).str.strip().replace("", "(unnamed)")
     # Futures-style fill exports carry realized P&L only on closing rows.
-    if money and side and canon["pnl"].eq(0).mean() > 0.3 and canon["pnl"].ne(0).sum() >= 1:
+    warning = list(notes)
+    # Futures-style fill exports carry realized P&L only on closing rows: drop the opening rows, but only for
+    # files that look like fills (a price and a quantity), never breakeven trades in a trade table.
+    fill_shaped = _looks_like_fills(cols, frame) is not None
+    if money and side and fill_shaped and canon["pnl"].eq(0).mean() > 0.3 and canon["pnl"].ne(0).sum() >= 1:
         dropped = int(canon["pnl"].eq(0).sum())
         canon = canon[canon["pnl"].ne(0)]
-        warning = [f"Dropped {dropped} rows with a P&L of exactly 0 (opening fills)."]
-    else:
-        warning = []
-    money_unit = unit or (_currency_in(money) if money else None) or _cell_currency(frame[money] if money else None)
-    strategies = build_trades(canon, unit=(money_unit or "money") if money else "%", name=name, prefer=unit)
+        warning.append(f"Dropped {dropped} rows with a P&L of exactly 0 (opening fills).")
+    money_unit = (unit if unit != "%" else None) or (_currency_in(money) if money else None) or \
+        _cell_currency(frame[money] if money else None)
+    strategies = build_trades(canon, unit=(money_unit or "money") if money else "%", name=name,
+                              prefer="%" if not money else unit)
+    if any("dates_partial" in st.notes for st in strategies):
+        warning.append("Some rows have no readable close date, so the trades are taken in file order (a newest-first "
+                       "file is turned around).")
     used = {k: v for k, v in (("result", money), ("percent", pct), ("close_time", when), ("entry_time", entry),
                               ("strategy", group), ("fee", fee), ("side", side), ("symbol", symbol)) if v}
     return ReadResult(strategies, "trades_table", rows=len(frame), columns_seen=cols, columns_used=used,
@@ -794,8 +902,17 @@ def build_trades(canon: pd.DataFrame, *, unit: str, name: str, prefer: Optional[
         times = pd.to_datetime(times, errors="coerce", utc=True)
         order = np.arange(len(part))
         has_times = bool(times.notna().all()) and len(part) > 0
+        partial = False
         if has_times:
             order = np.argsort(times.to_numpy(), kind="stable")
+        elif times.notna().sum() >= 2:
+            # One blank date used to drop the time order altogether, so a newest-first export was judged backwards.
+            # The dates there still say which way the file runs.
+            dated = times[times.notna()]
+            steps = np.diff((dated - pd.Timestamp(0, tz="UTC")).dt.total_seconds().to_numpy())
+            if (steps < 0).sum() > (steps > 0).sum():
+                order = order[::-1]
+            partial = True
 
         def col(name_: str) -> Optional[np.ndarray]:
             if name_ not in part:
@@ -825,11 +942,14 @@ def build_trades(canon: pd.DataFrame, *, unit: str, name: str, prefer: Optional[
             exit_price=col("exit_price"),
             symbols=symbols,
         )
+        if partial:
+            st.notes.append("dates_partial")
         if use_pct and np.isfinite(money).sum() >= max(1, 0.9 * len(money)):
             st.notes.append("money_column_kept")
             st.size = None
             st.fees = None
             st.money_shadow = money[order]  # type: ignore[attr-defined]
+            st.money_unit = unit if unit and unit != "%" else "money"  # type: ignore[attr-defined]
         out.append(st)
     return out
 
@@ -863,9 +983,12 @@ def _looks_like_path(text: str) -> bool:
 
 
 def read_any(data: Any, *, kind: Optional[str] = None, unit: Optional[str] = None,
-             name: Optional[str] = None) -> ReadResult:
+             name: Optional[str] = None, allow_paths: bool = True) -> ReadResult:
     """Find the trades in ``data``. Never raises on bad input: a result with
-    ``need`` set says what is missing."""
+    ``need`` set says what is missing.
+
+    allow_paths=False: a string is only ever text, never a file name. The web app
+    reads visitors' input this way, so nobody can make it open a file on the server."""
     kind = (kind or "auto").strip().lower()
     unit = _normalize_unit(unit)
     label = name or "Your strategy"
@@ -882,10 +1005,12 @@ def read_any(data: Any, *, kind: Optional[str] = None, unit: Optional[str] = Non
     if ft is not None:
         return _finish(_from_freqtrade(ft, name), unit)
     if isinstance(data, (str, os.PathLike)) and not isinstance(data, str):
+        if not allow_paths:
+            return _need([], "Send the file's contents, not a file name.")
         return _read_path(Path(data), kind=kind, unit=unit, name=name)
     if isinstance(data, str):
         text = data
-        if _looks_like_path(text):
+        if allow_paths and _looks_like_path(text):
             path = Path(text.strip().strip('"'))
             if path.exists():
                 return _read_path(path, kind=kind, unit=unit, name=name)
@@ -939,7 +1064,10 @@ def _normalize_unit(unit: Optional[str]) -> Optional[str]:
         return None
     if text in ("%", "pct", "percent", "percentage") or text.lower() in ("pct", "percent", "percentage"):
         return "%"
-    return SYMBOLS.get(text, text.upper())
+    text = SYMBOLS.get(text, text.upper())
+    # A unit is a short currency code or symbol (USDT, BTC, EUR, $). Anything else is ignored: the unit is
+    # repeated in every sentence of the answer and kept with a web forecast, so free text can't be one.
+    return text if re.fullmatch(r"[A-Z0-9$€£¥]{1,10}", text) else None
 
 
 def _read_text(text: str, *, kind: str, unit: Optional[str], name: str,
@@ -953,7 +1081,8 @@ def _read_text(text: str, *, kind: str, unit: Optional[str], name: str,
         except ValueError:
             parsed = None
         if parsed is not None and not (isinstance(parsed, list) and all(isinstance(v, (int, float)) for v in parsed)):
-            return read_any(parsed, kind=kind, unit=unit, name=explicit)
+            # text inside text is never a file name
+            return read_any(parsed, kind=kind, unit=unit, name=explicit, allow_paths=False)
     pasted = numbers_from_text(stripped) if kind in ("auto", "pnl") else None
     skipped: List[str] = []
     if pasted is None and kind in ("auto", "pnl"):
@@ -978,6 +1107,10 @@ def _read_xlsx_or_zip(source: Any, *, kind: str, unit: Optional[str], name: str,
     try:
         with zipfile.ZipFile(source) as zf:
             names = zf.namelist()
+            # A small ZIP can inflate to gigabytes. Members never inflate past their declared size, so a cap on
+            # the declared total bounds the memory (XLSX files are ZIPs too).
+            if sum(info.file_size for info in zf.infolist()) > MAX_INFLATED:
+                return _need([], "The file unpacks to over 50 MB; export a shorter period or only the closed trades.")
             if not any(n.startswith("xl/") for n in names):
                 jsons = [n for n in names if n.endswith(".json") and "_config" not in n and "market_change" not in n
                          and "meta" not in n]
@@ -986,12 +1119,26 @@ def _read_xlsx_or_zip(source: Any, *, kind: str, unit: Optional[str], name: str,
                         parsed = json.loads(zf.read(n).decode("utf-8"))
                     except ValueError:
                         continue
-                    found = read_any(parsed, kind=kind, unit=unit, name=explicit)
+                    found = read_any(parsed, kind=kind, unit=unit, name=explicit, allow_paths=False)
                     if found.strategies:
                         return found
-                csvs = [n for n in names if n.lower().endswith((".csv", ".tsv", ".txt"))]
+                csvs = sorted(n for n in names if n.lower().endswith((".csv", ".tsv", ".txt")))
                 if csvs:
-                    return _read_text(_decode(zf.read(csvs[0])), kind=kind, unit=unit, name=name, explicit=explicit)
+                    texts = [_decode(zf.read(n)) for n in csvs]
+                    heads = {t.lstrip("﻿").splitlines()[0].strip() if t.strip() else "" for t in texts}
+                    if len(texts) > 1 and len(heads) == 1 and "" not in heads:
+                        # monthly exports of one account: one table, the header once
+                        first, *rest = texts
+                        text = first.rstrip("\n") + "\n" + "\n".join(t.split("\n", 1)[1].strip("\n")
+                                                                       for t in rest if "\n" in t)
+                        found = _read_text(text, kind=kind, unit=unit, name=name, explicit=explicit)
+                        found.warnings.append(f"Read {len(texts)} files from the ZIP as one table.")
+                        return found
+                    found = _read_text(texts[0], kind=kind, unit=unit, name=name, explicit=explicit)
+                    if len(texts) > 1:
+                        found.warnings.append(f"The ZIP holds {len(texts)} files with different columns; read "
+                                              f"{csvs[0]!r} only.")
+                    return found
                 return _need([], "The ZIP holds no trade file we know.")
     except zipfile.BadZipFile:
         return _need([], "The file looks like a ZIP or XLSX but can't be opened.")
@@ -1018,11 +1165,16 @@ def _read_path(path: Path, *, kind: str, unit: Optional[str], name: Optional[str
         return _need([], f"No file at {path.name!r}.")
     if path.is_dir():
         return _need([], f"{path.name!r} is a folder; give the export file itself.")
+    if not path.is_file():
+        return _need([], f"{path.name!r} is not a regular file; give the export file itself.")
     if path.stat().st_size > 50 * 1024 * 1024:
         return _need([], "The file is over 50 MB; export a shorter period or only the closed trades.")
     label = name or re.sub(r"[_\-]+", " ", path.stem).strip()[:60] or "Your strategy"
     suffix = path.suffix.lower()
-    raw = path.read_bytes()
+    with path.open("rb") as handle:             # read at most the cap, whatever the file claims its size is
+        raw = handle.read(50 * 1024 * 1024 + 1)
+    if len(raw) > 50 * 1024 * 1024:
+        return _need([], "The file is over 50 MB; export a shorter period or only the closed trades.")
     if suffix == ".xls" and raw[:4] == b"\xd0\xcf\x11\xe0":
         return _need([], "Old .xls workbooks can't be read here. Open it and save as .xlsx or CSV.")
     if raw[:2] == b"PK":

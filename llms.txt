@@ -33,14 +33,14 @@ When the user has a trading idea or rule but no trades, test it with the honest 
 import edgeorluck as eol
 px = eol.prices("BTCUSDT", "1h", start="2024-01-01")       # Binance spot, public, no key; or eol.load_prices("prices.csv")
 bt = eol.backtest(px, {"buy": "rsi(14) < 30 and close > sma(200)", "sell": "rsi(14) > 70"}, variants_tried=None)
-print(bt.to_markdown())                                      # bt.status: ok, no_trades or rule_peeks
+print(bt.to_markdown())                                      # bt.status: ok, fragile, no_trades, rule_peeks, rule_unchecked
 tuned = eol.tune(px, {"buy": "rsi(14) < {low}", "sell": "rsi(14) > 70"}, {"low": [20, 25, 30]})
 print(tuned.to_markdown())                                   # judged on the unseen last 30% only
 ```
 
 - Decisions at a bar's close are filled at the next bar's open, with `fee_pct` (0.1) and `slippage_pct` (0.05) on every fill. Every backtest is also run with fills one bar later.
 - The rule language: prices `open high low close volume`, numbers, `+ - * /`, `< <= > >=`, `and or not`. Functions: `sma ema rsi highest lowest std atr change pct prev crosses_above crosses_below abs min max`; `sma(20)` means `sma(close, 20)`. `ema`, `rsi`, `atr` and `std` match TradingView's. `highest` includes the current bar: a breakout is `close > prev(highest(high, 20))`. Exits: `sell`, `stop_loss_pct`, `take_profit_pct`, `max_hold_bars`; `"side": "short"`.
-- A Python rule (a function taking the price table and returning 1 / 0 / -1 per bar) is checked for look-ahead. A rule that peeks returns `status: "rule_peeks"` and is not judged.
+- A Python rule (a function taking the price table and returning 1 / 0 / -1 per bar) gets only open/high/low/close/volume and is checked for look-ahead. A rule that peeks returns `status: "rule_peeks"`; one whose decisions don't follow the prices it's given (a signal computed outside it) returns `"rule_unchecked"`. Neither is judged. `"fragile"`: the edge disappears with every fill one bar later; say so first.
 - To compare settings, use `tune()` once rather than many backtests: it chooses on the first part and judges once on the unseen part. Quote the unseen part's headline. Don't tune again after seeing it.
 - Command line: `edgeorluck backtest --buy "..." --sell "..." [--symbol --interval --start | --prices file.csv]`, `edgeorluck tune ... --grid "low=20,25,30"`. MCP tools: `backtest_rule`, `tune_rule`, `rule_language`.
 

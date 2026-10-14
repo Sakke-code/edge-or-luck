@@ -171,11 +171,18 @@ def record_of(x: "np.ndarray") -> Record:
     n = len(x)
     if n < 2:
         return Record(n, float(x.sum()) if n else 0.0, float("nan"), 0.0)
-    sd = float(np.std(x, ddof=1))
-    scale = float(np.mean(np.abs(x)))
-    sd = max(sd, 1e-9 * (scale + 1.0))
-    factor = serial_factor(x)
-    return Record(n, float(x.sum()), sd * math.sqrt(factor), sample_skew(x), factor)
+    # The statistics are scale-free, so work at a scale where squares and cubes can't overflow (results of
+    # 1e150 broke the skew) and give the totals back in the trader's unit.
+    k = float(np.max(np.abs(x)))
+    k = k if (k > 0 and not 1e-100 < k < 1e100) else 1.0
+    xs = x / k
+    sd = float(np.std(xs, ddof=1))
+    scale = float(np.mean(np.abs(xs)))
+    # A floor for identical trades, relative to their size: an absolute floor made tiny units (0.0000004 BTC)
+    # read differently from the same record in bigger units.
+    sd = max(sd, 1e-9 * scale, 1e-300)
+    factor = serial_factor(xs)
+    return Record(n, float(xs.sum()) * k, sd * k * math.sqrt(factor), sample_skew(xs), factor)
 
 
 def skew_shift(skew: float, n: int, bar: float, rho2: float, sign: int) -> float:

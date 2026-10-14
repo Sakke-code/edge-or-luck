@@ -14,7 +14,9 @@ sma(close, 20).
 from __future__ import annotations
 
 import ast
+import math
 import operator
+import re
 from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Mapping, Optional, Union
 
@@ -23,6 +25,8 @@ import pandas as pd
 
 RULE_SERIES = ("open", "high", "low", "close", "volume")
 MAX_RULE_LENGTH = 500
+MAX_WINDOW = 10_000_000        # longer than any price history: a bigger window is a typo, or an attempt to stall
+MAX_NUMBER = 1e15
 
 RULE_FUNCTIONS = {
     "sma": "sma(n) or sma(series, n): simple moving average of the last n bars",
@@ -64,9 +68,19 @@ def _rb_window(name: str, args: List[Value], frame: pd.DataFrame, *, default_n: 
         series, n = args
     else:
         raise RuleError(f"{name} takes {RULE_FUNCTIONS[name].split(':')[0]}")
-    if isinstance(n, pd.Series) or not float(n).is_integer() or n < 1:
+    if isinstance(n, pd.Series) or not math.isfinite(float(n)) or not float(n).is_integer() or n < 1:
         raise RuleError(f"{name}: the window must be a whole number of bars, 1 or more (got {n})")
-    return series, int(n)
+    if n > MAX_WINDOW:
+        raise RuleError(f"{name}: a window of {n:g} bars is longer than any price history ({MAX_WINDOW:,} at most)")
+    return _rb_num(series), int(n)
+
+
+def _rb_num(value: "Value") -> "Value":
+    """Conditions are True/False; in arithmetic and functions they count as 1/0
+    (pandas would subtract True/False as XOR and difference them oddly)."""
+    if isinstance(value, pd.Series) and value.dtype == bool:
+        return value.astype(float)
+    return value
 
 
 def _rb_average(series: pd.Series, n: int, alpha: float) -> pd.Series:
@@ -77,10 +91,12 @@ def _rb_average(series: pd.Series, n: int, alpha: float) -> pd.Series:
     valid = np.flatnonzero(~np.isnan(values))
     if len(valid) < n:
         return pd.Series(np.nan, index=series.index)
-    first = int(valid[0])
+    # Seeded at the n-th valid value with the mean of the first n valid values: a gap (a missing volume) early on
+    # neither poisons the seed nor makes the start depend on how many bars come later.
+    at = int(valid[n - 1])
     seeded = series.astype(float).copy()
-    seeded.iloc[: first + n - 1] = np.nan
-    seeded.iloc[first + n - 1] = float(np.mean(values[first: first + n]))
+    seeded.iloc[:at] = np.nan
+    seeded.iloc[at] = float(np.mean(values[valid[:n]]))
     return seeded.ewm(alpha=alpha, adjust=False).mean()
 
 
@@ -96,6 +112,7 @@ def _rb_rsi(series: pd.Series, n: int) -> pd.Series:
 
 
 def _rb_call(name: str, args: List[Value], frame: pd.DataFrame) -> Value:
+    args = [_rb_num(a) for a in args]
     if name in ("sma", "ema", "rsi", "highest", "lowest", "std"):
         series, n = _rb_window(name, args, frame)
         if name == "sma":
@@ -169,9 +186,9 @@ def _rb_eval(node: ast.AST, frame: pd.DataFrame) -> Value:
         value = _rb_eval(node.operand, frame)
         if isinstance(node.op, ast.Not):
             return ~_rb_bool(value, frame)
-        return -value if isinstance(node.op, ast.USub) else value
+        return -_rb_num(value) if isinstance(node.op, ast.USub) else _rb_num(value)
     if isinstance(node, ast.BinOp):
-        return _BIN[type(node.op)](_rb_eval(node.left, frame), _rb_eval(node.right, frame))
+        return _BIN[type(node.op)](_rb_num(_rb_eval(node.left, frame)), _rb_num(_rb_eval(node.right, frame)))
     if isinstance(node, ast.Compare):
         left, out = _rb_eval(node.left, frame), None
         for op, comparator in zip(node.ops, node.comparators):
@@ -200,6 +217,8 @@ def _rb_check(node: ast.AST, text: str) -> None:
         if isinstance(sub, ast.Constant):
             if isinstance(sub.value, bool) or not isinstance(sub.value, (int, float)):
                 raise RuleError(f"only numbers can appear as values in a rule (found {sub.value!r})")
+            if not abs(sub.value) <= MAX_NUMBER:       # also catches nan and a 400-digit integer
+                raise RuleError(f"a number in {text!r} is too big for a price rule")
             continue
         if isinstance(sub, ast.Name):
             if sub.id not in RULE_SERIES and sub.id not in RULE_FUNCTIONS:
@@ -249,7 +268,13 @@ def compile_rule(text: str) -> Callable[[pd.DataFrame], pd.Series]:
         raise RuleError(f"{text!r} is a number, not a condition: compare it, like {text} < 30")
 
     def condition(frame: pd.DataFrame) -> pd.Series:
-        return _rb_bool(_rb_eval(tree, frame), frame).reindex(frame.index).fillna(False).astype(bool)
+        try:
+            with np.errstate(all="ignore"):
+                return _rb_bool(_rb_eval(tree, frame), frame).reindex(frame.index).fillna(False).astype(bool)
+        except RuleError:
+            raise
+        except (ArithmeticError, TypeError, ValueError) as exc:   # 1/0, an overflow, a mismatched function call
+            raise RuleError(f"can't work out {text!r} on these prices: {exc}") from None
 
     condition.text = text  # type: ignore[attr-defined]
     return condition
@@ -304,11 +329,21 @@ def rule_from(value: Union[Rule, Mapping[str, Any]], params: Optional[Mapping[st
             raise RuleError(f"setting {key} must be a number (got {v!r})")
     for key in ("buy", "sell"):
         if isinstance(data.get(key), str) and params:
-            try:
-                data[key] = data[key].format(**{k: repr(float(v)) if not float(v).is_integer() else str(int(v))
-                                                for k, v in params.items()})
-            except (KeyError, IndexError, ValueError) as exc:
-                raise RuleError(f"the {key} rule names a setting that isn't given: {exc}") from None
+            text = data[key]
+            if len(text) > MAX_RULE_LENGTH:
+                raise RuleError(f"a rule can be at most {MAX_RULE_LENGTH} characters")
+            if re.search(r"\{(?!\w+\})|(?<!\{\w)\}", re.sub(r"\{\w+\}", "", text)):
+                raise RuleError(f"the {key} rule has a brace that isn't a {{setting}}: write settings like {{low}}")
+
+            def fill(m: "re.Match[str]") -> str:
+                name = m.group(1)
+                if name not in params:
+                    raise RuleError(f"the {key} rule names the setting {name!r}, which has no values: add it to the "
+                                    "grid")
+                v = float(params[name])
+                return str(int(v)) if v.is_integer() else repr(v)
+            # A plain substitution: str.format would also run format specs like {low:>300000000}.
+            data[key] = re.sub(r"\{(\w+)\}", fill, text)
     for key in ("stop_loss_pct", "take_profit_pct", "max_hold_bars"):
         v = data.get(key)
         if isinstance(v, str) and v.strip().startswith("{") and v.strip().endswith("}"):
@@ -323,6 +358,8 @@ def rule_from(value: Union[Rule, Mapping[str, Any]], params: Optional[Mapping[st
                 raise RuleError(f"{key} must be a number (got {data[key]!r})") from None
             if not np.isfinite(v) or v <= 0:
                 raise RuleError(f"{key} must be a positive number (got {data[key]!r})")
+            if key == "max_hold_bars" and (not v.is_integer() or v > MAX_WINDOW):
+                raise RuleError(f"max_hold_bars is a whole number of bars, 1 or more (got {data[key]!r})")
             data[key] = int(v) if key == "max_hold_bars" else v
     side = str(data.get("side") or "long").lower()
     if side not in ("long", "short"):

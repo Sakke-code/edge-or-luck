@@ -291,7 +291,7 @@ svg.chart{display:block;width:100%;height:auto;aspect-ratio:640/316}
       coin.style.transform = "rotateX(" + to + "deg)";
       $("tosser").animate([{ transform: "scale(1,1)" }, { transform: "scale(1.06,.92)", offset: .4 }, { transform: "scale(1,1)" }],
         { duration: 220, easing: "ease-out" });
-    });
+    }, function () {});   // "Start over" cancels a toss mid-air: that's fine, not an error
   }
 
   /* ---------- what Flip says ---------- */

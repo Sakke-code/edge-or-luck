@@ -7,6 +7,8 @@ from typing import Any, List, Optional, Sequence
 import numpy as np
 import pandas as pd
 
+MAX_DIGITS = 12                 # decimals for the smallest amounts (satoshi-sized results stay readable)
+
 
 def fmt(value: Optional[float], unit: str, signed: bool = True, ref: Optional[float] = None) -> str:
     """+12.30 USDT, -0.42%, +1,234; "n/a" when missing. ``ref`` sets the
@@ -17,7 +19,7 @@ def fmt(value: Optional[float], unit: str, signed: bool = True, ref: Optional[fl
     a = abs(v)
     if ref is not None and math.isfinite(ref) and abs(ref) > a:
         scale = abs(ref)
-        digits = 0 if scale >= 100 else 2 if scale >= 1 else max(2, min(6, 2 - int(math.floor(math.log10(scale)))))
+        digits = 0 if scale >= 100 else 2 if scale >= 1 else max(2, min(MAX_DIGITS, 2 - int(math.floor(math.log10(scale)))))
         body = f"{a:,.{digits}f}"
         if body.strip("0.,") == "" and a > 0:
             return fmt(value, unit, signed)          # don't round a sign away: show it at its own scale
@@ -28,8 +30,8 @@ def fmt(value: Optional[float], unit: str, signed: bool = True, ref: Optional[fl
         body = f"{a:,.0f}"
     elif a >= 1 or a == 0:
         body = f"{a:,.2f}"
-    else:
-        digits = max(2, min(6, 2 - int(math.floor(math.log10(a)))))
+    else:                       # three significant digits, so 0.0000004 BTC isn't shown as 0.000000
+        digits = max(2, min(MAX_DIGITS, 2 - int(math.floor(math.log10(a)))))
         body = f"{a:.{digits}f}"
     sign = ("+" if v > 0 else "-" if v < 0 else "") if signed else ("-" if v < 0 else "")
     if body.strip("0.,") == "":
@@ -51,8 +53,14 @@ def unit_words(unit: str) -> str:
 
 
 def share(value: Optional[float]) -> str:
+    """A share as a whole percent, never rounded to 0% or 100% when it isn't one
+    (1 loss in 300 trades is a win rate of "over 99%", not "100%")."""
     if value is None or not math.isfinite(value):
         return "n/a"
+    if 0 < value < 0.005:
+        return "under 1%"
+    if 0.995 <= value < 1:
+        return "over 99%"
     return f"{100 * value:.0f}%"
 
 
@@ -72,6 +80,13 @@ def one_in(p: Optional[float], draws: int) -> str:
     rounded = int(round(n)) if n < 20 else int(round(n, -1)) if n < 200 else int(round(n, -2)) if n < 2000 \
         else int(round(n, -3))
     return f"about 1 in {rounded:,}"
+
+
+def how_often(p: Optional[float], draws: int) -> str:
+    """'about 1 in 12 times', or 'most of the time' when it is common (one_in
+    says 'almost always', which can't be followed by 'times')."""
+    text = one_in(p, draws)
+    return "most of the time" if text == "almost always" else text if text == "n/a" else f"{text} times"
 
 
 def day(t: Optional[pd.Timestamp]) -> Optional[str]:

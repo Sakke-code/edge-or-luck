@@ -26,6 +26,11 @@ def strategy(x, start="2026-01-01"):
     return Trades("s", "%", np.asarray(x, dtype=float), times)
 
 
+def right_after(n, start="2026-01-01"):
+    """The moment just after the n-th trade of strategy(): when its trader uploads."""
+    return (pd.Timestamp(start, tz="UTC") + pd.Timedelta(hours=6 * (n - 1) + 1)).to_pydatetime()
+
+
 def recent_rows(n):
     end = pd.Timestamp.now(tz="UTC").floor("h")
     return [end - pd.Timedelta(hours=3 * (n - i)) for i in range(n)]
@@ -36,8 +41,8 @@ def recent_rows(n):
 def test_a_forecast_is_made_once_kept_on_reupload_and_graded_when_enough_trades_follow(tmp_path):
     book = Ledger(tmp_path)
     x = np.random.default_rng(1).normal(0.3, 2.0, 80)
-    first = book.observe(strategy(x), now=NOW)
-    again = book.observe(strategy(x), now=NOW)
+    first = book.observe(strategy(x), now=right_after(80))
+    again = book.observe(strategy(x), now=right_after(80))
     assert len(book.calls) == 1 and "(made " in again["sentence"] and first["probability"] == again["probability"]
     book.observe(strategy(np.concatenate((x, np.full(10, 1.0)))), now=NOW)
     assert book.grades == []
@@ -51,10 +56,22 @@ def test_a_forecast_is_made_once_kept_on_reupload_and_graded_when_enough_trades_
 def test_a_different_history_behind_the_same_opening_trades_is_not_graded(tmp_path):
     book = Ledger(tmp_path)
     x = np.random.default_rng(1).normal(0.3, 2.0, 80)
-    book.observe(strategy(x), now=NOW)
+    book.observe(strategy(x), now=right_after(80))
     other = np.concatenate((x[:30], np.random.default_rng(9).normal(0, 2, 90)))
     view = book.observe(strategy(other), now=NOW)
-    assert book.grades == [] and "(made " in view["sentence"]
+    # another version of the strategy: not a grade for the first one, and a forecast of its own
+    assert book.grades == [] and len(book.calls) == 2 and view["probability"] is not None
+
+
+def test_only_dated_trades_closed_after_a_forecast_can_grade_it(tmp_path):
+    book = Ledger(tmp_path)
+    x = np.random.default_rng(1).normal(0.3, 2.0, 80)
+    undated = book.observe(Trades("s", "%", x), now=NOW)
+    assert undated["probability"] is None and book.calls == {}          # no dates: no forecast to game
+    longer = np.concatenate((x, np.full(30, -1.0)))
+    book.observe(strategy(x), now=NOW)                                  # made after all 110 trades closed ...
+    view = book.observe(strategy(longer), now=NOW)
+    assert book.grades == [] and "closed before our forecast" in view["sentence"]   # ... so they can't grade it
 
 
 def test_the_record_is_chained_and_survives_a_restart(tmp_path):
@@ -80,7 +97,7 @@ def test_the_ledger_picks_the_shrinkage_its_own_graded_forecasts_favour(tmp_path
         rng = np.random.default_rng(seed)
         x = rng.normal(0.0, 2.0, 60)
         x[:30] += 0.8
-        book.observe(strategy(x[:30]), now=NOW)
+        book.observe(strategy(x[:30]), now=right_after(30))
         book.observe(strategy(np.concatenate((x[:30], rng.normal(0.0, 2.0, 30)))), now=NOW)
     assert len(book.grades) == 40 and book.chosen_k() >= 400
     record = book.track_record()

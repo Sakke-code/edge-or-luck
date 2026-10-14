@@ -14,6 +14,7 @@ import random
 from statistics import NormalDist
 
 import numpy as np
+import pandas as pd
 import pytest
 
 from edgeorluck import compare, evidence
@@ -340,11 +341,14 @@ def test_the_ledger_grades_each_call_by_its_squared_error(tmp_path):
     book = Ledger(tmp_path)
     rng = np.random.default_rng(3)
     x = rng.normal(0.3, 2.0, 45)
-    book.observe(Trades("s", "%", x))
+    # dated trades: a forecast made just after trade 45, graded by trades 46-75, which close after it
+    times = list(pd.Timestamp("2026-01-01", tz="UTC") + pd.to_timedelta(np.arange(75) * 6, unit="h"))
+    made, later = (times[44] + pd.Timedelta(hours=1)).to_pydatetime(), (times[74] + pd.Timedelta(hours=1)).to_pydatetime()
+    book.observe(Trades("s", "%", x, times[:45]), now=made)
     for tail_mean in (-1.0, 1.0):
         longer = np.concatenate((x, np.full(30, tail_mean)))
         call = book.calls[book.open[next(iter(book.open))]]
-        book.observe(Trades("s", "%", longer))
+        book.observe(Trades("s", "%", longer, times), now=later)
         grade = book.grades[-1]
         outcome = int(float(np.sum(longer[45:75])) > 0)
         assert grade["outcome"] == outcome
@@ -352,7 +356,7 @@ def test_the_ledger_grades_each_call_by_its_squared_error(tmp_path):
         coin = SHRINKAGE.index(math.inf)
         assert call["probabilities"][coin] == 0.5 and grade["brier"][coin] == 0.25   # brier_coin_flip
         book = Ledger(tmp_path / f"again{tail_mean}")
-        book.observe(Trades("s", "%", x))
+        book.observe(Trades("s", "%", x, times[:45]), now=made)
 
 
 def test_the_coin_flip_forecast_is_one_half():

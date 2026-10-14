@@ -16,7 +16,7 @@ Works with the official MCP Python SDK 1.x (FastMCP) and 2.x (MCPServer).
 """
 import json
 import os
-from typing import List, Optional
+from typing import List, Optional, Union
 
 from .judge import ENGINE_VERSION
 from .result import judge
@@ -122,12 +122,12 @@ TUNE_DESCRIPTION = (
 
 def _prices_for(symbol: Optional[str], interval: str, start: Optional[str], end: Optional[str],
                 prices_file: Optional[str]):
-    from .market import load_prices, prices
+    from .market import between, load_prices, prices
     if prices_file:
         path = _path(prices_file)
         if not os.path.exists(path):
             raise FileNotFoundError(f"No file at {path}.")
-        return load_prices(path)
+        return between(load_prices(path), start, end)
     return prices(symbol or "BTCUSDT", interval, start=start, end=end)
 
 
@@ -150,15 +150,16 @@ def backtest_rule(buy: str, sell: Optional[str] = None, symbol: str = "BTCUSDT",
         px = _prices_for(symbol, interval, start, end, prices_file)
         result = backtest(px, _rule_dict(buy, sell, stop_loss_pct, take_profit_pct, max_hold_bars, side),
                           fee_pct=fee_pct, slippage_pct=slippage_pct, variants_tried=variants_tried)
-    except (RuleError, PriceError, FileNotFoundError) as exc:
+    except (RuleError, PriceError, ValueError, OSError) as exc:   # ValueError: also a CSV pandas can't parse
         return f"Couldn't run the backtest: {exc}"
     return result.to_markdown()
 
 
 def tune_rule(buy: str, grid: dict, sell: Optional[str] = None, symbol: str = "BTCUSDT", interval: str = "1h",
               start: Optional[str] = None, end: Optional[str] = None, prices_file: Optional[str] = None,
-              stop_loss_pct: Optional[str] = None, take_profit_pct: Optional[str] = None,
-              max_hold_bars: Optional[str] = None, side: str = "long", holdout: float = 0.3, fee_pct: float = 0.1,
+              stop_loss_pct: Optional[Union[float, str]] = None, take_profit_pct: Optional[Union[float, str]] = None,
+              max_hold_bars: Optional[Union[int, str]] = None, side: str = "long", holdout: float = 0.3,
+              fee_pct: float = 0.1,
               slippage_pct: float = 0.05) -> str:
     """Honest tuning with a held-back part, judged: Markdown."""
     from .market import PriceError
@@ -170,7 +171,7 @@ def tune_rule(buy: str, grid: dict, sell: Optional[str] = None, symbol: str = "B
         px = _prices_for(symbol, interval, start, end, prices_file)
         result = tune(px, _rule_dict(buy, sell, stop_loss_pct, take_profit_pct, max_hold_bars, side), grid,
                       holdout=holdout, fee_pct=fee_pct, slippage_pct=slippage_pct)
-    except (RuleError, PriceError, FileNotFoundError, ValueError) as exc:
+    except (RuleError, PriceError, ValueError, OSError) as exc:
         return f"Couldn't tune: {exc}"
     return result.to_markdown()
 

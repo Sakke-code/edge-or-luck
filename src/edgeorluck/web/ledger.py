@@ -21,8 +21,10 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import math
 import os
+import re
 import threading
 import uuid
 from datetime import datetime, timezone
@@ -33,6 +35,8 @@ import numpy as np
 
 from ..judge import ENGINE_VERSION, MIN_TRADES
 from ..readers import Trades
+
+logger = logging.getLogger(__name__)
 
 HORIZON = 30
 SHRINKAGE = (0.0, 25.0, 50.0, 100.0, 200.0, 400.0, 800.0, 1600.0, math.inf)
@@ -74,6 +78,16 @@ def _k_label(k: float) -> Any:
     return "coin_flip" if math.isinf(k) else k
 
 
+def _aware(dt: datetime) -> datetime:
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
+def _safe_unit(unit: Any) -> str:
+    """The unit kept with a forecast: a short code, or 'other'. Never free text from a file."""
+    text = str(unit or "")
+    return text if re.fullmatch(r"[A-Za-z0-9%$€£¥]{1,10}", text) else "other"
+
+
 class Ledger:
     def __init__(self, root: Optional[Path] = None) -> None:
         self.root = Path(root) if root is not None else default_root()
@@ -85,9 +99,18 @@ class Ledger:
         self.open: Dict[str, str] = {}
         self.grades: List[Dict[str, Any]] = []
         self._heads = {self.calls_path: "", self.grades_path: ""}
+        self.unreadable = 0         # lines that aren't JSON (a write cut off by a full disk or a crash)
+        self.chain_breaks = 0       # lines whose 'prev' isn't the hash of the line before: edited or forked
         for path in (self.calls_path, self.grades_path):
             for line in self._lines(path):
-                record = json.loads(line)
+                try:
+                    record = json.loads(line)
+                except ValueError:
+                    self.unreadable += 1
+                    logger.warning("ledger: skipped an unreadable line in %s", path.name)
+                    continue
+                if record.get("prev") != self._heads[path]:
+                    self.chain_breaks += 1
                 self._heads[path] = hashlib.sha256(line.encode("utf-8")).hexdigest()
                 if path == self.calls_path:
                     self.calls[record["id"]] = record
@@ -96,6 +119,9 @@ class Ledger:
                     self.grades.append(record)
                     if self.open.get(self.calls.get(record["call"], {}).get("identity")) == record["call"]:
                         del self.open[self.calls[record["call"]]["identity"]]
+        if self.unreadable or self.chain_breaks:
+            logger.warning("ledger %s: %d unreadable line(s), %d break(s) in the hash chain", self.root,
+                           self.unreadable, self.chain_breaks)
 
     @staticmethod
     def _lines(path: Path) -> List[str]:
@@ -108,6 +134,7 @@ class Ledger:
         line = json.dumps(record, sort_keys=True, separators=(",", ":"), allow_nan=False)
         with path.open("a", encoding="utf-8") as fh:
             fh.write(line + "\n")
+            fh.flush()
         self._heads[path] = hashlib.sha256(line.encode("utf-8")).hexdigest()
 
     def chosen_k(self) -> float:
@@ -122,6 +149,12 @@ class Ledger:
         if n < MIN_TRADES:
             return None
         now = now or datetime.now(timezone.utc)
+        if not times:
+            # Only trades closed after a forecast may grade it, and only dates can show that. Undated records get
+            # no forecast, so a replayed or made-up continuation can't rewrite the public track record.
+            return {"probability": None, "horizon": HORIZON, "made": None, "graded_now": False,
+                    "sentence": "No forecast: we only forecast dated trades, so the trades that grade a forecast "
+                                "provably closed after it."}
         identity = fingerprint(x, times, MIN_TRADES)
         graded = None
         with self._lock:
@@ -129,7 +162,14 @@ class Ledger:
             if call is not None:
                 n0 = call["n"]
                 same = n >= n0 and fingerprint(x, times, n0) == call["prefix"]
-                if same and n >= n0 + HORIZON:
+                made = _aware(datetime.fromisoformat(call["at"]))
+                later = same and n >= n0 + HORIZON and _aware(times[n0].to_pydatetime()) > made \
+                    and _aware(times[n0 + HORIZON - 1].to_pydatetime()) <= _aware(now)
+                if same and n >= n0 + HORIZON and not later:
+                    return dict(self._view(call, None, kept=True),
+                                sentence=f"Those {HORIZON} trades closed before our forecast (or after today), so "
+                                         "they can't grade it. Come back with trades that closed after it.")
+                if later:
                     outcome = int(float(np.sum(x[n0:n0 + HORIZON])) > 0)
                     graded = {"call": call["id"], "at": now.isoformat(), "outcome": outcome, "source": source,
                               "probability": call["probability"],
@@ -137,9 +177,10 @@ class Ledger:
                     self._append(self.grades_path, graded)
                     self.grades.append(graded)
                     del self.open[identity]
-                else:
+                elif same:
                     return self._view(call, None, kept=True)
-            if times and (now - times[-1].to_pydatetime()).days > STALE_DAYS:
+                # else: the same first 30 trades but a different history after them (another version): a new forecast
+            if times and (_aware(now) - _aware(times[-1].to_pydatetime())).days > STALE_DAYS:
                 last = times[-1]
                 return {"probability": None, "horizon": HORIZON, "made": None, "graded_now": graded is not None,
                         "sentence": f"No forecast: it hasn't traded since {last:%b} {last.day}, {last.year}, so its "
@@ -147,7 +188,7 @@ class Ledger:
             probabilities = [round(p, 6) for p in forward_probabilities(x, SHRINKAGE)]
             k = self.chosen_k()
             call = {"id": uuid.uuid4().hex[:16], "at": now.isoformat(), "source": source, "identity": identity,
-                    "prefix": fingerprint(x, times, n), "n": n, "horizon": HORIZON, "unit": st.unit,
+                    "prefix": fingerprint(x, times, n), "n": n, "horizon": HORIZON, "unit": _safe_unit(st.unit),
                     "k": _k_label(k), "probability": probabilities[SHRINKAGE.index(k)],
                     "probabilities": probabilities, "engine": ENGINE_VERSION}
             self._append(self.calls_path, call)
@@ -208,4 +249,6 @@ class Ledger:
                 "brier": None if brier is None else round(brier, 4), "coin_flip_brier": 0.25,
                 "base_rate": None if base_rate is None else round(base_rate, 4),
                 "base_rate_brier": None if base_brier is None else round(base_brier, 4),
-                "shrinkage": _k_label(k), "learning_from": MIN_GRADED, "calibration": bins, "sentence": sentence}
+                "shrinkage": _k_label(k), "learning_from": MIN_GRADED, "calibration": bins, "sentence": sentence,
+                "chain_intact": self.chain_breaks == 0 and self.unreadable == 0,
+                "head": {"calls": self._heads[self.calls_path], "grades": self._heads[self.grades_path]}}

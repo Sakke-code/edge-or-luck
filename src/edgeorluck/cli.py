@@ -121,7 +121,7 @@ def _grid(parts: List[str]) -> dict:
 
 
 def _rule_main(command: str, argv: List[str]) -> int:
-    from .market import PriceError, load_prices, prices
+    from .market import PriceError, between, load_prices, prices
     from .rulebook import RuleError
     from .simulate import backtest, tune
     args = _rule_parser(command).parse_args(argv)
@@ -129,7 +129,8 @@ def _rule_main(command: str, argv: List[str]) -> int:
                               "take_profit_pct": args.take, "max_hold_bars": args.hold,
                               "side": "short" if args.short else "long"}.items() if v is not None}
     try:
-        px = load_prices(args.prices) if args.prices else prices(args.symbol, args.interval, args.start, args.end)
+        px = (between(load_prices(args.prices), args.start, args.end) if args.prices
+              else prices(args.symbol, args.interval, args.start, args.end))
         if command == "backtest":
             result = backtest(px, rule, fee_pct=args.fee, slippage_pct=args.slippage, variants_tried=args.tried)
         else:

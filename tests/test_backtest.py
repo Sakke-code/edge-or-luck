@@ -43,7 +43,8 @@ def test_a_decision_is_filled_at_the_next_open_with_fees_and_slippage_on_both_fi
     closes = np.linspace(100, 140, n)
     opens = closes - 0.5
     px = frame(closes, opens)
-    bt = eol.backtest(px, by_position({2, 3, 4, 5}), fee_pct=0.1, slippage_pct=0.05)
+    # a rule on bar numbers ignores the prices, so the look-ahead test would (rightly) refuse it: fills only here
+    bt = eol.backtest(px, by_position({2, 3, 4, 5}), fee_pct=0.1, slippage_pct=0.05, check_peeking=False)
     (t,) = bt["trades"]
     # in after bar 2's close (filled at bar 3's open); out after bar 6's close says flat (bar 7's open)
     assert (t["entry_bar"], t["exit_bar"]) == (3, 7)
@@ -59,7 +60,8 @@ def test_a_short_pays_costs_on_both_fills_too():
     closes = np.linspace(140, 100, n)
     opens = closes + 0.5
     rule = lambda f: pd.Series([-1.0 if 2 <= i <= 5 else 0.0 for i in range(len(f))], index=f.index)
-    bt = eol.backtest(frame(closes, opens), rule, allow_short=True, fee_pct=0.1, slippage_pct=0.05)
+    bt = eol.backtest(frame(closes, opens), rule, allow_short=True, fee_pct=0.1, slippage_pct=0.05,
+                      check_peeking=False)
     (t,) = bt["trades"]
     sell, buy = opens[3] * (1 - 0.0005), opens[7] * (1 + 0.0005)
     assert t["side"] == "short"

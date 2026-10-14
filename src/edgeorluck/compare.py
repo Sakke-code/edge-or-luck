@@ -21,7 +21,7 @@ import numpy as np
 
 from .evidence import half_width, log_e_one_sided, mixing_rho2, serial_factor
 from .readers import ReadResult, Trades
-from .words import count, fmt, one_in, rnd
+from .words import count, fmt, how_often, rnd
 
 MIN_LIVE = 10
 BAR = 80.0                      # one side at 1.25% for the live side
@@ -93,7 +93,7 @@ def compare_runs(live_read: ReadResult, backtest_read: ReadResult) -> Dict[str, 
     floor = mean_b - h_bt
     log_e = log_e_one_sided(n, float(np.sum(x - floor)), sd_l, mixing_rho2(BAR), -1) if n >= 2 else 0.0
     p = _odds(x, y)
-    odds = one_in(p, _draws(n))
+    odds = how_often(p, _draws(n))
     base.update(difference={"value": rnd(diff), "range_95": [rnd(lo), rnd(hi)]}, odds=rnd(p), odds_text=odds,
                 e_value_worse=rnd(math.exp(min(log_e, 700))), bar=BAR)
     if n < MIN_LIVE:
@@ -109,13 +109,23 @@ def compare_runs(live_read: ReadResult, backtest_read: ReadResult) -> Dict[str, 
                              f"{fmt(mean_b, unit)} in the backtest.",
                     plain=f"Over {count(n, 'live trade')} the gap is {fmt(diff, unit)} per trade (likely "
                           f"{fmt(lo, unit)} to {fmt(hi, unit)}). If live trades were like the backtest's, a live "
-                          f"record this weak would happen {odds} times. The backtest was likely too kind: fees, "
+                          f"record this weak would happen {odds}. The backtest was likely too kind: fees, "
                           "fills, or rules tuned to the past.",
                     next_step={"text": "Compare the live fills with the backtest's: fees, slippage and the exact "
                                        "entry prices. Ask your AI to look for lookahead in the backtest.",
                                "why": "The gap between backtest and live almost always comes from costs, fills or "
                                       "a backtest that saw the future."})
-    gap_text = (f" If live trades were like the backtest's, a live record this weak would happen {odds} times."
+    if lo > 0:
+        return dict(base, code="consistent", label="Better than the backtest so far", tone="good",
+                    headline=f"Live is doing better than the backtest so far: {fmt(mean_l, unit)} per trade live, "
+                             f"{fmt(mean_b, unit)} in the backtest.",
+                    plain=f"Over {count(n, 'live trade')} the gap is {fmt(diff, unit)} per trade (likely "
+                          f"{fmt(lo, unit)} to {fmt(hi, unit)}), all above zero. Live beating its backtest is rare "
+                          "and usually cools off; it says nothing bad about the strategy.",
+                    next_step={"text": "Keep comparing every 20 to 30 new live trades.",
+                               "why": "The comparison stays valid however often you check, so checking often is "
+                                      "free."})
+    gap_text = (f" If live trades were like the backtest's, a live record this weak would happen {odds}."
                 if diff < 0 else "")
     return dict(base, code="consistent", label="In line with the backtest", tone="good" if diff >= 0 else "warn",
                 headline=f"Live is in line with the backtest so far: {fmt(mean_l, unit)} per trade live, "

@@ -286,6 +286,11 @@ lake build</pre>
       ml.appendChild(li);
     });
     if (data.updated) $("updated").textContent = "These claims were last checked on " + data.updated + ".";
+    // The page grew after the browser jumped to #mistakes (or #step-...), so jump again now it's all there.
+    if (location.hash) {
+      var target = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+      if (target) target.scrollIntoView();
+    }
   }).catch(function () {
     var list = $("steps"); list.textContent = "";
     var li = el("li", "step"); li.appendChild(el("div"));

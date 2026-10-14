@@ -19,7 +19,8 @@ from __future__ import annotations
 
 import math
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from collections import deque
+from typing import Any, Deque, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -83,8 +84,12 @@ def round_trips(rows: List[Dict[str, Any]], number) -> Tuple[pd.DataFrame, List[
     facts: Dict[str, Any] = {"fills": 0, "pairs": [], "quotes": [], "third_coin_fees": 0,
                              "unmatched_sells": 0, "open_positions": []}
     by_pair: Dict[str, List[Dict[str, Any]]] = {}
+    # Fills at the same second keep the file's own time direction: in a newest-first export the later row is the
+    # earlier fill (a buy and its sell in one second would otherwise be paired the wrong way round).
+    stamps = [r["time"] for r in rows if not pd.isna(r["time"])]
+    newest_first = sum(b < a for a, b in zip(stamps, stamps[1:])) > sum(b > a for a, b in zip(stamps, stamps[1:]))
     for i, r in enumerate(rows):
-        r = dict(r, _i=i)
+        r = dict(r, _i=-i if newest_first else i)
         by_pair.setdefault(r["pair"], []).append(r)
     trades: List[Dict[str, Any]] = []
     unknown_fee_coins: Dict[str, int] = {}
@@ -95,7 +100,9 @@ def round_trips(rows: List[Dict[str, Any]], number) -> Tuple[pd.DataFrame, List[
             facts["quotes"].append(quote)
         fills.sort(key=lambda r: (r["time"] if not pd.isna(r["time"]) else pd.Timestamp.min.tz_localize("UTC"),
                                   r["_i"]))
-        lots: List[List[float]] = []            # [qty, cost per coin (quote, fees in)]
+        lots: Deque[List[float]] = deque()      # [qty, cost per coin (quote, fees in)]
+        held = 0.0                              # coins in the lots, kept as a running total (summing the lots
+                                                # on every fill made a long never-flat history quadratic)
         episode: Optional[Dict[str, Any]] = None
         peak = 0.0
         for f in fills:
@@ -126,13 +133,13 @@ def round_trips(rows: List[Dict[str, Any]], number) -> Tuple[pd.DataFrame, List[
                     peak = 0.0
                 cost = qty * price + fee_in_quote
                 lots.append([got, cost / got])
+                held += got
                 episode["fees"] += fee_value
                 episode["buys"] += 1
-                peak = max(peak, sum(l[0] for l in lots))
+                peak = max(peak, held)
                 continue
             # a sell
-            held = sum(l[0] for l in lots)
-            if held <= 0:
+            if held <= 0 or not lots:
                 facts["unmatched_sells"] += 1
                 continue
             sold = min(qty, held)
@@ -144,21 +151,26 @@ def round_trips(rows: List[Dict[str, Any]], number) -> Tuple[pd.DataFrame, List[
                 take = min(remaining, lots[0][0])
                 basis += take * lots[0][1]
                 lots[0][0] -= take
+                held -= take
                 remaining -= take
                 if lots[0][0] <= 1e-15:
-                    lots.pop(0)
+                    held -= lots[0][0]
+                    lots.popleft()
             assert episode is not None
             episode["cost"] += basis
             episode["pnl"] += proceeds - basis
             episode["fees"] += fee_value * (sold / qty)
             episode["sells"].append({"time": f["time"], "price": price, "pnl": proceeds - basis, "basis": basis})
-            left = sum(l[0] for l in lots)
+            if not lots:
+                held = 0.0
+            left = held
             if left <= DUST * peak:
-                lots = []
+                lots.clear()
+                held = 0.0
                 trades.append(_trip(pair, quote, episode))
                 episode = None
         if episode is not None:
-            left = sum(l[0] for l in lots)
+            left = sum(l[0] for l in lots)       # once per pair: exact, not the running total
             if episode["sells"]:
                 for s in episode["sells"]:            # partly closed: each sell is its own result
                     trades.append({"symbol": pair, "quote": quote, "entry_time": episode["entry_time"],

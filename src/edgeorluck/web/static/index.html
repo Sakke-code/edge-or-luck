@@ -1012,7 +1012,9 @@ h1 .line{display:block;white-space:nowrap}
     e.hidden = false;
   }
   var FIELDS = ["variants_tried", "benchmark_return_pct", "fees_included", "source", "unit"];
+  var seq = 0;     // only the newest request may show its answer (a slow earlier one would overwrite it)
   function judge(req, opts) {
+    var my = ++seq;
     last = req; lastOpts = opts || {};
     $("error").hidden = true; $("errorBack").hidden = true;
     var count = req.files ? req.files.length : 0;
@@ -1034,16 +1036,27 @@ h1 .line{display:block;white-space:nowrap}
     }
     // Flip tosses for at least a moment, so the answer never lands before you see it work.
     var started = Date.now(), linger = reduce ? 0 : 1100;
+    var box = req.backtest ? "errorBack" : "error";
     return fetch("/api/judge", init).then(function (r) {
-      return r.json().catch(function () { return { error: "The server sent something we couldn't read." }; }).then(function (j) { return { ok: r.ok, j: j }; });
+      return r.json().catch(function () {
+        return r.status === 413 ? { error: "That's too big.", why: "Up to 10 MB per check: export a shorter period, or only the closed trades." }
+                                : { error: "The server sent something we couldn't read." };
+      }).then(function (j) { return { ok: r.ok, j: j }; });
     }).then(function (res) {
       var wait = linger - (Date.now() - started);
       return wait > 0 ? new Promise(function (ok) { setTimeout(function () { ok(res); }, wait); }) : res;
-    }).then(function (res) {
+    }, function () { return { offline: true }; }).then(function (res) {
+      if (my !== seq) return;
       busy(false);
       $("dropBack").classList.remove("busy");
+      if (res.offline) {
+        pet.mood("confused");
+        pet.say("I can't reach the judge right now. Try again in a moment.");
+        showError(box, { error: "We couldn't reach the judge.", why: "Check your connection and try again." });
+        return;
+      }
       if (!res.ok || res.j.error || res.j.status === "need_input") {
-        showError(req.backtest ? "errorBack" : "error", res.j);
+        showError(box, res.j);
         pet.mood("confused");
         pet.say(res.j && res.j.need ? "I can't read this one yet. Just below is what I need." : "Something went wrong. Just below is what happened.");
         return;
@@ -1051,12 +1064,12 @@ h1 .line{display:block;white-space:nowrap}
       lastReport = res.j;
       heroFlip.mood("idle");
       heroFlip.say("Done! Your verdict is just below. Want to check another?");
-      render(res.j);
-    }).catch(function () {
-      busy(false);
-      pet.mood("confused");
-      pet.say("I can't reach the judge right now. Try again in a moment.");
-      showError("error", { error: "We couldn't reach the judge.", why: "Check your connection and try again." });
+      try {
+        render(res.j);
+      } catch (err) {
+        if (window.console) console.error(err);
+        showError(box, { error: "We got the verdict but couldn't show it.", why: "That's our bug. Try again, or use the API answer: the judge itself worked." });
+      }
     });
   }
   function wireDrop(zone, input, onFiles) {
@@ -1569,7 +1582,7 @@ h1 .line{display:block;white-space:nowrap}
     var b = el("button", "copy", "Copy"); b.type = "button";
     b.addEventListener("click", function () { copyText(s.code, b, "Copied"); });
     panel.appendChild(b);
-    if (key === "chatgpt") { var a = el("a", null, "Download the one-file judge"); a.href = "/assets/edgeorluck_single.py"; a.setAttribute("download", ""); a.style.marginLeft = "14px"; a.style.fontSize = "15px"; panel.appendChild(a); }
+    if (key === "chatgpt") { var a = el("a", null, "Download the one-file judge"); a.href = "/edgeorluck_single.py"; a.setAttribute("download", ""); a.style.marginLeft = "14px"; a.style.fontSize = "15px"; panel.appendChild(a); }
   }
   document.querySelectorAll("#ai .tab").forEach(function (t) { t.addEventListener("click", function () { showTab(t.dataset.tab); }); });
   showTab("python");

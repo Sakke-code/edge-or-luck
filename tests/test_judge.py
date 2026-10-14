@@ -174,8 +174,10 @@ def test_recent_trades_get_plain_odds():
     r = edgeorluck.judge(list(broken), unit="USDT")
     recent = r["strategies"][0]["recent"]
     assert recent["reading"] == "likely_broken"
-    assert re.search(r"a drop that deep within 30 trades happens only (fewer than|about) 1 in [\d,]+ times",
-                     recent["sentence"])
+    # the sentence quotes the odds that set the reading: a total this low, or a drop this deep
+    assert re.search(r"(a drop that deep within|a total this low over) 30 trades happens (only about|fewer than) "
+                     r"1 in [\d,]+ times", recent["sentence"])
+    assert "almost always times" not in recent["sentence"]
     assert "USDT" in recent["sentence"]
 
 
