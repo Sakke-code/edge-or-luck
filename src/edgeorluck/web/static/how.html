@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How edge or luck checks</title>
+<meta name="description" content="How edge or luck judges a strategy, which parts are proved by a computer, which are measured, and the mistakes it caught in itself.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='12.5' fill='%23F3F7F4' stroke='%2316294A' stroke-width='2.6'/%3E%3Cpath d='M8.5 20.5 13 16.5l3 2.4 7-8.4' fill='none' stroke='%2316294A' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+/* ---- Opening: Flip says what this page is ---- */
+.intro{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:40px;align-items:center;padding-top:clamp(28px,7vh,80px);padding-bottom:12px}
+h1{font-weight:700;font-size:clamp(38px,5.2vw,68px);line-height:1.02;letter-spacing:-.028em;margin:0 0 22px;max-width:16ch;text-wrap:balance}
+.lede{margin:0;max-width:52ch;font-size:clamp(18px,1.5vw,21px);line-height:1.5;color:var(--ink-2)}
+.intro-pet{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px}
+.intro-pet .bubble{position:relative;max-width:290px}
+.intro-pet .bubble .tail{right:auto;left:50%;bottom:-13px;transform:translateX(-50%) rotate(90deg)}
+.intro-pet .pet{width:118px;height:126px}
+.legend{list-style:none;display:flex;flex-wrap:wrap;gap:12px 26px;margin:34px 0 0;padding:20px 0 0;border-top:1px solid var(--rule);font-size:15px;color:var(--ink-2)}
+.legend li{display:flex;align-items:center;gap:10px;max-width:290px}
+
+/* ---- Stamps: the kind of claim, hand-stamped ---- */
+.stamp{display:inline-block;flex:none;font-family:var(--hand);font-weight:700;font-size:16px;line-height:1;padding:6px 10px 6px;
+  border:2px solid currentColor;border-radius:11px 15px 10px 14px / 14px 10px 15px 11px;transform:rotate(-3deg);white-space:nowrap;background:color-mix(in srgb,var(--paper) 70%,transparent)}
+.stamp.proved{color:var(--green)}
+.stamp.measured{color:var(--amber)}
+.stamp.choice{color:var(--slate)}
+.stamp.unchecked{color:var(--red)}
+.stamp.fixed{color:var(--green);transform:rotate(4deg)}
+
+/* ---- The steps (a real sequence, so numbered) ---- */
+.steps{list-style:none;margin:clamp(40px,7vh,72px) auto 0;padding-top:0;counter-reset:none}
+.step{display:grid;grid-template-columns:150px minmax(0,1fr);gap:0 28px;padding:36px 0 40px;border-top:1px solid var(--rule)}
+.step-side{display:flex;flex-direction:column;align-items:center;gap:10px;padding-top:4px}
+.num{display:inline-grid;place-items:center;width:46px;height:46px;font-family:var(--hand);font-weight:700;font-size:26px;
+  border:2px solid var(--ink);border-radius:54% 46% 52% 48% / 47% 55% 45% 53%}
+.mini-pet{width:62px;height:66px;color:var(--ink)}
+.step-body{min-width:0;max-width:820px}
+.step h2{margin:0 0 8px;font-size:clamp(25px,2.6vw,34px);line-height:1.12;letter-spacing:-.02em;text-wrap:balance}
+.say{margin:0 0 14px;font-family:var(--hand);font-size:21px;line-height:1.35;color:var(--ink-2)}
+.say::before{content:"Flip: ";font-weight:700;color:var(--ink)}
+.plain{margin:0;max-width:64ch;color:var(--ink-2)}
+.formula{margin:20px 0 0;padding:14px 18px;border:1.5px dashed var(--ink-3);border-radius:6px;background:color-mix(in srgb,var(--paper-raised) 75%,transparent);max-width:72ch}
+.formula code{display:block;font-family:var(--text);font-size:clamp(16px,1.5vw,19px);line-height:1.6;white-space:pre-wrap;color:var(--ink);overflow-wrap:anywhere}
+.formula p{margin:8px 0 0;font-size:15px;color:var(--ink-3)}
+
+.claims{list-style:none;margin:24px 0 0;padding:0;max-width:74ch}
+.claim{display:grid;grid-template-columns:118px minmax(0,1fr);gap:14px;align-items:start;padding:14px 0;border-top:1px dashed var(--rule)}
+.claim:first-child{border-top:0}
+.claim .stamp{justify-self:start;margin-top:2px}
+.claim p{margin:0}
+.claim .meta{margin-top:5px;font-size:14.5px;color:var(--ink-3);line-height:1.5}
+.claim .meta b{font-weight:600;color:var(--ink-2)}
+.claim .meta a{color:var(--ink-2)}
+.claim .meta code{font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:13.5px}
+
+/* ---- Mistakes I caught in myself ---- */
+.band{padding-top:clamp(64px,10vh,110px)}
+.band h2{font-size:clamp(30px,3.6vw,46px);line-height:1.06;letter-spacing:-.025em;margin:0 0 12px;max-width:22ch}
+.band .intro-text{margin:0 0 30px;max-width:60ch;color:var(--ink-2)}
+.mistakes{list-style:none;margin:0;padding:0;max-width:980px}
+.mistake{display:grid;grid-template-columns:150px minmax(0,1fr);gap:8px 28px;padding:22px 0;border-top:1px solid var(--rule)}
+.mistake .when{display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.mistake .date{font-family:var(--hand);font-size:18px;color:var(--ink-3)}
+.mistake h3{margin:0 0 6px;font-size:20px;letter-spacing:-.01em}
+.mistake dl{margin:0;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:4px 14px;font-size:16px}
+.mistake dt{color:var(--ink-3)}
+.mistake dd{margin:0;color:var(--ink-2)}
+
+.yourself{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px;max-width:1100px}
+.yourself div{padding:16px 18px;border:1.5px solid var(--rule);border-radius:6px;background:color-mix(in srgb,var(--paper-raised) 70%,transparent)}
+.yourself h3{margin:0 0 6px;font-size:18px}
+.yourself p{margin:0 0 10px;font-size:15.5px;color:var(--ink-2)}
+.yourself pre{margin:0 0 10px;padding:10px 12px;border-radius:4px;background:color-mix(in srgb,var(--ink) 6%,transparent);overflow:auto;
+  font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:13.5px;line-height:1.55;white-space:pre}
+.load-error{color:var(--red)}
+
+@media (max-width:900px){
+  .intro{grid-template-columns:minmax(0,1fr);gap:22px}
+  .intro-pet{order:-1;flex-direction:row;justify-content:flex-start;align-items:center}
+  .intro-pet .pet{width:84px;height:90px;flex:none}
+  .intro-pet .bubble .tail{left:-14px;bottom:auto;top:50%;transform:translateY(-50%) scaleX(-1)}
+  .intro-pet{flex-direction:row-reverse;justify-content:flex-end}
+  .step,.mistake{grid-template-columns:minmax(0,1fr)}
+  .step-side{flex-direction:row;justify-content:flex-start;padding-bottom:10px}
+  .yourself{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:520px){
+  body{font-size:17px}
+  .claim{grid-template-columns:minmax(0,1fr);gap:8px}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="edge or luck, home">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="12.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M8.6 20.4c1.4-1.2 2.9-2.6 4.3-3.8.9.7 1.9 1.6 2.9 2.3 2.3-2.6 4.6-5.6 6.8-8.4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      edge or luck
+    </a>
+    <nav class="nav" aria-label="Page">
+      <a class="opt" href="/">Check your trades</a>
+      <a class="opt" href="#mistakes">Mistakes I caught</a>
+      <a href="https://github.com/edge-or-luck/edge-or-luck" rel="noopener">GitHub</a>
+      <button class="theme" id="theme" type="button" aria-label="Switch to blueprint (dark) look">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 1.8a6.2 6.2 0 0 1 0 12.4z" fill="currentColor"/></svg>
+        <span id="themeLabel">Blueprint</span>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="intro wrap" aria-labelledby="title">
+    <div>
+      <h1 id="title">How I check your trades, and where I can be wrong</h1>
+      <p class="lede">A judge that hides its working shouldn't be trusted. So here is all of mine: what a computer proof checks, what I can only measure, the rules I chose, and the mistakes I caught in myself.</p>
+      <ul class="legend" id="legend" aria-label="What the stamps mean"></ul>
+    </div>
+    <div class="intro-pet" aria-hidden="true">
+      <div class="bubble" id="introBubble"><span class="say-text">Hi, I'm Flip. Everything I tell you on the other page comes from here. Nothing is hidden.</span><svg class="tail" viewBox="0 0 16 14"><path d="M0 1.5C6 3 10.5 7 15 13 9.5 11 5 10 0 10.5"/></svg></div>
+      <button class="pet" id="introPet" type="button" tabindex="-1"></button>
+    </div>
+  </section>
+
+  <ol class="steps wrap" id="steps" aria-label="How the judge works, step by step">
+    <li class="step"><div></div><p class="plain" id="loading">Loading the claims…</p></li>
+  </ol>
+
+  <section class="band wrap" id="limits" aria-labelledby="limitsTitle">
+    <h2 id="limitsTitle">Where I can be wrong</h2>
+    <p class="intro-text">The proofs are exact, but they speak about the textbook case. Here is where the real world differs, and what I do about it.</p>
+    <ul class="claims" id="limitsList"></ul>
+  </section>
+
+  <section class="band wrap" id="mistakes" aria-labelledby="mistakesTitle">
+    <h2 id="mistakesTitle">Mistakes I caught in myself</h2>
+    <p class="intro-text">Proving my maths meant checking every promise against the code. That turned up real mistakes. Here they are, with what they cost and what I changed.</p>
+    <ul class="mistakes" id="mistakeList"></ul>
+  </section>
+
+  <section class="band wrap" aria-labelledby="yourselfTitle">
+    <h2 id="yourselfTitle">Check me yourself</h2>
+    <p class="intro-text">Don't take my word for any of this. Everything is open source, and each check runs on your own computer.</p>
+    <div class="yourself">
+      <div>
+        <h3>The proofs</h3>
+        <p>Lean checks every step. Zero errors means every proof holds; each file lists the only three standard axioms it uses.</p>
+        <pre>cd proofs
+lake exe cache get
+lake build</pre>
+        <p><a href="/proofs/README.md">What each proof file covers</a></p>
+      </div>
+      <div>
+        <h3>The measurements</h3>
+        <p>Thousands of made-up strategies whose truth is known, judged by me. This rewrites VALIDATION.md with fresh numbers.</p>
+        <pre>python tools/validate.py</pre>
+      </div>
+      <div>
+        <h3>The code against the proofs</h3>
+        <p>These tests check that the code really meets the conditions the proofs assume, on many random inputs.</p>
+        <pre>pytest tests/test_bridge_*.py</pre>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <p><b>Not financial advice.</b> edge or luck judges past results. It doesn't tell you what to trade or how much.</p>
+      <p id="updated"></p>
+    </div>
+    <div>
+      <p>Open source under the MIT licence. <a href="https://github.com/edge-or-luck/edge-or-luck" rel="noopener">Source on GitHub</a></p>
+    </div>
+  </div>
+</footer>
+
+<script src="/assets/site.js"></script>
+<script>
+(function () {
+  "use strict";
+  var $ = function (id) { return document.getElementById(id); };
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  var intro = EOL.makeFlip($("introPet"), $("introBubble"));
+  var pets = [intro];
+  if (!EOL.reduce) {
+    var px = 0, py = 0, looking = false;
+    window.addEventListener("pointermove", function (e) {
+      px = e.clientX; py = e.clientY;
+      if (looking) return;
+      looking = true;
+      requestAnimationFrame(function () { looking = false; pets.forEach(function (f) { f.look(px, py); }); });
+    }, { passive: true });
+  }
+  $("introPet").addEventListener("click", function () { intro.hop(); });
+
+  // One claim: its stamp, what it says, what it assumes, and where to check it.
+  function claimItem(c, statuses) {
+    var li = el("li", "claim"), st = statuses[c.status] || { label: c.status };
+    li.appendChild(el("span", "stamp " + c.status, st.label));
+    var d = el("div");
+    d.appendChild(el("p", null, c.text));
+    var meta = el("div", "meta");
+    if (c.assumes) { var a = el("p"); a.appendChild(el("b", null, "Assumes: ")); a.appendChild(document.createTextNode(c.assumes)); meta.appendChild(a); }
+    if (c.lean && c.lean.length) {
+      var p = el("p"); p.appendChild(el("b", null, c.status === "proved" ? "Proof: " : "Shown in: "));
+      c.lean.forEach(function (ref, i) {
+        if (i) p.appendChild(document.createTextNode(", "));
+        var file = ref.split(".")[0], link = el("a"), code = el("code", null, ref);
+        link.href = "/proofs/EdgeOrLuck/" + file + ".lean"; link.title = "Read the Lean proof";
+        link.appendChild(code); p.appendChild(link);
+      });
+      meta.appendChild(p);
+    }
+    if (c.python) { var py2 = el("p"); py2.appendChild(el("b", null, "In the code: ")); py2.appendChild(el("code", null, c.python)); meta.appendChild(py2); }
+    if (c.link) {
+      var lk = el("p"), a2 = el("a", null, "the measurements in " + c.link);
+      a2.href = "https://github.com/edge-or-luck/edge-or-luck/blob/main/" + c.link; a2.rel = "noopener";
+      lk.appendChild(el("b", null, "See: ")); lk.appendChild(a2); meta.appendChild(lk);
+    }
+    if (meta.children.length) d.appendChild(meta);
+    li.appendChild(d);
+    return li;
+  }
+
+  fetch("/api/claims").then(function (r) { return r.json(); }).then(function (data) {
+    var statuses = data.statuses || {};
+    var legend = $("legend");
+    Object.keys(statuses).forEach(function (k) {
+      var li = el("li"); li.appendChild(el("span", "stamp " + k, statuses[k].label)); li.appendChild(el("span", null, statuses[k].means));
+      legend.appendChild(li);
+    });
+
+    var list = $("steps"); list.textContent = "";
+    (data.steps || []).forEach(function (s, i) {
+      var li = el("li", "step"); li.id = "step-" + s.id;
+      var side = el("div", "step-side");
+      side.appendChild(el("span", "num", String(i + 1)));
+      var mini = el("div", "mini-pet"); mini.setAttribute("aria-hidden", "true"); side.appendChild(mini);
+      li.appendChild(side);
+      var body = el("div", "step-body");
+      body.appendChild(el("h2", null, s.title));
+      if (s.flip) body.appendChild(el("p", "say", s.flip));
+      if (s.plain) body.appendChild(el("p", "plain", s.plain));
+      if (s.formula) {
+        var f = el("div", "formula"); f.appendChild(el("code", null, s.formula));
+        if (s.formula_note) f.appendChild(el("p", null, s.formula_note));
+        body.appendChild(f);
+      }
+      var ul = el("ul", "claims");
+      (s.claims || []).forEach(function (c) { ul.appendChild(claimItem(c, statuses)); });
+      body.appendChild(ul);
+      li.appendChild(body);
+      list.appendChild(li);
+      var pet = EOL.makeFlip(mini, null);
+      pet.mood(s.mood || "idle");
+      pets.push(pet);
+    });
+
+    var lim = $("limitsList");
+    (data.limits || []).forEach(function (c) { lim.appendChild(claimItem(c, statuses)); });
+
+    var ml = $("mistakeList");
+    (data.mistakes || []).forEach(function (m) {
+      var li = el("li", "mistake"), when = el("div", "when");
+      when.appendChild(el("span", "date", m.date));
+      when.appendChild(el("span", "stamp fixed", "Fixed"));
+      li.appendChild(when);
+      var d = el("div");
+      d.appendChild(el("h3", null, m.title));
+      var dl = el("dl");
+      [["What it cost", m.impact], ["How I found it", m.found], ["What I changed", m.fix]].forEach(function (row) {
+        if (!row[1]) return;
+        dl.appendChild(el("dt", null, row[0])); dl.appendChild(el("dd", null, row[1]));
+      });
+      d.appendChild(dl);
+      li.appendChild(d);
+      ml.appendChild(li);
+    });
+    if (data.updated) $("updated").textContent = "These claims were last checked on " + data.updated + ".";
+  }).catch(function () {
+    var list = $("steps"); list.textContent = "";
+    var li = el("li", "step"); li.appendChild(el("div"));
+    li.appendChild(el("p", "load-error", "The claims didn't load. Reload the page, or read them in src/edgeorluck/data/claims.json."));
+    list.appendChild(li);
+  });
+})();
+</script>
+</body>
+</html>

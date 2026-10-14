@@ -283,6 +283,7 @@ h1 .line{display:block;white-space:nowrap}
 .steps h3::before{content:counter(step) ". ";color:var(--ink-3);font-weight:500}
 .steps p{margin:0;color:var(--ink-2);font-size:17px;max-width:34ch}
 .maths{margin-top:36px;max-width:72ch}
+.more-link{margin:18px 0 0;font-size:17px}
 .maths summary{cursor:pointer;font-weight:500;width:max-content}
 .maths div{color:var(--ink-2);font-size:17px}
 .maths p{margin:12px 0 0}
@@ -349,7 +350,7 @@ h1 .line{display:block;white-space:nowrap}
       edge or luck
     </a>
     <nav class="nav" aria-label="Page">
-      <a class="opt" href="#how">How it judges</a>
+      <a class="opt" href="/how">How it checks</a>
       <a class="opt" href="#proof">How often it's wrong</a>
       <a class="opt" href="#ai">For AI assistants</a>
       <a href="https://github.com/edge-or-luck/edge-or-luck" rel="noopener">GitHub</a>
@@ -528,6 +529,7 @@ h1 .line{display:block;white-space:nowrap}
       <p>The coin-flip picture keeps your exact trades and randomises only their signs. It shows what luck does with your trade sizes, which is what matters.</p>
     </div>
   </details>
+  <p class="more-link"><a href="/how">Every step, with the computer proof behind it, and where I can be wrong</a></p>
 </section>
 
 <section class="band wrap" id="proof" aria-labelledby="proofTitle">
@@ -540,7 +542,9 @@ h1 .line{display:block;white-space:nowrap}
     </ul>
     </div>
     <aside>
-      <h3>Its own record</h3>
+      <h3>Mistakes it caught in itself</h3>
+      <p>Proving the maths turned up real mistakes, like a range shown from just two trades. <a href="/how#mistakes">See them all, and what changed</a>.</p>
+      <h3 style="margin-top:16px">Its own record</h3>
       <p id="trackRecord">Every verdict comes with a call on your next 30 trades. When you come back with them, the call is graded, and the grades are public here.</p>
     </aside>
   </div>

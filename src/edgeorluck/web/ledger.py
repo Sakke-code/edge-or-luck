@@ -187,14 +187,25 @@ class Ledger:
                     bins.append({"from": round(float(lo), 2), "to": round(float(hi), 2), "calls": int(inside.sum()),
                                  "said": round(float(predicted[inside].mean()), 3),
                                  "happened": round(float(outcome[inside].mean()), 3)})
+        base_rate = base_brier = None
         if graded == 0:
             made = len(self.calls)
             sentence = (f"We have made {made:,} forecast{'' if made == 1 else 's'} and graded none yet. Each is "
                         "graded when its trader comes back with 30 more trades.")
         else:
-            verdict = "better than guessing" if brier < 0.25 else "not better than guessing yet"
-            sentence = (f"Graded {graded:,} of our {len(self.calls):,} forecasts: Brier score {brier:.3f}, against "
-                        f"0.250 for a coin flip. {verdict.capitalize()}.")
+            # Beating a coin flip (0.25) is too easy: always saying the usual rate does that whenever outcomes are
+            # not 50/50 (proofs/Selection.lean, brier_base_rate_beats_coin). The bar is that constant guess, using
+            # the rate seen in the graded outcomes, which flatters the guess, not us.
+            outcomes = np.array([float(g["outcome"]) for g in self.grades])
+            base_rate = float(outcomes.mean())
+            base_brier = float(np.mean((base_rate - outcomes) ** 2))
+            verdict = ("better than always guessing the usual rate" if brier < base_brier
+                       else "not better than always guessing the usual rate yet")
+            sentence = (f"Graded {graded:,} of our {len(self.calls):,} forecasts: Brier score {brier:.3f}. Always "
+                        f"guessing the usual rate ({base_rate:.0%} up) would score {base_brier:.3f}, a coin flip "
+                        f"0.250. {verdict.capitalize()}.")
         return {"predictions": len(self.calls), "graded": graded,
                 "brier": None if brier is None else round(brier, 4), "coin_flip_brier": 0.25,
+                "base_rate": None if base_rate is None else round(base_rate, 4),
+                "base_rate_brier": None if base_brier is None else round(base_brier, 4),
                 "shrinkage": _k_label(k), "learning_from": MIN_GRADED, "calibration": bins, "sentence": sentence}

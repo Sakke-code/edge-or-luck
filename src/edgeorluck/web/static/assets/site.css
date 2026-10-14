@@ -108,7 +108,7 @@ button,input{font:inherit;color:inherit}
 /* ---- Header ---- */
 .top{position:relative;z-index:3}
 .top .wrap{display:flex;align-items:center;justify-content:space-between;height:76px;gap:16px}
-.brand{display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:20px;letter-spacing:-.01em;text-decoration:none}
+.brand{display:inline-flex;align-items:center;gap:10px;font-weight:600;font-size:20px;letter-spacing:-.01em;text-decoration:none;white-space:nowrap}
 .brand svg{width:30px;height:30px;flex:none}
 .nav{display:flex;align-items:center;gap:clamp(12px,2.2vw,28px);font-size:16px;color:var(--ink-2)}
 .nav a{text-decoration:none}

@@ -9,6 +9,9 @@ GET  /api/samples           [{id, title, blurb, group}]
 GET  /api/engine            {version, changelog}
 GET  /api/track-record      how good the app's own forecasts have been
 GET  /api/validation        how often the judge is wrong, measured (VALIDATION.md)
+GET  /how                   the page where Flip shows how it checks and where it can be wrong
+GET  /api/claims            that page's claims: proved (Lean), measured, our choice, can't check
+GET  /proofs/<file>         the Lean proofs as plain text (when running from the repository)
 GET  /edgeorluck_single.py  the judge in one file, for chatbots without installs
 GET  /api/judge             for assistants that can only fetch links:
                             ?pnl=1.2,-0.8,0.5 | ?csv=<url-encoded CSV> | ?sample=<id>,
@@ -48,6 +51,7 @@ logger = logging.getLogger(__name__)
 
 STATIC = Path(__file__).resolve().parent / "static"
 PACKAGE = Path(__file__).resolve().parents[1]
+PROOFS = PACKAGE.parents[1] / "proofs"          # the Lean proofs, present when running from the repository
 MAX_UPLOAD = 10 * 1024 * 1024
 RATE_LIMIT = 30                 # judge calls per address per window
 RATE_WINDOW_S = 60.0
@@ -148,6 +152,21 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
     @app.get("/assets/<path:name>")
     def assets(name: str):
         return send_from_directory(STATIC / "assets", name)
+
+    @app.get("/how")
+    def how_page():
+        return send_from_directory(STATIC, "how.html")
+
+    @app.get("/api/claims")
+    def api_claims():
+        return jsonify(json.loads((PACKAGE / "data" / "claims.json").read_text(encoding="utf-8")))
+
+    @app.get("/proofs/<path:name>")
+    def proofs(name: str):
+        """The Lean proofs, readable as plain text, when the site runs from the repository."""
+        if not (name.endswith(".lean") or name.endswith(".md")) or not PROOFS.is_dir():
+            return _error("not found", "The proofs are .lean files under /proofs/EdgeOrLuck/.", 404)
+        return send_from_directory(PROOFS, name, mimetype="text/plain")
 
     @app.get("/healthz")
     def healthz():

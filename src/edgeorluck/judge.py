@@ -837,37 +837,51 @@ def _clearly_nonzero(v: Optional[np.ndarray]) -> bool:
     return abs(float(np.mean(v))) >= max(se, 1e-12)
 
 
+MONEY_WHY = ("Money is what you keep. A good average percent can hide a loss: when the losing trades are the big "
+             "ones, or when costs show up in the money but not in the percent.")
+
+
+def _money_vs_percent(pct: np.ndarray, money: np.ndarray, total: float, unit: str) -> Tuple[Optional[float], bool, str]:
+    """(average percent, whether percent and money disagree, the sentence). Only trades with both numbers count,
+    so one blank cell can't turn the average into n/a. "Your losing trades were bigger" is a theorem only when
+    money = size x percent trade by trade, i.e. the two agree in sign on every trade (proofs/Selection.lean,
+    losers_bigger). When some trades point opposite ways, costs counted in the money but not in the percent are the
+    usual reason, and the sentence says that instead (found by tests/test_bridge_selection.py)."""
+    both = np.isfinite(pct) & np.isfinite(money)
+    p, m = pct[both], money[both]
+    if not p.size:
+        return None, False, f"In total: {fmt(total, unit)}."
+    pmean = float(np.mean(p))
+    disagree = (pmean > 0) != (total > 0) and _clearly_nonzero(p) and _clearly_nonzero(m)
+    if not disagree:
+        return pmean, False, f"In total: {fmt(total, unit)} (average trade {fmt(pmean, '%')})."
+    head = (f"Your average trade is {fmt(pmean, '%')}, but you {'lost' if total < 0 else 'made'} "
+            f"{fmt(abs(total), unit, False)} in total")
+    opposite = int(np.sum(np.sign(p) * np.sign(m) < 0))
+    if opposite:
+        return pmean, True, (f"{head}. On {count(opposite, 'trade')} the percent and the money point opposite ways, "
+                             "which usually means fees or other costs are in the money but not in the percent.")
+    return pmean, True, (f"{head}: your losing trades were bigger than your winning ones." if total < 0 else
+                         f"{head}: your winning trades were the bigger ones.")
+
+
 def _money_card(st: Trades, x: np.ndarray, unit: str, pct: Optional[np.ndarray],
                 shadow: Optional[np.ndarray]) -> Dict[str, Any]:
     total = float(x.sum())
     if unit != "%":
-        pmean = float(np.mean(pct)) if pct is not None else None
-        disagree = (pmean is not None and (pmean > 0) != (total > 0)
-                    and _clearly_nonzero(pct) and _clearly_nonzero(x))
-        if disagree and total < 0:
-            sentence = (f"Your average trade is {fmt(pmean, '%')}, but you lost {fmt(-total, unit, False)} in total: "
-                        "your losing trades were bigger than your winning ones.")
-        elif disagree:
-            sentence = (f"Your average trade is {fmt(pmean, '%')}, but you made {fmt(total, unit, False)} in total: "
-                        "your winning trades were the bigger ones.")
-        else:
-            sentence = f"In total: {fmt(total, unit)}" + (f" (average trade {fmt(pmean, '%')})." if pmean is not None
-                                                         else ".")
+        if pct is None:
+            return {"total": total, "unit": unit, "percent_mean": None, "disagree": False, "judged_in": unit,
+                    "sentence": f"In total: {fmt(total, unit)}.", "why": MONEY_WHY}
+        pmean, disagree, sentence = _money_vs_percent(np.asarray(pct, dtype=float), x, total, unit)
         return {"total": total, "unit": unit, "percent_mean": pmean, "disagree": bool(disagree),
-                "sentence": sentence, "judged_in": unit,
-                "why": "Money is what you keep. A good average percent can hide a loss when the losing trades are "
-                       "the big ones."}
+                "sentence": sentence, "judged_in": unit, "why": MONEY_WHY}
     pmean = float(np.mean(x))
     if shadow is not None and np.isfinite(shadow).any():
+        shadow = np.asarray(shadow, dtype=float)
         mt = float(np.nansum(shadow))
-        disagree = (pmean > 0) != (mt > 0) and _clearly_nonzero(x) and _clearly_nonzero(shadow)
-        sentence = (f"Your average trade is {fmt(pmean, '%')}, but in money the trades add up to {fmt(mt, 'money')}: "
-                    f"your {'losing' if mt < 0 else 'winning'} trades were the bigger ones." if disagree else
-                    f"In total: {fmt(mt, 'money')} (average trade {fmt(pmean, '%')}).")
+        _, disagree, sentence = _money_vs_percent(x, shadow, mt, "money")
         return {"total": mt, "unit": "money", "percent_mean": pmean, "disagree": bool(disagree),
-                "sentence": sentence, "judged_in": "%",
-                "why": "Money is what you keep. A good average percent can hide a loss when the losing trades are "
-                       "the big ones."}
+                "sentence": sentence, "judged_in": "%", "why": MONEY_WHY}
     return {"total": None, "unit": "%", "percent_mean": pmean, "disagree": False, "judged_in": "%",
             "sentence": "Your results are in percent per trade. We can't see the money amounts.",
             "why": "Money is what you keep. Percent per trade can hide a loss when the losing trades are bigger."}
