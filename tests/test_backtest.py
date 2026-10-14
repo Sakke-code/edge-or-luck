@@ -215,8 +215,10 @@ def test_rsi_ema_and_atr_match_tradingview_from_the_first_bar():
     rsi = np.where(down == 0, 100, np.where(up == 0, 0, 100 - 100 / (1 + up / down)))
     tr = np.r_[h[0] - l[0], np.maximum.reduce([h[1:] - l[1:], abs(h[1:] - c[:-1]), abs(l[1:] - c[:-1])])]
     from edgeorluck.rulebook import _rb_call
-    got = {"rsi": _rb_call("rsi", [14.0], px), "ema": _rb_call("ema", [10.0], px), "atr": _rb_call("atr", [14.0], px)}
-    want = {"rsi": rsi, "ema": _tv_average(c, 10, 2 / 11), "atr": _tv_average(tr, 14, 1 / 14)}
+    got = {"rsi": _rb_call("rsi", [14.0], px), "ema": _rb_call("ema", [10.0], px), "atr": _rb_call("atr", [14.0], px),
+           "std": _rb_call("std", [20.0], px)}
+    stdev = np.array([np.std(c[i - 19:i + 1]) if i >= 19 else math.nan for i in range(len(c))])  # ta.stdev: population
+    want = {"rsi": rsi, "ema": _tv_average(c, 10, 2 / 11), "atr": _tv_average(tr, 14, 1 / 14), "std": stdev}
     for name in got:
         g, w = got[name].to_numpy(), want[name]
         assert np.array_equal(np.isnan(g), np.isnan(w)), name

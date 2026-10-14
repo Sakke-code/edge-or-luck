@@ -28,9 +28,10 @@ RULE_FUNCTIONS = {
     "sma": "sma(n) or sma(series, n): simple moving average of the last n bars",
     "ema": "ema(n) or ema(series, n): exponential moving average, as TradingView's ta.ema",
     "rsi": "rsi(n) or rsi(series, n): Wilder's relative strength index, 0 to 100, as TradingView's ta.rsi",
-    "highest": "highest(n) or highest(series, n): the highest value of the last n bars, this one included",
+    "highest": "highest(n) or highest(series, n): the highest value of the last n bars, this one included "
+               "(a breakout above the earlier high is close > prev(highest(high, 20)))",
     "lowest": "lowest(n) or lowest(series, n): the lowest value of the last n bars, this one included",
-    "std": "std(n) or std(series, n): standard deviation of the last n bars",
+    "std": "std(n) or std(series, n): standard deviation of the last n bars, as TradingView's ta.stdev",
     "atr": "atr(n): average true range, as TradingView's ta.atr (needs high and low)",
     "change": "change(n) or change(series, n): the difference from n bars ago",
     "pct": "pct(n) or pct(series, n): the change from n bars ago, in percent",
@@ -107,7 +108,7 @@ def _rb_call(name: str, args: List[Value], frame: pd.DataFrame) -> Value:
             return series.rolling(n, min_periods=n).max()
         if name == "lowest":
             return series.rolling(n, min_periods=n).min()
-        return series.rolling(n, min_periods=n).std()
+        return series.rolling(n, min_periods=n).std(ddof=0)
     if name in ("change", "pct", "prev"):
         series, n = _rb_window(name, args, frame, default_n=1)
         if name == "change":

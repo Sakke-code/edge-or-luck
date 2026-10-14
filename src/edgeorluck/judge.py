@@ -36,9 +36,14 @@ from .compare import compare_runs
 from .readers import ReadResult, Trades, number, read_any
 from .words import count, day, fmt, iso_day, join_and, one_in, rnd, round_list, share
 
-ENGINE_VERSION = "2.1.0"
+ENGINE_VERSION = "2.1.1"
 SCHEMA_VERSION = "1.0"
 CHANGELOG = [
+    {"version": "2.1.1", "date": "2026-10-14",
+     "change": "Mini guides at /guides (and as Markdown for assistants): how backtests lie, honest tuning, the rule "
+               "language, live vs backtest, why the judge is strict, versions tried, riding the market, bad "
+               "streaks. The rule language's std now matches TradingView's ta.stdev (population), and the "
+               "breakout example compares with the bar before (prev(highest(high, 20))). The judge is unchanged."},
     {"version": "2.1.0", "date": "2026-10-14",
      "change": "An honest backtester for ideas with no trades yet: a safe rule language (RSI, EMA and ATR as "
                "TradingView), fills at the next bar's open with fees and slippage, a look-ahead test for Python "

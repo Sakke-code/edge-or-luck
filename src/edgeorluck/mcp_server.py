@@ -189,7 +189,8 @@ def rule_language() -> str:
     lines += ["", "## Examples", "",
               '- buy "rsi(14) < 30", sell "rsi(14) > 70"',
               '- buy "crosses_above(ema(12), ema(26))", sell "crosses_below(ema(12), ema(26))"',
-              '- buy "close > highest(high, 20) and volume > 2 * sma(volume, 20)", stop_loss_pct 5, max_hold_bars 48',
+              '- buy "close > prev(highest(high, 20)) and volume > 2 * sma(volume, 20)", stop_loss_pct 5, '
+              'max_hold_bars 48   (highest includes this bar, so a breakout compares with the bar before)',
               '- buy "pct(24) < -8", take_profit_pct 6, max_hold_bars 72   (buy a 24-bar drop of 8%)']
     return "\n".join(lines)
 

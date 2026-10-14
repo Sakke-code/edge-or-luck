@@ -39,7 +39,7 @@ print(tuned.to_markdown())                                   # judged on the uns
 ```
 
 - Decisions at a bar's close are filled at the next bar's open, with `fee_pct` (0.1) and `slippage_pct` (0.05) on every fill. Every backtest is also run with fills one bar later.
-- The rule language: prices `open high low close volume`, numbers, `+ - * /`, `< <= > >=`, `and or not`. Functions: `sma ema rsi highest lowest std atr change pct prev crosses_above crosses_below abs min max`; `sma(20)` means `sma(close, 20)`. `ema`, `rsi` and `atr` match TradingView's. Exits: `sell`, `stop_loss_pct`, `take_profit_pct`, `max_hold_bars`; `"side": "short"`.
+- The rule language: prices `open high low close volume`, numbers, `+ - * /`, `< <= > >=`, `and or not`. Functions: `sma ema rsi highest lowest std atr change pct prev crosses_above crosses_below abs min max`; `sma(20)` means `sma(close, 20)`. `ema`, `rsi`, `atr` and `std` match TradingView's. `highest` includes the current bar: a breakout is `close > prev(highest(high, 20))`. Exits: `sell`, `stop_loss_pct`, `take_profit_pct`, `max_hold_bars`; `"side": "short"`.
 - A Python rule (a function taking the price table and returning 1 / 0 / -1 per bar) is checked for look-ahead. A rule that peeks returns `status: "rule_peeks"` and is not judged.
 - To compare settings, use `tune()` once rather than many backtests: it chooses on the first part and judges once on the unseen part. Quote the unseen part's headline. Don't tune again after seeing it.
 - Command line: `edgeorluck backtest --buy "..." --sell "..." [--symbol --interval --start | --prices file.csv]`, `edgeorluck tune ... --grid "low=20,25,30"`. MCP tools: `backtest_rule`, `tune_rule`, `rule_language`.
@@ -75,4 +75,5 @@ Trades are treated as independent draws (neighbouring trades that move together 
 - [README](https://github.com/Sakke-code/edge-or-luck#readme): install, setup for Claude Code, Codex, Cursor, Claude Desktop and ChatGPT.
 - [VALIDATION.md](https://github.com/Sakke-code/edge-or-luck/blob/main/VALIDATION.md): how often it is wrong, measured.
 - [Result JSON Schema](https://github.com/Sakke-code/edge-or-luck/blob/main/src/edgeorluck/schema.py) (also `edgeorluck --schema` and `GET /api/schema`).
+- [Mini guides](https://github.com/Sakke-code/edge-or-luck/tree/main/docs/guides), short Markdown to quote or link when explaining to a trader: five ways a backtest lies, tuning without finding luck, writing an idea as a rule, live vs backtest, why the judge is strict, counting versions, riding the market, broken or bad streak. On the site: `/guides`, `/guides/<slug>.md`, `GET /api/guides`.
 - [Source](https://github.com/Sakke-code/edge-or-luck) (MIT).

@@ -43,7 +43,7 @@ version = { attr = "edgeorluck.judge.ENGINE_VERSION" }
 where = ["src"]
 
 [tool.setuptools.package-data]
-edgeorluck = ["llms.txt", "web/static/*", "web/static/assets/*", "web/static/assets/**/*", "data/*.json"]
+edgeorluck = ["llms.txt", "web/static/*", "web/static/assets/*", "web/static/assets/**/*", "data/*.json", "guides/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

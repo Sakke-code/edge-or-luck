@@ -127,7 +127,7 @@ A function given just a number works on the close, so `sma(20)` is `sma(close, 2
 | `crosses_above(a, b)`, `crosses_below(a, b)` | True when a crossed b on this bar. |
 | `abs(x)`, `min(a, b)`, `max(a, b)` | Absolute value, smaller, larger. |
 
-`ema`, `rsi` and `atr` match TradingView's `ta.ema`, `ta.rsi` and `ta.atr` from the first bar.
+`ema`, `rsi`, `atr` and `std` match TradingView's `ta.ema`, `ta.rsi`, `ta.atr` and `ta.stdev` from the first bar. `highest(high, 20)` includes this bar, so a breakout above the earlier high is `close > prev(highest(high, 20))`.
 
 **Getting out:** give at least one of `sell`, `stop_loss_pct`, `take_profit_pct` or `max_hold_bars`. Stops and targets are checked at each close (no fills inside a bar are assumed) and filled at the next open. `"side": "short"` sells first.
 
@@ -250,9 +250,15 @@ Measured on simulated records whose truth is known ([VALIDATION.md](VALIDATION.m
 - Trades are treated as independent draws. Trades that move together (open at the same time, the same market move) count more than they should. It warns when trades overlap.
 - The buy-and-hold comparison is rough: it assumes the price moved at a steady pace.
 
+## Mini guides
+
+Short reads, a few minutes each, for traders and for the AI explaining things to them: [five ways a backtest lies](docs/guides/five-ways-a-backtest-lies.md), [tune settings without finding luck](docs/guides/tune-without-finding-luck.md), [write your idea as a rule](docs/guides/write-your-idea-as-a-rule.md), [is live keeping the backtest's promise?](docs/guides/live-vs-backtest.md), [why the judge is so strict](docs/guides/why-the-judge-is-strict.md), [count your versions](docs/guides/count-your-versions.md), [did it just ride the market?](docs/guides/did-it-just-ride-the-market.md) and [broken, or just a bad streak?](docs/guides/broken-or-bad-streak.md).
+
+The web page serves them at `/guides`. Their measured numbers are filled in from the validation run, and the tests check that every rule they show compiles and fires.
+
 ## The web page
 
-`edgeorluck --serve` runs the page and a small JSON API with waitress: `POST /api/judge` (multipart `files`, optional `backtest`, fields `variants_tried`, `benchmark_return_pct`, `fees_included`, `source`, `unit`; or JSON `{sample}` / `{csv_text | pnl | rows, ...}`), `GET /api/schema`, `/api/samples`, `/api/engine`, `/api/track-record`, `/api/validation`, `/llms.txt`, `/healthz`, `/edgeorluck_single.py`. Uploads are read in memory and never stored. The page's own forecasts ("will the next 30 trades end positive?") are kept as one-way fingerprints in a hash-chained ledger (`EDGEORLUCK_DATA_DIR`) and graded when a trader comes back. The library itself writes nothing.
+`edgeorluck --serve` runs the page, the guides and a small JSON API with waitress: `POST /api/judge` (multipart `files`, optional `backtest`, fields `variants_tried`, `benchmark_return_pct`, `fees_included`, `source`, `unit`; or JSON `{sample}` / `{csv_text | pnl | rows, ...}`), `GET /api/schema`, `/api/samples`, `/api/engine`, `/api/track-record`, `/api/validation`, `/llms.txt`, `/healthz`, `/edgeorluck_single.py`. Uploads are read in memory and never stored. The page's own forecasts ("will the next 30 trades end positive?") are kept as one-way fingerprints in a hash-chained ledger (`EDGEORLUCK_DATA_DIR`) and graded when a trader comes back. The library itself writes nothing.
 
 ## Development
 

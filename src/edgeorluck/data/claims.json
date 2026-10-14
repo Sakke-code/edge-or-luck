@@ -148,7 +148,7 @@
          "python": "rulebook.compile_rule"},
         {"status": "tested", "text": "A Python rule is checked for peeking at 20 bars: its decision there must not change when the later bars are removed. Rules that use the next price, a centred window or a whole-history average are caught. A rule that peeks only now and then can slip past 20 checks, so the rule language is safer.",
          "python": "simulate._sim_peeks"},
-        {"status": "tested", "text": "RSI, EMA and ATR equal TradingView's ta.rsi, ta.ema and ta.atr from the first bar, so a rule copied from a chart means the same thing here.",
+        {"status": "tested", "text": "RSI, EMA, ATR and the standard deviation equal TradingView's ta.rsi, ta.ema, ta.atr and ta.stdev from the first bar, so a rule copied from a chart means the same thing here.",
          "python": "rulebook._rb_rsi"},
         {"status": "choice", "text": "Stops and targets are checked at each close, not inside the bar. Within one bar I can't know whether the high or the low came first, so I don't guess in your favour.",
          "python": "simulate._sim_rule_decisions"},

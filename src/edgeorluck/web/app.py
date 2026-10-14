@@ -9,6 +9,8 @@ GET  /api/samples           [{id, title, blurb, group}]
 GET  /api/engine            {version, changelog}
 GET  /api/track-record      how good the app's own forecasts have been
 GET  /api/validation        how often the judge is wrong, measured (VALIDATION.md)
+GET  /guides                the mini guides; /guides/<slug> one guide, /guides/<slug>.md its Markdown
+GET  /api/guides            [{slug, title, summary, minutes, group, url, markdown_url}]
 GET  /how                   the page where Flip shows how it checks and where it can be wrong
 GET  /api/claims            that page's claims: proved (Lean), measured, our choice, can't check
 GET  /proofs/<file>         the Lean proofs as plain text (when running from the repository)
@@ -45,6 +47,7 @@ from ..judge import CHANGELOG, ENGINE_VERSION, analyze, make_settings
 from ..readers import ReadResult, read_any
 from ..report import to_markdown
 from ..schema import schema
+from . import guides
 from .ledger import Ledger
 
 logger = logging.getLogger(__name__)
@@ -156,6 +159,29 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
     @app.get("/how")
     def how_page():
         return send_from_directory(STATIC, "how.html")
+
+    @app.get("/guides")
+    def guides_hub():
+        return Response(guides.hub_page(guides.load()), mimetype="text/html")
+
+    @app.get("/guides/<slug>.md")
+    def guide_markdown(slug: str):
+        guide = guides.find(slug)
+        if guide is None:
+            return _error("no such guide", "The guides are listed at /api/guides.", 404)
+        return Response(guide.full_markdown(), mimetype="text/markdown")
+
+    @app.get("/guides/<slug>")
+    def guide_page(slug: str):
+        every = guides.load()
+        guide = next((g for g in every if g.slug == slug), None)
+        if guide is None:
+            return _error("no such guide", "The guides are listed at /guides.", 404)
+        return Response(guides.guide_page(guide, every), mimetype="text/html")
+
+    @app.get("/api/guides")
+    def api_guides():
+        return jsonify([g.as_dict() for g in guides.load()])
 
     @app.get("/api/claims")
     def api_claims():
