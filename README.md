@@ -144,7 +144,7 @@ On Windows the Python is `C:\\path\\to\\edge-or-luck\\.venv\\Scripts\\python.exe
 ## How it judges (the short version)
 
 - **Luck is the default.** A record has to beat what luck does with the same trades. The judge flips each trade's sign at random 1,000 times ("coin-flip copies") to show what luck looks like.
-- **You can check any time.** The 95% range is anytime-valid: it stays honest however often you look. A normal confidence interval checked every day is wrong far more often than it says.
+- **You can check any time.** The 95% range is anytime-valid: from 30 trades on (no range is shown before) it stays honest however often you look. A normal confidence interval checked every day is wrong far more often than it says.
 - **Every version you tried counts.** All strategies shown and versions tried form one family, and the bar rises with its size.
 - **The market is taken out**, roughly, when the input shows prices or a buy-and-hold return.
 - **Skewed records need more.** Many small wins with rare big losses must clear a higher bar, and "real edge" needs at least five losing trades.

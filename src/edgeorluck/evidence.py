@@ -32,7 +32,11 @@ Honest limits, stated wherever results are shown:
 * the e-value is a Gaussian likelihood ratio with a plug-in standard
   deviation: valid as the number of trades grows (asymptotically), not
   exactly at every sample size;
-* the mixture is tuned to decide soonest around T_STAR trades.
+* the mixture is tuned to decide about soonest around T_STAR trades (a heuristic: see mixing_rho2).
+
+What is proved, and where: proofs/ holds machine-checked Lean proofs of the exact claims (the closed form,
+that the e-value averages 1 with no edge, the boundary and the range/verdict identity, Ville's inequality
+behind "check any time", and e-BH), for Gaussian trades with a known spread where a distribution is needed.
 """
 from __future__ import annotations
 
@@ -54,16 +58,27 @@ SKEW_CAP = 6.0
 
 
 def mixing_rho2(bar: float, t_star: int = T_STAR) -> float:
-    """The mixing scale that makes an e-value cross ``bar`` soonest near
-    ``t_star`` observations."""
+    """The mixing scale that makes an e-value cross ``bar`` about soonest near
+    ``t_star`` observations. A heuristic, not the exact optimum (proofs/Mixture.lean,
+    logEStd_scale_free): at bar 40 the best scale would be 8.24/t_star, this is
+    7.38/t_star, the boundary at t_star is 0.03% above the best, and this scale is
+    exactly best at about 112 trades instead of 100."""
     return 2.0 * math.log(max(bar, 1.0 + 1e-9)) / t_star
 
 
 def _log_two_phi(z: float) -> float:
-    """log(2 * Phi(z)), stable for very negative z."""
-    if z > -8.0:
+    """log(2 * Phi(z)), stable for very negative z.
+
+    erfc is accurate until it underflows near z = -37; below that, the asymptotic
+    series of Mills' ratio to four terms (relative error under 1e-10 there). The
+    earlier one-term version past z = -8 overstated Phi by 1.5% and made the
+    e-value dip as z crossed -8 (found by tests/test_bridge_mixture.py; it never
+    changed a verdict, since e < 1 that far down)."""
+    if z > -37.0:
         return math.log(2.0) + math.log(max(1e-300, 0.5 * math.erfc(-z / math.sqrt(2.0))))
-    return math.log(2.0) - 0.5 * z * z - math.log(-z) - 0.5 * math.log(2.0 * math.pi)
+    zz = z * z
+    series = 1.0 - 1.0 / zz + 3.0 / zz ** 2 - 15.0 / zz ** 3
+    return math.log(2.0) - 0.5 * zz - math.log(-z) - 0.5 * math.log(2.0 * math.pi) + math.log(series)
 
 
 def log_e_standardized(n: int, s: float, rho2: float) -> float:

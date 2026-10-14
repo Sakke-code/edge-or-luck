@@ -290,7 +290,10 @@ def _measure(st: Trades, family_bar: float) -> Dict[str, Any]:
     rho_family = mixing_rho2(family_bar)
     m.update(mean=rec.mean, total=rec.total, sd_eff=rec.sd, serial_factor=rec.serial, skew=rec.skew,
              record=rec, rho_family=rho_family, family_bar=family_bar)
-    if n >= 2 and math.isfinite(rec.sd):
+    # No range before MIN_TRADES: the spread estimated from a handful of trades is too unsteady for the 95%
+    # promise (at 2 trades the range misses the true mean 9% of the time, and a trader checking after every
+    # trade from 2 on is misled about 13% of the time). From 30 trades, where verdicts start, it holds.
+    if n >= MIN_TRADES and math.isfinite(rec.sd):
         m["lower"], m["upper"] = range_of(rec, BASE_BAR)
         m["adj_lower"], m["adj_upper"] = range_of(rec, family_bar, rho_family)
     ok = n >= MIN_TRADES and math.isfinite(rec.sd)
@@ -1264,8 +1267,8 @@ LIMITATIONS = [
 
 HOW_WE_KNOW = [
     "The range is an anytime-valid 95% range (a confidence sequence; Waudby-Smith, Arbour, Sinha, Kennedy & Ramdas "
-    "2021; Howard, Ramdas, McAuliffe & Sekhon 2021): it stays valid however often you check, unlike a normal "
-    "confidence interval read every day.",
+    "2021; Howard, Ramdas, McAuliffe & Sekhon 2021): from 30 trades on it stays valid however often you check, "
+    "unlike a normal confidence interval read every day. Below 30 trades no range is given.",
     "Each strategy gets one-sided normal-mixture e-values for 'the average is above zero' and 'below zero'. Every "
     "version tried and every strategy shown is one family; e-BH (Wang & Ramdas 2022) selects at a 5% false "
     "discovery rate. Versions tried but not shown count as e = 0, which is valid under any dependence. One strategy "
