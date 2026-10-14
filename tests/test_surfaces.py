@@ -87,10 +87,16 @@ def test_mcp_server_registers_its_tools():
     tools = asyncio.run(server.list_tools())
     tools = getattr(tools, "tools", tools)
     names = {t.name for t in tools}
-    assert names == {"judge_trades", "result_schema"}
-    judge_tool = next(t for t in tools if t.name == "judge_trades")
-    props = (getattr(judge_tool, "inputSchema", None) or getattr(judge_tool, "input_schema"))["properties"]
-    assert {"file_path", "csv_text", "pnl", "variants_tried", "benchmark_return_pct", "backtest_file_path"} <= set(props)
+    assert names == {"judge_trades", "result_schema", "backtest_rule", "tune_rule", "rule_language"}
+
+    def props(name):
+        tool = next(t for t in tools if t.name == name)
+        return set((getattr(tool, "inputSchema", None) or getattr(tool, "input_schema"))["properties"])
+    assert {"file_path", "csv_text", "pnl", "variants_tried", "benchmark_return_pct", "backtest_file_path"} <= \
+        props("judge_trades")
+    assert {"buy", "sell", "symbol", "interval", "start", "prices_file", "stop_loss_pct", "variants_tried"} <= \
+        props("backtest_rule")
+    assert {"buy", "grid", "holdout", "prices_file"} <= props("tune_rule")
 
 
 @pytest.mark.slow
@@ -99,7 +105,8 @@ def test_mcp_over_stdio_with_the_official_client(lucky_csv):
     out = subprocess.run([sys.executable, str(ROOT / "tools" / "mcp_roundtrip.py"), str(lucky_csv)],
                          capture_output=True, text=True, encoding="utf-8", timeout=180)
     assert out.returncode == 0, out.stderr[-2000:]
-    assert "tools: ['judge_trades', 'result_schema']" in out.stdout
+    assert "tools: ['judge_trades', 'result_schema', 'backtest_rule', 'tune_rule', 'rule_language']" in out.stdout
+    assert "## Honest backtest:" in out.stdout and "## Honest tuning:" in out.stdout
 
 
 # ── the one-file build ────────────────────────────────────────────────────────

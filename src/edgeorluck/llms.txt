@@ -1,6 +1,6 @@
 # edge or luck
 
-> An open-source judge that tells whether a trading strategy's results are a real edge or luck. Give it the trades (a TradingView "List of trades", exchange fills, a backtesting.py / vectorbt / freqtrade result, any CSV with a P&L column, or a list of numbers) and it returns a stable JSON verdict with plain-language sentences you can relay to a trader as is. It accounts for the trader checking again and again, for the versions they tried, and for a rising market. Not financial advice: a statistical check of past trades.
+> An open-source judge that tells whether a trading strategy's results are a real edge or luck, with an honest backtester for ideas that have no trades yet. Give it the trades (a TradingView "List of trades", exchange fills, a backtesting.py / vectorbt / freqtrade result, any CSV with a P&L column, or a list of numbers) and it returns a stable JSON verdict with plain-language sentences you can relay to a trader as is. It accounts for the trader checking again and again, for the versions they tried, and for a rising market. Not financial advice: a statistical check of past trades.
 
 ## When to call it
 
@@ -24,6 +24,25 @@ print(r.to_markdown())                              # or r.to_dict(), r.to_json(
 Command line: `edgeorluck trades.csv --tried 40 --benchmark 34.5 [--json]`. MCP server (stdio): `edgeorluck-mcp`, tool `judge_trades(file_path | csv_text | pnl, variants_tried, benchmark_return_pct, ...)`. No installs possible (a chat sandbox)? Upload `edgeorluck_single.py` with the trades and run `python edgeorluck_single.py trades.csv`.
 
 Only a web fetch tool? `GET /api/judge?pnl=1.2,-0.8,0.5&variants_tried=40` on the edge or luck site returns this same result as Markdown (add `&format=json` for the JSON). Separate the results with commas, or with semicolons or spaces when they use decimal commas (`pnl=1,20;-0,80`). `?csv=<url-encoded CSV>` and `?sample=<id>` work too, with the same optional fields.
+
+## An idea, but no trades yet
+
+When the user has a trading idea or rule but no trades, test it with the honest backtester instead of writing backtest code. Hand-written backtests usually trade at the close of the signal's own bar, forget fees, or peek at the future.
+
+```python
+import edgeorluck as eol
+px = eol.prices("BTCUSDT", "1h", start="2024-01-01")       # Binance spot, public, no key; or eol.load_prices("prices.csv")
+bt = eol.backtest(px, {"buy": "rsi(14) < 30 and close > sma(200)", "sell": "rsi(14) > 70"}, variants_tried=None)
+print(bt.to_markdown())                                      # bt.status: ok, no_trades or rule_peeks
+tuned = eol.tune(px, {"buy": "rsi(14) < {low}", "sell": "rsi(14) > 70"}, {"low": [20, 25, 30]})
+print(tuned.to_markdown())                                   # judged on the unseen last 30% only
+```
+
+- Decisions at a bar's close are filled at the next bar's open, with `fee_pct` (0.1) and `slippage_pct` (0.05) on every fill. Every backtest is also run with fills one bar later.
+- The rule language: prices `open high low close volume`, numbers, `+ - * /`, `< <= > >=`, `and or not`. Functions: `sma ema rsi highest lowest std atr change pct prev crosses_above crosses_below abs min max`; `sma(20)` means `sma(close, 20)`. `ema`, `rsi` and `atr` match TradingView's. Exits: `sell`, `stop_loss_pct`, `take_profit_pct`, `max_hold_bars`; `"side": "short"`.
+- A Python rule (a function taking the price table and returning 1 / 0 / -1 per bar) is checked for look-ahead. A rule that peeks returns `status: "rule_peeks"` and is not judged.
+- To compare settings, use `tune()` once rather than many backtests: it chooses on the first part and judges once on the unseen part. Quote the unseen part's headline. Don't tune again after seeing it.
+- Command line: `edgeorluck backtest --buy "..." --sell "..." [--symbol --interval --start | --prices file.csv]`, `edgeorluck tune ... --grid "low=20,25,30"`. MCP tools: `backtest_rule`, `tune_rule`, `rule_language`.
 
 ## What comes back (schema 1.0)
 

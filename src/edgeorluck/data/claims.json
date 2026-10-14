@@ -3,6 +3,7 @@
   "statuses": {
     "proved": {"label": "Proved", "means": "Checked by the Lean proof assistant, with no gaps. Click a name to read the proof."},
     "measured": {"label": "Measured", "means": "Approximate on real trades, so we measure it instead of proving it: see VALIDATION.md."},
+    "tested": {"label": "Tested", "means": "Checked by automated tests every time the code changes. Not a proof: the claim says what the tests check."},
     "choice": {"label": "Our choice", "means": "A rule we picked to stay careful. Not maths, and we say why."},
     "unchecked": {"label": "Can't check", "means": "Something I cannot see or know. I tell you what to do about it."}
   },
@@ -133,12 +134,35 @@
          "lean": ["Counting.sweep_eq_volume"], "python": "judge._exposure"},
         {"status": "measured", "text": "The drawdown odds, “faded” and the live-vs-backtest odds come from resampling your own trades: estimates, and labelled as such."}
       ]
+    },
+    {
+      "id": "backtest",
+      "mood": "happy",
+      "title": "An idea with no trades gets tested without cheating",
+      "flip": "No trades yet? I make them myself, and I don't let the idea cheat.",
+      "plain": "Most quick backtests are too kind: they trade at prices nobody could have had, forget fees, or use tomorrow's prices. Mine decides at each bar's close, fills at the next bar's open, pays costs on every fill, and refuses rules that look ahead. Then the same judge decides.",
+      "claims": [
+        {"status": "tested", "text": "A decision at a bar's close is filled at the next bar's open, and every fill pays the fee and the slippage. The tests check a trade's result against the formula to the last digit, for buys and for shorts.",
+         "python": "simulate._sim_trades"},
+        {"status": "tested", "text": "A rule written in my rule language can only look back. For every function, the tests check that its value at a bar is the same whether the later bars exist or not.",
+         "python": "rulebook.compile_rule"},
+        {"status": "tested", "text": "A Python rule is checked for peeking at 20 bars: its decision there must not change when the later bars are removed. Rules that use the next price, a centred window or a whole-history average are caught. A rule that peeks only now and then can slip past 20 checks, so the rule language is safer.",
+         "python": "simulate._sim_peeks"},
+        {"status": "tested", "text": "RSI, EMA and ATR equal TradingView's ta.rsi, ta.ema and ta.atr from the first bar, so a rule copied from a chart means the same thing here.",
+         "python": "rulebook._rb_rsi"},
+        {"status": "choice", "text": "Stops and targets are checked at each close, not inside the bar. Within one bar I can't know whether the high or the low came first, so I don't guess in your favour.",
+         "python": "simulate._sim_rule_decisions"},
+        {"status": "choice", "text": "Every backtest is run again with each fill one bar later. If the edge disappears, it lived on instant fills or a hidden look-ahead, and I say so.",
+         "python": "simulate._sim_delay_check"},
+        {"status": "choice", "text": "Tuning chooses on the first 70% of the prices and judges once on the rest. The first part's result has its bar raised for every setting tried; the unseen part counts as one version, because it played no part in the choice.",
+         "python": "simulate.tune"}
+      ]
     }
   ],
   "limits": [
     {"status": "measured", "text": "Real trades are not normal, their spread is estimated, and they can depend on each other. The proofs above assume the textbook case; for real trades I measure instead. That is where 0.15%, and 1.9% at worst, come from.",
      "link": "VALIDATION.md"},
-    {"status": "unchecked", "text": "I can't see your code. A backtest that peeks at future prices or skips fees hands me trades that look better than they were. When the shape looks too good, I flag it and give you a prompt to have the code checked."},
+    {"status": "unchecked", "text": "I can't see your code. A backtest that peeks at future prices or skips fees hands me trades that look better than they were. When the shape looks too good, I flag it and give you a prompt to have the code checked. Or test the idea with my own backtester, which can't use later prices."},
     {"status": "unchecked", "text": "The past is not the future. A real edge can stop working, which is why I check whether it has faded, and why you should come back."},
     {"status": "choice", "text": "When the evidence decides fastest is a rule of thumb: tuned for about 100 trades, though the exact best is near 112. It costs 0.03%.",
      "lean": ["Mixture.logEStd_scale_free"]}

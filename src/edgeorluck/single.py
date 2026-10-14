@@ -16,7 +16,8 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional
 
-MODULES = ["evidence", "words", "fills", "readers", "compare", "judge", "report", "schema", "result"]
+MODULES = ["evidence", "words", "fills", "readers", "compare", "judge", "report", "schema", "result", "rulebook",
+           "market", "simulate"]
 HERE = Path(__file__).resolve().parent
 
 HEADER = '''"""edge or luck, in one file: is a trading record a real edge, or luck?
@@ -31,6 +32,12 @@ Upload this file together with the trades (a CSV/XLSX export, a TradingView
     print(r.to_markdown())
 
 or from a shell:  python edgeorluck_single.py trades.csv [--tried 40] [--json]
+
+An idea and a price file (a CSV with a close column), but no trades? Test it
+honestly; decisions at a bar's close are filled at the next bar's open:
+
+    bt = eol.backtest("/mnt/data/prices.csv", {{"buy": "rsi(14) < 30", "sell": "rsi(14) > 70"}})
+    print(bt.to_markdown())
 
 Answer the trader from the result alone: quote verdict.headline, explain
 verdict.plain in short words, give next_step, and ask the questions in

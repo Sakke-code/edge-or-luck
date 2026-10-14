@@ -36,9 +36,14 @@ from .compare import compare_runs
 from .readers import ReadResult, Trades, number, read_any
 from .words import count, day, fmt, iso_day, join_and, one_in, rnd, round_list, share
 
-ENGINE_VERSION = "2.0.0"
+ENGINE_VERSION = "2.1.0"
 SCHEMA_VERSION = "1.0"
 CHANGELOG = [
+    {"version": "2.1.0", "date": "2026-10-14",
+     "change": "An honest backtester for ideas with no trades yet: a safe rule language (RSI, EMA and ATR as "
+               "TradingView), fills at the next bar's open with fees and slippage, a look-ahead test for Python "
+               "rules, a one-bar-later check, tuning that chooses on one part and judges on the unseen rest, "
+               "Binance prices or your own CSV; as Python, the command line and MCP tools. The judge is unchanged."},
     {"version": "2.0.0", "date": "2026-10-13",
      "change": "Standalone judge for traders and their AI assistants: versions tried raise the bar (e-BH with the "
                "unseen versions as e = 0), a rough check against buying and holding, money first, plain 'why' on "

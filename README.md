@@ -1,6 +1,6 @@
 # edge or luck
 
-**Is your trading strategy a real edge, or just luck?** Drop in your trades and get an honest answer in plain words: what the record shows, how sure that is, what would change it, and one next step.
+**Is your trading strategy a real edge, or just luck?** Drop in your trades and get an honest answer in plain words: what the record shows, how sure that is, what would change it, and one next step. No trades yet? [Test the idea honestly](#test-an-idea-before-you-have-trades) first.
 
 Most strategies that look good are luck: the best of many tries, a rising market, a backtest that peeked at the future, or a few big trades. This judge checks for each of those. The same file always gets the same answer, and a "real edge" verdict is wrong rarely. That rate is measured, not promised (see [VALIDATION.md](VALIDATION.md)).
 
@@ -71,6 +71,83 @@ edgeorluck --serve --port 5078        # the web page, served by waitress
 edgeorluck --single-file              # write edgeorluck_single.py
 ```
 
+## Test an idea before you have trades
+
+Just an idea, no trades yet? A quick backtest script from an AI is usually too kind. It trades at prices it couldn't have had, forgets fees, or peeks at the future. Test the idea here instead: the same judge decides.
+
+```python
+import edgeorluck as eol
+
+px = eol.prices("BTCUSDT", "1h", start="2024-01-01", end="2026-10-01")  # Binance spot, public data, no key
+bt = eol.backtest(px, {"buy": "rsi(14) < 30 and close > sma(200)", "sell": "rsi(14) > 70"})
+print(bt.to_markdown())
+```
+
+That classic rule made 31 trades and +1.5% in total. Simply holding made +96.6% over the same dates. Verdict: **No edge once the market is taken out.**
+
+What makes it honest:
+
+- **No impossible fills.** Each decision is made at a bar's close and filled at the next bar's open. Every fill pays a fee and slippage (0.1% and 0.05% by default; `fee_pct=`, `slippage_pct=`).
+- **No peeking.** A rule in the rule language (below) can only look back. A Python rule is checked instead: a function that takes the price table and returns 1, 0 or -1 per bar. If its decision at a bar changes when later bars are added, it is using the future, and the backtest stops instead of judging it.
+- **One bar later.** Every backtest runs again with each fill one bar later. If the edge vanishes, the check fails: the edge depended on instant fills or a hidden look-ahead.
+- **Against holding.** The trades are compared with simply holding over the same dates.
+
+### Tune without fooling yourself
+
+```python
+tuned = eol.tune(px, {"buy": "rsi(14) < {low}", "sell": "rsi(14) > {high}"},
+                 {"low": [20, 25, 30, 35], "high": [60, 65, 70, 75]})
+print(tuned.to_markdown())
+```
+
+If you try 16 settings and keep the best, you find the luckiest one. `tune()` tries them all on the first 70% of the prices only (`holdout=0.3`). It then judges the chosen setting once on the last 30%, which played no part in the choice, and shows how the other settings did there.
+
+On the prices above, the chosen setting averaged +2.9% per trade on the part that chose it. On the unseen part it averaged -3.4%: it ranked 15th of the 16, and only 2 of the 16 made money there.
+
+Don't tune again after seeing the unseen verdict: that turns the unseen part into tuning data too.
+
+### The rule language
+
+A rule is a condition checked at each bar's close. It is built from:
+
+- the prices `open`, `high`, `low`, `close` and `volume`;
+- numbers, `+ - * /` and `< <= > >=`;
+- `and`, `or` and `not`;
+- the functions below.
+
+A function given just a number works on the close, so `sma(20)` is `sma(close, 20)`.
+
+| Function | What it gives |
+|---|---|
+| `sma(n)`, `ema(n)` | Moving averages. |
+| `rsi(n)` | Wilder's RSI, 0 to 100. |
+| `highest(n)`, `lowest(n)` | The highest or lowest of the last n bars, this one included. Example: `highest(high, 20)`. |
+| `std(n)`, `atr(n)` | The spread: standard deviation, or average true range. |
+| `change(n)`, `pct(n)`, `prev(x, n)` | The difference from n bars ago, the percent change, or the value n bars ago. |
+| `crosses_above(a, b)`, `crosses_below(a, b)` | True when a crossed b on this bar. |
+| `abs(x)`, `min(a, b)`, `max(a, b)` | Absolute value, smaller, larger. |
+
+`ema`, `rsi` and `atr` match TradingView's `ta.ema`, `ta.rsi` and `ta.atr` from the first bar.
+
+**Getting out:** give at least one of `sell`, `stop_loss_pct`, `take_profit_pct` or `max_hold_bars`. Stops and targets are checked at each close (no fills inside a bar are assumed) and filled at the next open. `"side": "short"` sells first.
+
+Nothing else is allowed: no attributes, indexing, imports or code. That makes a rule from a web page or an AI safe to run.
+
+From the command line:
+
+```bash
+edgeorluck backtest --buy "rsi(14) < 30" --sell "rsi(14) > 70" --symbol ETHUSDT --interval 4h --start 2023-01-01
+edgeorluck tune --buy "rsi(14) < {low}" --sell "rsi(14) > {high}" --grid "low=20,25,30 high=65,70,75"
+edgeorluck backtest --buy "pct(24) < -8" --take 6 --hold 72 --prices my_prices.csv
+```
+
+**Kept simple on purpose:**
+
+- One position at a time, all in.
+- Spot prices: no funding, borrowing or leverage.
+- Stops are checked at closes.
+- Prices are fetched from Binance's public market data on your own machine, and nothing is stored.
+
 ## What you get back
 
 A versioned JSON result (`schema_version` 1.0; `edgeorluck.schema()` or `edgeorluck --schema` for the JSON Schema) built so an assistant can answer a non-coder in three sentences without computing anything else:
@@ -86,7 +163,11 @@ A versioned JSON result (`schema_version` 1.0; `edgeorluck.schema()` or `edgeorl
 
 ## Use it from your AI assistant
 
-The MCP server runs on your machine, so the assistant can pass the path of your export. Its tool `judge_trades` takes `file_path`, `csv_text` or `pnl`, plus `variants_tried`, `benchmark_return_pct`, `fees_included`, `source`, `unit` and the `backtest_...` fields.
+The MCP server runs on your machine, so the assistant can pass the path of your export. Its tools:
+
+- `judge_trades` takes `file_path`, `csv_text` or `pnl`, plus `variants_tried`, `benchmark_return_pct`, `fees_included`, `source`, `unit` and the `backtest_...` fields.
+- `backtest_rule` and `tune_rule` test an idea honestly, on fetched prices or a local price file.
+- `rule_language` lists the rule language.
 
 These use [uv](https://docs.astral.sh/uv/)'s `uvx`, which fetches the package from PyPI on first use:
 
