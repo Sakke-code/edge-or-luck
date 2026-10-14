@@ -7,15 +7,21 @@
 
 **The rule:** Buy when crosses_above(sma(50), sma(200)); get out when crosses_below(sma(50), sma(200)).
 
-A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made more than simply holding on 2 of 5.
+Beat simply holding on 2 of 5 markets. A real edge, more than luck explains counting all 50 tries, on 0.
 
-| Market | Trades | Total | Holding | Verdict |
-|---|---|---|---|---|
-| S&P 500 (SPY) | 10 | +467% | +843% | Too early |
-| Nasdaq 100 (QQQ) | 12 | +1,263% | +2,088% | Too early |
-| Gold (GLD) | 13 | +306% | +795% | Too early |
-| EUR/USD | 17 | -4% | -16% | Too early |
-| Bitcoin (BTC/USDT) | 9 | +663% | +525% | Too early |
+| Market | Made | Holding | Trades | Worst drop (holding) | In short |
+|---|---|---|---|---|---|
+| S&P 500 (SPY) | +467% | +843% | 10 | -34% (-55%) | Too few trades |
+| Nasdaq 100 (QQQ) | +1,263% | +2,088% | 12 | -30% (-53%) | Too few trades |
+| Gold (GLD) | +306% | +795% | 13 | -35% (-46%) | Too few trades |
+| EUR/USD | -4% | -16% | 17 | -29% (-40%) | Too few trades |
+| Bitcoin (BTC/USDT) | +663% | +525% | 9 | -64% (-81%) | Too few trades |
+
+- **S&P 500 (SPY):** It made +467% (worse than holding: +843%), but from only 10 trades: too few to tell skill from luck. A verdict needs at least 30. Its worst drop was -34% against -55% for holding: less risk, not more money.
+- **Nasdaq 100 (QQQ):** It made +1,263% (worse than holding: +2,088%), but from only 12 trades: too few to tell skill from luck. A verdict needs at least 30. Its worst drop was -30% against -53% for holding: less risk, not more money.
+- **Gold (GLD):** It made +306% (worse than holding: +795%), but from only 13 trades: too few to tell skill from luck. A verdict needs at least 30. Its worst drop was -35% against -46% for holding: less risk, not more money.
+- **EUR/USD:** It lost 4% (better than holding: -16%), but from only 17 trades: too few to tell skill from luck. A verdict needs at least 30. Its worst drop was -29% against -40% for holding.
+- **Bitcoin (BTC/USDT):** It made +663% (better than holding: +525%), but from only 9 trades: too few to tell skill from luck. A verdict needs at least 30. Its worst drop was -64% against -81% for holding.
 
 **What to know:** Slow averages cross rarely, so even twenty years of daily prices give only a handful of trades: too few to tell an edge from luck, however good the total looks.
 
@@ -25,15 +31,21 @@ A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made 
 
 **The rule:** Buy when close > sma(200); get out when close < sma(200).
 
-A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made more than simply holding on 2 of 5.
+Beat simply holding on 2 of 5 markets. A real edge, more than luck explains counting all 50 tries, on 0.
 
-| Market | Trades | Total | Holding | Verdict |
-|---|---|---|---|---|
-| S&P 500 (SPY) | 63 | +397% | +843% | Can't tell yet |
-| Nasdaq 100 (QQQ) | 63 | +941% | +2,088% | Can't tell yet |
-| Gold (GLD) | 81 | +377% | +795% | Can't tell yet |
-| EUR/USD | 64 | +20% | -16% | Can't tell yet |
-| Bitcoin (BTC/USDT) | 31 | +1,064% | +525% | Can't tell yet |
+| Market | Made | Holding | Trades | Worst drop (holding) | In short |
+|---|---|---|---|---|---|
+| S&P 500 (SPY) | +397% | +843% | 63 | -24% (-55%) | Less than holding |
+| Nasdaq 100 (QQQ) | +941% | +2,088% | 63 | -25% (-53%) | Less than holding |
+| Gold (GLD) | +377% | +795% | 81 | -34% (-46%) | Less than holding |
+| EUR/USD | +20% | -16% | 64 | -21% (-40%) | Beat holding, could be luck |
+| Bitcoin (BTC/USDT) | +1,064% | +525% | 31 | -54% (-81%) | Beat holding, could be luck |
+
+- **S&P 500 (SPY):** It made +397%, but simply holding made +843%. Out of the market 23% of the time, it missed more of the rise than it avoided falls. Its worst drop was -24% against -55% for holding: less risk, not more money.
+- **Nasdaq 100 (QQQ):** It made +941%, but simply holding made +2,088%. Out of the market 22% of the time, it missed more of the rise than it avoided falls. Its worst drop was -25% against -53% for holding: less risk, not more money.
+- **Gold (GLD):** It made +377%, but simply holding made +795%. Out of the market 34% of the time, it missed more of the rise than it avoided falls. Its worst drop was -34% against -46% for holding: less risk, not more money.
+- **EUR/USD:** It made +20%, more than holding (-16%). But without its 3 best trades it would have lost money, 289 of 1,000 coin-flip copies of its own trades did even better, and it is one of 50 tries: somewhere among them, luck makes a result like this. About 3,900 more trades at this pace would tell. Its worst drop was -21% against -40% for holding.
+- **Bitcoin (BTC/USDT):** It made +1,064%, more than holding (+525%). But without its 3 best trades it would have lost money, 73 of 1,000 coin-flip copies of its own trades did even better, and it is one of 50 tries: somewhere among them, luck makes a result like this. About 490 more trades at this pace would tell. Its worst drop was -54% against -81% for holding.
 
 **What to know:** A trend filter changes when you are in the market more than how much each trade makes. It can skip the worst falls and still trail simply holding, because it also misses part of every rebound.
 
@@ -43,15 +55,21 @@ A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made 
 
 **The rule:** Buy when rsi(14) < 30; get out when rsi(14) > 70.
 
-A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made more than simply holding on 0 of 5.
+Beat simply holding on 0 of 5 markets. A real edge, more than luck explains counting all 50 tries, on 0.
 
-| Market | Trades | Total | Holding | Verdict |
-|---|---|---|---|---|
-| S&P 500 (SPY) | 20 | +192% | +843% | Too early |
-| Nasdaq 100 (QQQ) | 20 | +318% | +2,088% | Too early |
-| Gold (GLD) | 18 | +112% | +795% | Too early |
-| EUR/USD | 15 | -32% | -16% | Too early |
-| Bitcoin (BTC/USDT) | 13 | +45% | +525% | Too early |
+| Market | Made | Holding | Trades | Worst drop (holding) | In short |
+|---|---|---|---|---|---|
+| S&P 500 (SPY) | +192% | +843% | 20 | -55% (-55%) | Too few trades |
+| Nasdaq 100 (QQQ) | +318% | +2,088% | 20 | -49% (-53%) | Too few trades |
+| Gold (GLD) | +112% | +795% | 18 | -29% (-46%) | Too few trades |
+| EUR/USD | -32% | -16% | 15 | -47% (-40%) | Too few trades |
+| Bitcoin (BTC/USDT) | +45% | +525% | 13 | -61% (-81%) | Too few trades |
+
+- **S&P 500 (SPY):** It made +192% (worse than holding: +843%), but from only 20 trades: too few to tell skill from luck. A verdict needs at least 30.
+- **Nasdaq 100 (QQQ):** It made +318% (worse than holding: +2,088%), but from only 20 trades: too few to tell skill from luck. A verdict needs at least 30.
+- **Gold (GLD):** It made +112% (worse than holding: +795%), but from only 18 trades: too few to tell skill from luck. A verdict needs at least 30. Its worst drop was -29% against -46% for holding: less risk, not more money.
+- **EUR/USD:** It lost 32% (worse than holding: -16%), but from only 15 trades: too few to tell skill from luck. A verdict needs at least 30.
+- **Bitcoin (BTC/USDT):** It made +45% (worse than holding: +525%), but from only 13 trades: too few to tell skill from luck. A verdict needs at least 30. Its worst drop was -61% against -81% for holding: less risk, not more money.
 
 **What to know:** In a rising market the daily RSI seldom reaches 30, so the rule waits a long time and sits out most of the rise. Few trades again, and a long wait between them.
 
@@ -61,15 +79,21 @@ A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made 
 
 **The rule:** Buy when rsi(2) < 10 and close > sma(200); get out when close > sma(5).
 
-A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made more than simply holding on 1 of 5.
+Beat simply holding on 1 of 5 markets. A real edge, more than luck explains counting all 50 tries, on 0.
 
-| Market | Trades | Total | Holding | Verdict |
-|---|---|---|---|---|
-| S&P 500 (SPY) | 168 | +77% | +843% | Can't tell yet |
-| Nasdaq 100 (QQQ) | 178 | +98% | +2,088% | Can't tell yet |
-| Gold (GLD) | 140 | +36% | +795% | Can't tell yet |
-| EUR/USD | 121 | -11% | -16% | No edge |
-| Bitcoin (BTC/USDT) | 68 | +52% | +525% | Can't tell yet |
+| Market | Made | Holding | Trades | Worst drop (holding) | In short |
+|---|---|---|---|---|---|
+| S&P 500 (SPY) | +77% | +843% | 168 | -15% (-55%) | Less than holding |
+| Nasdaq 100 (QQQ) | +97% | +2,088% | 178 | -12% (-53%) | Less than holding |
+| Gold (GLD) | +36% | +795% | 140 | -16% (-46%) | Less than holding |
+| EUR/USD | -11% | -16% | 121 | -12% (-40%) | Lost money |
+| Bitcoin (BTC/USDT) | +52% | +525% | 68 | -43% (-81%) | Less than holding |
+
+- **S&P 500 (SPY):** It made +77%, but simply holding made +843%. Out of the market 89% of the time, it missed more of the rise than it avoided falls. Its worst drop was -15% against -55% for holding: less risk, not more money.
+- **Nasdaq 100 (QQQ):** It made +97%, but simply holding made +2,088%. Out of the market 88% of the time, it missed more of the rise than it avoided falls. Its worst drop was -12% against -53% for holding: less risk, not more money.
+- **Gold (GLD):** It made +36%, but simply holding made +795%. Out of the market 89% of the time, it missed more of the rise than it avoided falls. Its worst drop was -16% against -46% for holding: less risk, not more money.
+- **EUR/USD:** It lost money: -11%, while holding made -16%. Its worst drop was -12% against -40% for holding.
+- **Bitcoin (BTC/USDT):** It made +52%, but simply holding made +525%. Out of the market 92% of the time, it missed more of the rise than it avoided falls. Its worst drop was -43% against -81% for holding: less risk, not more money.
 
 **What to know:** Short dips in an uptrend are a pattern traders have known for decades. Once a pattern is famous, the question is whether anything is left after costs, and many trades make costs add up.
 
@@ -79,15 +103,21 @@ A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made 
 
 **The rule:** Buy when close < sma(20) - 2 * std(20); get out when close > sma(20).
 
-A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made more than simply holding on 0 of 5.
+Beat simply holding on 0 of 5 markets. A real edge, more than luck explains counting all 50 tries, on 0.
 
-| Market | Trades | Total | Holding | Verdict |
-|---|---|---|---|---|
-| S&P 500 (SPY) | 99 | +140% | +843% | Can't tell yet |
-| Nasdaq 100 (QQQ) | 93 | +141% | +2,088% | Can't tell yet |
-| Gold (GLD) | 92 | +123% | +795% | Can't tell yet |
-| EUR/USD | 94 | -19% | -16% | No edge |
-| Bitcoin (BTC/USDT) | 51 | -46% | +525% | No edge |
+| Market | Made | Holding | Trades | Worst drop (holding) | In short |
+|---|---|---|---|---|---|
+| S&P 500 (SPY) | +140% | +843% | 99 | -38% (-55%) | Less than holding |
+| Nasdaq 100 (QQQ) | +141% | +2,088% | 93 | -45% (-53%) | Less than holding |
+| Gold (GLD) | +123% | +795% | 92 | -18% (-46%) | Less than holding |
+| EUR/USD | -19% | -16% | 94 | -30% (-40%) | Lost money |
+| Bitcoin (BTC/USDT) | -46% | +525% | 51 | -70% (-81%) | Lost money |
+
+- **S&P 500 (SPY):** It made +140%, but simply holding made +843%. Out of the market 81% of the time, it missed more of the rise than it avoided falls. Its worst drop was -38% against -55% for holding: less risk, not more money.
+- **Nasdaq 100 (QQQ):** It made +141%, but simply holding made +2,088%. Out of the market 80% of the time, it missed more of the rise than it avoided falls. Its worst drop was -45% against -53% for holding: less risk, not more money.
+- **Gold (GLD):** It made +123%, but simply holding made +795%. Out of the market 79% of the time, it missed more of the rise than it avoided falls. Its worst drop was -18% against -46% for holding: less risk, not more money.
+- **EUR/USD:** It lost money: -19%, while holding made -16%. Its worst drop was -30% against -40% for holding: less risk, not more money.
+- **Bitcoin (BTC/USDT):** It lost money: -46%, while holding made +525%. Its worst drop was -70% against -81% for holding: less risk, not more money.
 
 **What to know:** Buying far under the average is a bet that prices snap back. In a market that keeps falling they don't, and those few trades decide the result.
 
@@ -97,15 +127,21 @@ A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made 
 
 **The rule:** Buy when crosses_above(ema(12) - ema(26), ema(ema(12) - ema(26), 9)); get out when crosses_below(ema(12) - ema(26), ema(ema(12) - ema(26), 9)).
 
-A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made more than simply holding on 2 of 5.
+Beat simply holding on 2 of 5 markets. A real edge, more than luck explains counting all 50 tries, on 0.
 
-| Market | Trades | Total | Holding | Verdict |
-|---|---|---|---|---|
-| S&P 500 (SPY) | 230 | +116% | +843% | No edge |
-| Nasdaq 100 (QQQ) | 214 | +226% | +2,088% | No edge |
-| Gold (GLD) | 216 | +253% | +795% | Can't tell yet |
-| EUR/USD | 229 | -4% | -16% | No edge |
-| Bitcoin (BTC/USDT) | 115 | +790% | +525% | Can't tell yet |
+| Market | Made | Holding | Trades | Worst drop (holding) | In short |
+|---|---|---|---|---|---|
+| S&P 500 (SPY) | +116% | +843% | 230 | -31% (-55%) | Less than holding |
+| Nasdaq 100 (QQQ) | +226% | +2,088% | 214 | -34% (-53%) | Less than holding |
+| Gold (GLD) | +253% | +795% | 216 | -26% (-46%) | Less than holding |
+| EUR/USD | -4% | -16% | 229 | -37% (-40%) | Lost money |
+| Bitcoin (BTC/USDT) | +790% | +525% | 115 | -64% (-81%) | Beat holding, could be luck |
+
+- **S&P 500 (SPY):** It made +116%, but simply holding made +843%. Out of the market 50% of the time, it missed more of the rise than it avoided falls. Its worst drop was -31% against -55% for holding: less risk, not more money.
+- **Nasdaq 100 (QQQ):** It made +226%, but simply holding made +2,088%. Out of the market 48% of the time, it missed more of the rise than it avoided falls. Its worst drop was -34% against -53% for holding: less risk, not more money.
+- **Gold (GLD):** It made +253%, but simply holding made +795%. Out of the market 49% of the time, it missed more of the rise than it avoided falls. Its worst drop was -26% against -46% for holding: less risk, not more money.
+- **EUR/USD:** It lost money: -4%, while holding made -16%.
+- **Bitcoin (BTC/USDT):** It made +790%, more than holding (+525%). But 14 of 1,000 coin-flip copies of its own trades did even better, and it is one of 50 tries: somewhere among them, luck makes a result like this. About 740 more trades at this pace would tell. Its worst drop was -64% against -81% for holding.
 
 **What to know:** MACD is a moving-average cross in disguise. It trades often, every trade pays costs, and an edge has to beat all of them.
 
@@ -115,15 +151,21 @@ A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made 
 
 **The rule:** Buy when crosses_above(ema(9), ema(21)); get out when crosses_below(ema(9), ema(21)).
 
-A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made more than simply holding on 2 of 5.
+Beat simply holding on 2 of 5 markets. A real edge, more than luck explains counting all 50 tries, on 0.
 
-| Market | Trades | Total | Holding | Verdict |
-|---|---|---|---|---|
-| S&P 500 (SPY) | 110 | +254% | +843% | No edge |
-| Nasdaq 100 (QQQ) | 119 | +389% | +2,088% | No edge |
-| Gold (GLD) | 120 | +302% | +795% | Can't tell yet |
-| EUR/USD | 119 | +12% | -16% | Can't tell yet |
-| Bitcoin (BTC/USDT) | 64 | +1,553% | +525% | Can't tell yet |
+| Market | Made | Holding | Trades | Worst drop (holding) | In short |
+|---|---|---|---|---|---|
+| S&P 500 (SPY) | +254% | +843% | 110 | -23% (-55%) | Less than holding |
+| Nasdaq 100 (QQQ) | +389% | +2,088% | 119 | -31% (-53%) | Less than holding |
+| Gold (GLD) | +302% | +795% | 120 | -30% (-46%) | Less than holding |
+| EUR/USD | +12% | -16% | 119 | -22% (-40%) | Beat holding, could be luck |
+| Bitcoin (BTC/USDT) | +1,553% | +525% | 64 | -61% (-81%) | Beat holding, could be luck |
+
+- **S&P 500 (SPY):** It made +254%, but simply holding made +843%. Out of the market 30% of the time, it missed more of the rise than it avoided falls. Its worst drop was -23% against -55% for holding: less risk, not more money.
+- **Nasdaq 100 (QQQ):** It made +389%, but simply holding made +2,088%. Out of the market 32% of the time, it missed more of the rise than it avoided falls. Its worst drop was -31% against -53% for holding: less risk, not more money.
+- **Gold (GLD):** It made +302%, but simply holding made +795%. Out of the market 43% of the time, it missed more of the rise than it avoided falls. Its worst drop was -30% against -46% for holding: less risk, not more money.
+- **EUR/USD:** It made +12%, more than holding (-16%). But without its 3 best trades it would have lost money, 275 of 1,000 coin-flip copies of its own trades did even better, and it is one of 50 tries: somewhere among them, luck makes a result like this. Its worst drop was -22% against -40% for holding.
+- **Bitcoin (BTC/USDT):** It made +1,553%, more than holding (+525%). But its 3 best trades made 81% of the profit, 28 of 1,000 coin-flip copies of its own trades did even better, and it is one of 50 tries: somewhere among them, luck makes a result like this. About 570 more trades at this pace would tell. Its worst drop was -61% against -81% for holding.
 
 **What to know:** Fast crosses trade often. Each extra trade is another cost and another chance for luck, so a big total on one market says little until the trades clear the bar.
 
@@ -133,15 +175,21 @@ A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made 
 
 **The rule:** Buy when close > prev(highest(20)); get out when close < prev(lowest(10)).
 
-A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made more than simply holding on 2 of 5.
+Beat simply holding on 2 of 5 markets. A real edge, more than luck explains counting all 50 tries, on 0.
 
-| Market | Trades | Total | Holding | Verdict |
-|---|---|---|---|---|
-| S&P 500 (SPY) | 132 | +210% | +843% | Can't tell yet |
-| Nasdaq 100 (QQQ) | 139 | +227% | +2,088% | No edge |
-| Gold (GLD) | 125 | +122% | +795% | Can't tell yet |
-| EUR/USD | 126 | -6% | -16% | No edge |
-| Bitcoin (BTC/USDT) | 65 | +766% | +525% | Can't tell yet |
+| Market | Made | Holding | Trades | Worst drop (holding) | In short |
+|---|---|---|---|---|---|
+| S&P 500 (SPY) | +210% | +843% | 132 | -24% (-55%) | Less than holding |
+| Nasdaq 100 (QQQ) | +227% | +2,088% | 139 | -29% (-53%) | Less than holding |
+| Gold (GLD) | +122% | +795% | 125 | -24% (-46%) | Less than holding |
+| EUR/USD | -6% | -16% | 126 | -28% (-40%) | Lost money |
+| Bitcoin (BTC/USDT) | +766% | +525% | 65 | -66% (-81%) | Beat holding, could be luck |
+
+- **S&P 500 (SPY):** It made +210%, but simply holding made +843%. Out of the market 46% of the time, it missed more of the rise than it avoided falls. Its worst drop was -24% against -55% for holding: less risk, not more money.
+- **Nasdaq 100 (QQQ):** It made +227%, but simply holding made +2,088%. Out of the market 48% of the time, it missed more of the rise than it avoided falls. Its worst drop was -29% against -53% for holding: less risk, not more money.
+- **Gold (GLD):** It made +122%, but simply holding made +795%. Out of the market 59% of the time, it missed more of the rise than it avoided falls. Its worst drop was -24% against -46% for holding: less risk, not more money.
+- **EUR/USD:** It lost money: -6%, while holding made -16%. Its worst drop was -28% against -40% for holding.
+- **Bitcoin (BTC/USDT):** It made +766%, more than holding (+525%). But its 3 best trades made 59% of the profit, 33 of 1,000 coin-flip copies of its own trades did even better, and it is one of 50 tries: somewhere among them, luck makes a result like this. About 360 more trades at this pace would tell. Its worst drop was -66% against -81% for holding.
 
 **What to know:** Breakouts are the classic trend-following entry: they win big rarely and lose small often, so the result hangs on a few trades, and a short record says little.
 
@@ -151,15 +199,21 @@ A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made 
 
 **The rule:** Buy when pct(5) < -5; get out after 10 bars.
 
-A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made more than simply holding on 1 of 5.
+Beat simply holding on 1 of 5 markets. A real edge, more than luck explains counting all 50 tries, on 0.
 
-| Market | Trades | Total | Holding | Verdict |
-|---|---|---|---|---|
-| S&P 500 (SPY) | 42 | +22% | +843% | Can't tell yet |
-| Nasdaq 100 (QQQ) | 70 | +72% | +2,088% | Can't tell yet |
-| Gold (GLD) | 49 | +42% | +795% | Can't tell yet |
-| EUR/USD | 3 | -8% | -16% | Too early |
-| Bitcoin (BTC/USDT) | 138 | +18% | +525% | Can't tell yet |
+| Market | Made | Holding | Trades | Worst drop (holding) | In short |
+|---|---|---|---|---|---|
+| S&P 500 (SPY) | +22% | +843% | 42 | -30% (-55%) | Less than holding |
+| Nasdaq 100 (QQQ) | +72% | +2,088% | 70 | -43% (-53%) | Less than holding |
+| Gold (GLD) | +42% | +795% | 49 | -17% (-46%) | Less than holding |
+| EUR/USD | -8% | -16% | 3 | -8% (-40%) | Too few trades |
+| Bitcoin (BTC/USDT) | +18% | +525% | 138 | -70% (-81%) | Less than holding |
+
+- **S&P 500 (SPY):** It made +22%, but simply holding made +843%. Out of the market 92% of the time, it missed more of the rise than it avoided falls. Its worst drop was -30% against -55% for holding: less risk, not more money.
+- **Nasdaq 100 (QQQ):** It made +72%, but simply holding made +2,088%. Out of the market 87% of the time, it missed more of the rise than it avoided falls. Its worst drop was -43% against -53% for holding: less risk, not more money.
+- **Gold (GLD):** It made +42%, but simply holding made +795%. Out of the market 91% of the time, it missed more of the rise than it avoided falls. Its worst drop was -17% against -46% for holding: less risk, not more money.
+- **EUR/USD:** It lost 8% (better than holding: -16%), but from only 3 trades: too few to tell skill from luck. A verdict needs at least 30. Its worst drop was -8% against -40% for holding.
+- **Bitcoin (BTC/USDT):** It made +18%, but simply holding made +525%. Out of the market 57% of the time, it missed more of the rise than it avoided falls. Its worst drop was -70% against -81% for holding: less risk, not more money.
 
 **What to know:** Buying a drop works until the drop keeps going. A few large losses decide the result, which is why the judge raises the bar for records whose losses are rarer but bigger.
 
@@ -169,19 +223,27 @@ A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made 
 
 **The rule:** Buy when close < sma(20) * 0.95; get out when close > sma(20).
 
-A real edge on 0 of 5 markets, counting all 50 tries in this catalogue. It made more than simply holding on 1 of 5.
+Beat simply holding on 1 of 5 markets. A real edge, more than luck explains counting all 50 tries, on 0.
 
-| Market | Trades | Total | Holding | Verdict |
-|---|---|---|---|---|
-| S&P 500 (SPY) | 27 | +36% | +843% | Too early |
-| Nasdaq 100 (QQQ) | 48 | +103% | +2,088% | Can't tell yet |
-| Gold (GLD) | 26 | +54% | +795% | Too early |
-| EUR/USD | 4 | +3% | -16% | Too early |
-| Bitcoin (BTC/USDT) | 66 | -48% | +525% | No edge |
+| Market | Made | Holding | Trades | Worst drop (holding) | In short |
+|---|---|---|---|---|---|
+| S&P 500 (SPY) | +36% | +843% | 27 | -39% (-55%) | Too few trades |
+| Nasdaq 100 (QQQ) | +103% | +2,088% | 48 | -44% (-53%) | Less than holding |
+| Gold (GLD) | +54% | +795% | 26 | -16% (-46%) | Too few trades |
+| EUR/USD | +3% | -16% | 4 | -6% (-40%) | Too few trades |
+| Bitcoin (BTC/USDT) | -48% | +525% | 66 | -68% (-81%) | Lost money |
+
+- **S&P 500 (SPY):** It made +36% (worse than holding: +843%), but from only 27 trades: too few to tell skill from luck. A verdict needs at least 30. Its worst drop was -39% against -55% for holding: less risk, not more money.
+- **Nasdaq 100 (QQQ):** It made +103%, but simply holding made +2,088%. Out of the market 89% of the time, it missed more of the rise than it avoided falls. Its worst drop was -44% against -53% for holding: less risk, not more money.
+- **Gold (GLD):** It made +54% (worse than holding: +795%), but from only 26 trades: too few to tell skill from luck. A verdict needs at least 30. Its worst drop was -16% against -46% for holding: less risk, not more money.
+- **EUR/USD:** It made +3% (better than holding: -16%), but from only 4 trades: too few to tell skill from luck. A verdict needs at least 30. Its worst drop was -6% against -40% for holding.
+- **Bitcoin (BTC/USDT):** It lost money: -48%, while holding made +525%. Its worst drop was -68% against -81% for holding: less risk, not more money.
 
 **What to know:** A rule that waits for big gaps trades rarely in calm markets and too early in a crash: it has few trades to judge and its worst ones come together.
 
-## Not one? Isn't that suspicious?
+## Big returns, but no edge?
+
+Making money isn't the same as having an edge. Stocks, gold and bitcoin all rose a lot over these years, so almost any rule that owned them made money. A rule has an edge when it adds something you couldn't get by simply holding, by more than luck explains. Most of these made less than holding; the ones that made more did it with a handful of big trades, the kind of result luck produces somewhere among many tries.
 
 It isn't the counting. Judged as if each were the only rule ever tested, 0 of 50 pass. The closest, 20-day breakout on S&P 500 (SPY), reaches evidence of 34 where 40 is needed.
 

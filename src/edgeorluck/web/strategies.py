@@ -11,7 +11,7 @@ import html
 import json
 from datetime import date
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -108,7 +108,15 @@ def compute(end: str = END) -> Dict[str, Any]:
             r = np.array([t["return_pct"] for t in bt["trades"]], float)
             curve = 100.0 * (np.cumprod(1.0 + r / 100.0) - 1.0) if len(r) else np.zeros(0)
             keep = np.unique(np.linspace(0, len(curve) - 1, min(len(curve), 60)).astype(int)) if len(curve) else []
+            card = ((bt["judgement"] or {}).get("strategies") or [{}])[0]
+            nums = card.get("numbers") or {}
             results.append({"symbol": m["symbol"], "trades": bt["stats"]["trades"],
+                            "in_market": round(bt["stats"]["time_in_market"], 3),
+                            "worst_drop": _worst_drop(frames[m["symbol"]], bt["trades"]),
+                            "hold_worst_drop": _worst_drop(frames[m["symbol"]], None),
+                            "coin_flips_above": (nums.get("coin_flip") or {}).get("ended_higher"),
+                            "top3_share": (nums.get("top_3") or {}).get("share_of_profit"),
+                            "trades_needed": nums.get("trades_needed"),
                             "total_pct": round(bt["stats"]["total_pct"], 2), "hold_pct": round(bt["stats"]["hold_pct"], 2),
                             "mean_pct": None if not len(r) else round(float(r.mean()), 4),
                             "code": verdict.get("code", "no_trades"), "label": verdict.get("label", "No trades"),
@@ -122,6 +130,64 @@ def compute(end: str = END) -> Dict[str, Any]:
             "markets": [dict(m, first=str(frames[m["symbol"]].index[0].date()), source=frames[m["symbol"]].attrs["source"])
                         for m in MARKETS],
             "strategies": out}
+
+
+def _worst_drop(frame: Any, trades: Optional[List[Dict[str, Any]]]) -> float:
+    """The worst fall from a high, in percent, marked to the close each day: holding (trades None), or the rule
+    (in the market only between its trades' fills). Fills are at opens, so the rule's figure is approximate."""
+    close = frame["close"].to_numpy(float)
+    daily = np.r_[0.0, close[1:] / close[:-1] - 1.0]
+    if trades is not None:
+        held = np.zeros(len(close))
+        for t in trades:
+            held[t["entry_bar"] + 1:t["exit_bar"] + 1] = 1.0
+        daily = daily * held
+    equity = np.cumprod(1.0 + daily)
+    return round(float(100.0 * (equity / np.maximum.accumulate(equity) - 1.0).min()), 1)
+
+
+def category(r: Dict[str, Any]) -> Tuple[str, str]:
+    """(code, plain label) for one result: the question a trader asks first is whether it beat simply holding."""
+    if r["code"] == "real_edge":
+        return "real", "Real edge"
+    if r["trades"] < 30:
+        return "few", "Too few trades"
+    if r["total_pct"] < 0:
+        return "lost", "Lost money"
+    if r["total_pct"] <= r["hold_pct"]:
+        return "less", "Less than holding"
+    return "luck", "Beat holding, could be luck"
+
+
+def story(data: Dict[str, Any], r: Dict[str, Any]) -> str:
+    """One result in plain words, from its own numbers."""
+    code, _ = category(r)
+    made, hold = _pct(r["total_pct"]), _pct(r["hold_pct"])
+    beat = r["total_pct"] > r["hold_pct"]
+    drop = (f" Its worst drop was {r['worst_drop']:.0f}% against {r['hold_worst_drop']:.0f}% for holding"
+            + ("." if beat else ": less risk, not more money.") if r["worst_drop"] > r["hold_worst_drop"] + 5 else "")
+    if code == "real":
+        return f"It made {made} (holding: {hold}), and luck explains that too rarely, even counting all {data['tries']} tries."
+    if code == "few":
+        did = f"made {made}" if r["total_pct"] >= 0 else f"lost {abs(r['total_pct']):.0f}%"
+        return (f"It {did} ({'better' if beat else 'worse'} than holding: {hold}), but from only {r['trades']} "
+                "trades: too few to tell skill from luck. A verdict needs at least 30." + drop)
+    if code == "lost":
+        return f"It lost money: {made}, while holding made {hold}." + drop
+    if code == "less":
+        return (f"It made {made}, but simply holding made {hold}. Out of the market {100 - 100 * r['in_market']:.0f}% of "
+                "the time, it missed more of the rise than it avoided falls." + drop)
+    parts = [f"It made {made}, more than holding ({hold}). But"]
+    if r.get("top3_share") and r["top3_share"] > 1:
+        parts.append("without its 3 best trades it would have lost money,")
+    elif r.get("top3_share") and r["top3_share"] > 0.5:
+        parts.append(f"its 3 best trades made {100 * r['top3_share']:.0f}% of the profit,")
+    if r.get("coin_flips_above") is not None:
+        parts.append(f"{r['coin_flips_above']} of 1,000 coin-flip copies of its own trades did even better,")
+    parts.append(f"and it is one of {data['tries']} tries: somewhere among them, luck makes a result like this.")
+    if r.get("trades_needed"):
+        parts.append(f"About {r['trades_needed']:,} more trades at this pace would tell.")
+    return " ".join(parts) + drop
 
 
 def load() -> Optional[Dict[str, Any]]:
@@ -140,7 +206,11 @@ def why_none(data: Dict[str, Any]) -> List[str]:
             for r in s["results"]]
     passing_alone = sum(code == "real_edge" for _, _, _, code in rows)
     e, title, market, _ = max(rows)
-    out = [f"It isn't the counting. Judged as if each were the only rule ever tested, {passing_alone} of "
+    out = ["Making money isn't the same as having an edge. Stocks, gold and bitcoin all rose a lot over these years, so "
+           "almost any rule that owned them made money. A rule has an edge when it adds something you couldn't get by "
+           "simply holding, by more than luck explains. Most of these made less than holding; the ones that made more "
+           "did it with a handful of big trades, the kind of result luck produces somewhere among many tries.",
+           f"It isn't the counting. Judged as if each were the only rule ever tested, {passing_alone} of "
            f"{len(rows)} pass{'es' if passing_alone == 1 else ''}. The closest, {title} on {market}, reaches evidence of "
            f"{e:.0f} where {BASE_BAR:.0f} is needed."]
     path = PACKAGE / "data" / "validation.json"
@@ -161,14 +231,13 @@ def summary(data: Dict[str, Any], s: Dict[str, Any]) -> str:
     n = len(s["results"])
     real = sum(r["code"] == "real_edge" for r in s["results"])
     beat = sum(r["total_pct"] > r["hold_pct"] for r in s["results"])
-    return (f"A real edge on {real} of {n} markets, counting all {data['tries']} tries in this catalogue. It made "
-            f"more than simply holding on {beat} of {n}.")
+    return (f"Beat simply holding on {beat} of {n} markets. A real edge, more than luck explains counting all "
+            f"{data['tries']} tries, on {real}.")
 
 
 # ── pages and Markdown ────────────────────────────────────────────────────────
 
-_CHIP = {"real_edge": "good", "cant_tell": "warn", "too_early": "wait", "no_edge": "flat", "losing": "bad",
-         "faded": "bad", "no_trades": "flat"}
+_CHIP = {"real": "good", "luck": "warn", "few": "wait", "less": "flat", "lost": "bad"}
 
 
 def _pct(v: Optional[float]) -> str:
@@ -176,7 +245,8 @@ def _pct(v: Optional[float]) -> str:
 
 
 def _chip(r: Dict[str, Any]) -> str:
-    return f'<span class="chip {_CHIP.get(r["code"], "flat")}">{html.escape(r["label"])}</span>'
+    code, label = category(r)
+    return f'<span class="chip {_CHIP[code]}">{html.escape(label)}</span>'
 
 
 def _spark(curve: List[float]) -> str:
@@ -206,7 +276,7 @@ def hub_page(data: Dict[str, Any]) -> str:
     head = "".join(f"<th>{e(m['name'])}</th>" for m in data["markets"])
     rows = "".join(
         f'<tr><th scope="row"><a href="/strategies/{e(s["slug"])}">{e(s["title"])}</a><small>{e(s["claim"])}</small>'
-        "</th>" + "".join(f'<td>{_chip(r)}<span class="vs">{_pct(r["total_pct"])} <small>vs holding '
+        "</th>" + "".join(f'<td>{_chip(r)}<span class="vs">made {_pct(r["total_pct"])} <small>holding '
                           f'{_pct(r["hold_pct"])}</small></span></td>' for r in s["results"]) + "</tr>"
         for s in data["strategies"])
     body = f"""<section class="intro wrap" aria-labelledby="title">
@@ -223,7 +293,7 @@ def hub_page(data: Dict[str, Any]) -> str:
 </section>
 <section class="wrap catalogue" aria-label="The results">
   <div class="table matrix"><table><thead><tr><th>Strategy</th>{head}</tr></thead><tbody>{rows}</tbody></table></div>
-  <section class="why-none" aria-labelledby="why"><h2 id="why">Not one? Isn't that suspicious?</h2>{"".join(f"<p>{e(p)}</p>" for p in why_none(data))}</section>
+  <section class="why-none" aria-labelledby="why"><h2 id="why">Big returns, but no edge?</h2>{"".join(f"<p>{e(p)}</p>" for p in why_none(data))}</section>
   {_notes(data)}
 </section>"""
     return _shell("Popular strategies, judged · edge or luck",
@@ -236,9 +306,10 @@ def strategy_page(data: Dict[str, Any], s: Dict[str, Any]) -> str:
     e = html.escape
     names = {m["symbol"]: m["name"] for m in data["markets"]}
     cards = "".join(
-        f'<li class="result"><h3>{e(names[r["symbol"]])}</h3>{_chip(r)}<p class="nums"><b>{r["trades"]:,}</b> trades · '
-        f'<b>{_pct(r["total_pct"])}</b> in total · holding {_pct(r["hold_pct"])}</p>{_spark(r["curve"])}'
-        f'<p class="head">{e(r["headline"])}</p></li>' for r in s["results"])
+        f'<li class="result"><h3>{e(names[r["symbol"]])}</h3>{_chip(r)}<p class="nums">made <b>{_pct(r["total_pct"])}</b> · '
+        f'holding {_pct(r["hold_pct"])}<br><b>{r["trades"]:,}</b> trades · worst drop {r["worst_drop"]:.0f}% (holding '
+        f'{r["hold_worst_drop"]:.0f}%)</p>{_spark(r["curve"])}<p class="head">{e(story(data, r))}</p></li>'
+        for r in s["results"])
     rule = json.dumps(s["rule"], indent=4)
     body = f"""<article class="wrap strategy">
   <p class="crumbs"><a href="/strategies">Popular strategies</a> · {e(s["title"])}</p>
@@ -270,12 +341,13 @@ def markdown(data: Dict[str, Any], s: Optional[Dict[str, Any]] = None) -> str:
         if not s:
             lines += [f"## {one['title']}", ""]
         lines += [f"**The claim:** {one['claim']}", "", f"**The rule:** {one['text']}", "", summary(data, one), "",
-                  "| Market | Trades | Total | Holding | Verdict |", "|---|---|---|---|---|"]
-        lines += [f"| {names[r['symbol']]} | {r['trades']:,} | {_pct(r['total_pct'])} | {_pct(r['hold_pct'])} | "
-                  f"{r['label']} |" for r in one["results"]]
+                  "| Market | Made | Holding | Trades | Worst drop (holding) | In short |", "|---|---|---|---|---|---|"]
+        lines += [f"| {names[r['symbol']]} | {_pct(r['total_pct'])} | {_pct(r['hold_pct'])} | {r['trades']:,} | "
+                  f"{r['worst_drop']:.0f}% ({r['hold_worst_drop']:.0f}%) | {category(r)[1]} |" for r in one["results"]]
+        lines += [""] + [f"- **{names[r['symbol']]}:** {story(data, r)}" for r in one["results"]]
         lines += ["", f"**What to know:** {one['lesson']}", ""]
     if not s:
-        lines += ["## Not one? Isn't that suspicious?", ""] + [p + "\n" for p in why_none(data)]
+        lines += ["## Big returns, but no edge?", ""] + [p + "\n" for p in why_none(data)]
     lines += [f"_Past prices only, to {data['end']}; daily bars; costs on every fill; each verdict counts all "
               f"{data['tries']} tries. Not a signal and not financial advice._", ""]
     return "\n".join(lines)
