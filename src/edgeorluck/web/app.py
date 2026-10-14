@@ -230,7 +230,10 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
 
     @app.get("/api/samples")
     def api_samples():
-        return jsonify(samples.available())
+        listed = samples.available()
+        if not _on_this_computer():
+            listed = [s for s in listed if s.get("group") != "private"]
+        return jsonify(listed)
 
     @app.get("/api/engine")
     def api_engine():
@@ -255,6 +258,16 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
             _single_cache[ENGINE_VERSION] = build()
         return Response(_single_cache[ENGINE_VERSION], mimetype="text/x-python",
                         headers={"Content-Disposition": "attachment; filename=edgeorluck_single.py"})
+
+    def _on_this_computer() -> bool:
+        """Private samples (EDGEORLUCK_PRIVATE_SAMPLES: your own records) are shown only to a browser on the
+        same computer, never to visitors of a hosted site."""
+        return (request.remote_addr or "") in ("127.0.0.1", "::1")
+
+    def _sample(sample_id: str) -> Dict[str, Any]:
+        if str(sample_id).startswith("private:") and not _on_this_computer():
+            raise KeyError(sample_id)
+        return samples.sample_input(str(sample_id))
 
     def _visitor() -> str:
         # The connecting address. Behind a proxy, set EDGEORLUCK_PROXIES to the number of proxies in front of the
@@ -304,7 +317,7 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
             sample_id = payload.get("sample")
             if sample_id:
                 try:
-                    args = samples.sample_input(str(sample_id))
+                    args = _sample(str(sample_id))
                 except KeyError:
                     return _error(f"no sample called {sample_id!r}", "See GET /api/samples for the ids.", 404)
                 source_kind = "sample"
@@ -372,7 +385,7 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
         if _field(args, "sample"):
             sample_id = args["sample"]
             try:
-                given = samples.sample_input(str(sample_id))
+                given = _sample(str(sample_id))
             except KeyError:
                 return _error(f"no sample called {sample_id!r}", "See GET /api/samples for the ids.", 404)
             source_kind = "sample"

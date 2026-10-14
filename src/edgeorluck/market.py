@@ -97,7 +97,10 @@ def prices(symbol: str = "BTCUSDT", interval: str = "1h", start: Any = None, end
         raise PriceError("start must be before end.")
     if (end_ms - start_ms) / step > MAX_BARS:
         raise PriceError(f"That is more than {MAX_BARS:,} bars: pick a later start or a longer interval.")
-    key = (symbol, interval, start_ms, end_ms // step)
+    # A period that ends near now also depends on which bars have finished since: the bar count now is in the key,
+    # so a frame cached while a bar was forming isn't handed out after it has closed.
+    now_ms = int(now.timestamp() * 1000)
+    key = (symbol, interval, start_ms, end_ms // step, now_ms // step if end_ms > now_ms - 2 * step else None)
     if key in _mk_cache:
         return _mk_cache[key].copy()
     # Fixed windows of KLINE_LIMIT bars, fetched side by side: a window that comes back

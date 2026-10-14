@@ -85,18 +85,25 @@ def number(value: Any) -> float:
     """A number from an export cell: percent signs, currency marks, unicode
     minus, (negatives), thousands separators, decimal commas, trailing coin
     names ("0.0012BTC")."""
-    if value is None:
+    if value is None or isinstance(value, (list, tuple, dict, set)):   # never glue [1, 2.5] into 12.5
         return float("nan")
     if isinstance(value, bool):
         return float(value)
     if isinstance(value, (int, float, np.integer, np.floating)):
         return float(value)
     text = str(value).strip()
-    for ch in ("−", "–", "—"):
+    for ch in ("−", "–", "—", "‐", "‑", "‒", "﹣", "－"):   # every minus sign means minus
         text = text.replace(ch, "-")
+    # a currency or coin written in front: "EUR 12.50", "-EUR 3", "ETH 0.5"
+    text = re.sub(r"^([+-]?)\s*[A-Za-z]{2,6}\.?\s*(?=[-+(]?\d)", r"\1", text)
     text = text.replace("\xa0", "").replace(" ", "").replace(" ", "").replace("'", "")
     if not text or text.lower() in ("nan", "none", "null", "-", "n/a", "na"):
         return float("nan")
+    if re.search(r"\d[:/]\d", text) or text[:1] in "[{":   # a clock time, a date or fraction, a list: not an amount
+        return float("nan")
+    text = re.sub(r"^\+-", "-", text)
+    if text.count(".") > 1 and "," not in text:     # 1.234.567: dots as thousands separators
+        text = text.replace(".", "")
     negative = (text.startswith("(") and text.endswith(")")) or text.endswith("-")
     text = text.strip("()")
     text = re.sub(r"[A-Za-z]+$", "", text) if re.search(r"\d", text) and not re.search(r"\d[eE][-+]?\d", text) \
@@ -202,17 +209,22 @@ def find_column(columns: Sequence[str], candidates: Sequence[str], *, avoid: Ite
                 return col
     for cand in candidates:
         for col, name in normed:
-            if name.startswith(cand + " ") and not re.search(r"\b(entry|exit|open|close)\b", name[len(cand):]):
+            rest = name[len(cand):]
+            # "price usdt" is a price; "exit price" is no exit time, and "time opened" no close time
+            if name.startswith(cand + " ") and not re.search(r"\b(entry|exit|open\w*|clos\w*)\b", rest) \
+                    and not re.search(r"\b(price|qty|quantity|size|amount|value|fees?|pnl|profit)\b", rest):
                 return col
     return None
 
 
 _CLOSE_TIME = ("close time", "closed at", "close date", "exit time", "exit date", "exit timestamp", "close date utc",
-               "closing time", "closed", "date/time", "date and time", "datetime", "date time", "time", "date",
+               "closing time", "closing date", "time closed", "date closed", "closed time", "closed date",
+               "close timestamp", "closed", "date/time", "date and time", "datetime", "date time", "time", "date",
                "timestamp", "date utc", "time utc", "created time", "trade time", "fill time", "order time",
                "updated time", "execution time", "c time", "ctime", "exit")
 _OPEN_TIME = ("open time", "opened at", "open date", "entry time", "entry date", "entry timestamp", "opening time",
-              "opened", "entry")
+              "opening date", "time opened", "date opened", "opened time", "opened date", "open timestamp", "opened",
+              "entry")
 _STRATEGY = ("strategy", "strategy name", "bot", "bot name", "system", "setup", "algo", "model", "book", "tag",
              "label", "variant", "column")
 _FEE = ("fees", "fee", "commission", "commissions", "trading fee", "trading fees", "transaction fee", "fee amount",
@@ -220,9 +232,10 @@ _FEE = ("fees", "fee", "commission", "commissions", "trading fee", "trading fees
 _SIDE = ("side", "direction", "order side", "trade side", "buy/sell", "b/s", "position side", "type")
 _SYMBOL = ("symbol", "pair", "market", "trading pair", "instrument", "ticker", "coin pair", "contract", "product",
            "asset", "coin", "currency pair")
-_PRICE = ("price", "avg price", "average price", "fill price", "filled price", "executed price", "execution price",
+# What a fill was done at comes first: an order history's "Price" is the limit price, or the word "Market".
+_PRICE = ("avg price", "average price", "fill price", "filled price", "executed price", "execution price",
           "deal price", "trade price", "price avg", "avg fill price", "average filled price", "filled price avg",
-          "order price")
+          "price", "order price")
 _QTY = ("executed", "filled", "quantity", "qty", "size", "filled amount", "filled qty", "filled quantity",
         "executed qty", "executed quantity", "base amount", "fill size", "fill quantity", "volume", "vol",
         "deal amount", "amount")
@@ -270,6 +283,8 @@ def numbers_from_text(text: str) -> Optional[Tuple[List[float], Optional[str]]]:
         parts = re.split(r"\s+", body)                         # "12,5 -3,2": decimal commas
     elif "\n" in body.strip() and not re.search(r",\s", body):
         parts = [p for line in body.splitlines() for p in re.split(r"\s+(?=[-+−(]?\d)", line.strip())]
+    elif re.search(r",\s", body) and re.search(r"\d,\d{3}\b", body):
+        parts = re.split(r",\s+|\s*[\n\r]+\s*", body)        # "1,234.50, -300.00": a comma and a space separate
     else:
         parts = re.split(r"[,\s]+", body)
     parts = [p.strip() for p in parts if p.strip()]
@@ -333,13 +348,14 @@ def table_from_text(text: str) -> pd.DataFrame:
     counts = [len(r) for r in rows[:60]]
     modal = max(set(counts), key=counts.count)
     header_at = 0
+    need = max(2, int(0.6 * modal)) if modal >= 2 else 1     # a title line padded with commas isn't a header
     for i, row in enumerate(rows[:15]):
         cells = [c for c in row if c.strip()]
-        if len(row) >= min(modal, 2) and cells and sum(not math.isfinite(number(c)) for c in cells) >= len(cells) / 2:
+        if len(row) >= min(modal, 2) and len(cells) >= need and sum(not _data_like(c) for c in cells) >= len(cells) / 2:
             header_at = i
             break
     header = [h.strip() or f"column {j + 1}" for j, h in enumerate(rows[header_at])]
-    if header and all(math.isfinite(number(h)) for h in header if h.strip()):
+    if header and all(_data_like(h) for h in header if h.strip()):    # no header at all: the first row is a trade
         header = [f"column {j + 1}" for j in range(len(header))]
         body = rows[header_at:]
     else:
@@ -347,6 +363,15 @@ def table_from_text(text: str) -> pd.DataFrame:
     width = len(header)
     body = [(r + [""] * width)[:width] for r in body if any(c.strip() for c in r)]
     return pd.DataFrame(body, columns=_dedupe(header), dtype=object)
+
+
+_DATE_CELL = re.compile(r"\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}(?:[ T].*)?|\d{9,13}(?:\.\d+)?")
+
+
+def _data_like(cell: str) -> bool:
+    """A cell that is a value (a number or a date), not a column name."""
+    text = str(cell).strip()
+    return math.isfinite(number(text)) or bool(_DATE_CELL.fullmatch(text))
 
 
 def _dedupe(names: List[str]) -> List[str]:
@@ -358,14 +383,52 @@ def _dedupe(names: List[str]) -> List[str]:
     return out
 
 
+def _excel_cell(cell: Any) -> str:
+    """A workbook cell as the text a CSV export would show: percent-formatted
+    numbers as "1.5%", dates as ISO text."""
+    value = getattr(cell, "value", None)
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, (int, float)):
+        if "%" in str(getattr(cell, "number_format", "") or ""):
+            return f"{value * 100:.12g}%"
+        return f"{value:.15g}" if isinstance(value, float) else str(value)
+    if hasattr(value, "isoformat"):
+        return value.isoformat(sep=" ") if hasattr(value, "hour") else value.isoformat()
+    return str(value)
+
+
 def _excel_tables(source: Any) -> Dict[str, pd.DataFrame]:
     try:
-        import openpyxl  # noqa: F401
+        import openpyxl
     except ImportError as exc:
         raise ValueError("reading .xlsx needs openpyxl (pip install 'edgeorluck[xlsx]'), or save the sheet as "
                          "CSV") from exc
+    out: Dict[str, pd.DataFrame] = {}
+    try:
+        # openpyxl sees each cell's format: a cell showing 1.5% holds 0.015, and pandas alone would read 0.015 %
+        workbook = openpyxl.load_workbook(source, data_only=True, read_only=True)
+    except Exception:  # not an .xlsx openpyxl can open: pandas' readers below
+        workbook = None
+    if workbook is not None:
+        for sheet in workbook.worksheets:
+            rows = [[_excel_cell(c) for c in row] for row in sheet.iter_rows()]
+            rows = [r for r in rows if any(v.strip() for v in r)]
+            if not rows:
+                continue
+            width = max(len(r) for r in rows)
+            rows = [r + [""] * (width - len(r)) for r in rows]
+            keep = [j for j in range(width) if any(r[j].strip() for r in rows)]
+            buf = io.StringIO()
+            csv.writer(buf).writerows([[r[j] for j in keep] for r in rows])
+            out[str(sheet.title)] = table_from_text(buf.getvalue())
+        workbook.close()
+        return out
+    if hasattr(source, "seek"):
+        source.seek(0)
     sheets = pd.read_excel(source, sheet_name=None, dtype=object, header=None)
-    out = {}
     for name, frame in sheets.items():
         frame = frame.dropna(how="all").dropna(axis=1, how="all")
         if frame.empty:
@@ -507,17 +570,18 @@ def _from_freqtrade(result: Dict[str, Any], name: Optional[str]) -> ReadResult:
         frame = pd.DataFrame(body["trades"])
         rows += len(frame)
         seen = sorted(set(seen) | set(map(str, frame.columns)))
-        if frame.empty or "profit_abs" not in frame:
+        if frame.empty or ("profit_abs" not in frame and "profit_ratio" not in frame):
             continue
         canon = pd.DataFrame({
-            "pnl": frame["profit_abs"].map(number),
+            "pnl": frame["profit_abs"].map(number) if "profit_abs" in frame else np.nan,
             "pct": frame["profit_ratio"].map(number) * 100.0 if "profit_ratio" in frame else np.nan,
             "time": _times(frame["close_date"]) if "close_date" in frame else pd.NaT,
             "entry_time": _times(frame["open_date"]) if "open_date" in frame else pd.NaT,
             "entry_price": frame["open_rate"].map(number) if "open_rate" in frame else np.nan,
             "exit_price": frame["close_rate"].map(number) if "close_rate" in frame else np.nan,
             "symbol": frame["pair"].astype(str) if "pair" in frame else None,
-            "side": np.where(frame["is_short"].astype(bool), -1, 1) if "is_short" in frame else 1,
+            # a trade without is_short is a long one (NaN would count as True)
+            "side": np.where(frame["is_short"].fillna(False).astype(bool), -1, 1) if "is_short" in frame else 1,
         })
         if "stake_amount" in frame:
             canon["size"] = frame["stake_amount"].map(number)
@@ -550,21 +614,19 @@ def _times(series: pd.Series) -> pd.Series:
         unit = "ms" if nums.median() > 1e11 else "s"
         return pd.to_datetime(nums, unit=unit, errors="coerce", utc=True)
     text = s.astype(str).str.strip().str.replace(r"\s*\((UTC|GMT)[^)]*\)", "", regex=True)
-    dayfirst = bool(text.str.match(r"^\d{1,2}[./]\d{1,2}[./]\d{2,4}").mean() > 0.5) and not bool(
-        text.str.match(r"^\d{1,2}/\d{1,2}/\d{4}").mean() > 0.5 and _us_dates(text))
+    # Day first or month first is decided once for the whole column (row by row, 01/13/25 and 01/05/25 came out
+    # as Jan 13 and May 1): a first number above 12 means day first, a second above 12 month first. Undecidable
+    # columns are read day first, the way most of the world writes dates.
+    parts = text.str.extract(r"^(\d{1,2})[./-](\d{1,2})[./-]\d{2,4}\b")
+    dayfirst = False
+    if parts[0].notna().mean() > 0.5:
+        first, second = parts[0].astype(float), parts[1].astype(float)
+        dayfirst = not ((second > 12).any() and not (first > 12).any())
     try:
         out = pd.to_datetime(text, errors="coerce", utc=True, format="mixed", dayfirst=dayfirst)
     except (TypeError, ValueError):
         out = pd.to_datetime(text, errors="coerce", utc=True)
     return out
-
-
-def _us_dates(text: pd.Series) -> bool:
-    first = text.str.extract(r"^(\d{1,2})/(\d{1,2})/")
-    try:
-        return bool((first[1].astype(float) > 12).any())
-    except (TypeError, ValueError):
-        return False
 
 
 def _tradingview(frame: pd.DataFrame) -> Optional[Tuple[pd.DataFrame, Dict[str, str]]]:
@@ -583,12 +645,25 @@ def _tradingview(frame: pd.DataFrame) -> Optional[Tuple[pd.DataFrame, Dict[str, 
     qty = find_column(cols, ("position size qty", "contracts", "quantity", "qty"))
     value = find_column(cols, ("position size value",))
     cum_pct = next((c for c in cols if re.match(r"^cum(ulative)?\s.*(%|pct)", norm(c))), None)
+    signal = find_column(cols, ("signal",))
+    numbers = frame[number_col].astype(str).str.strip()
+    # Two exports pasted together repeat their trade numbers: pair the k-th entry of a number with its k-th exit.
+    side_kind = types.str.startswith("entry").map({True: "entry", False: "exit"})
+    nth = frame.groupby([numbers, side_kind], sort=False).cumcount()
+    notes: List[str] = []
+    if (nth > 0).any():
+        notes.append("Trade numbers repeat (two exports pasted together?): each number's entries and exits were "
+                     "paired in file order.")
+    still_open = 0
     out = []
-    for trade_no, group in frame.groupby(frame[number_col].astype(str).str.strip(), sort=False):
+    for (trade_no, _), group in frame.groupby([numbers, nth], sort=False):
         t = types.loc[group.index]
         entry = group[t.str.startswith("entry")]
         exit_ = group[t.str.startswith("exit")]
         if exit_.empty:
+            continue
+        if signal and str(exit_.iloc[-1][signal]).strip().lower() == "open":
+            still_open += 1                 # TradingView lists an open trade's unrealised result: not a closed trade
             continue
         e_row, x_row = (entry.iloc[0] if len(entry) else None), exit_.iloc[-1]
         side_text = (t.loc[x_row.name] if x_row is not None else "")
@@ -612,7 +687,10 @@ def _tradingview(frame: pd.DataFrame) -> Optional[Tuple[pd.DataFrame, Dict[str, 
         out.append(row)
     if not out:
         return None
+    if still_open:
+        notes.append(f"Left out {still_open} trade{'s' if still_open != 1 else ''} still open (its result isn't final).")
     canon = pd.DataFrame(out)
+    canon.attrs["notes"] = notes
     canon["time"] = _times(canon["time"]) if when else pd.NaT
     canon["entry_time"] = _times(canon["entry_time"]) if when else pd.NaT
     if canon["time"].isna().all():
@@ -713,7 +791,7 @@ def _from_fills(frame: pd.DataFrame, colmap: Dict[str, str], name: str) -> ReadR
         if not pair and qty_coin and total_coin:
             pair = f"{qty_coin}/{total_coin}"
         rows.append({"time": times.iloc[i], "pair": pair or "?", "side": side,
-                     "price": num("price", r[colmap["price"]]), "qty": num("qty", qty_text),
+                     "price": num("price", r[colmap["price"]]), "qty": abs(num("qty", qty_text)),   # sells as -0.5
                      "fee": num("fee", fee_text), "fee_coin": fee_coin, "quote_total": num("quote_total", total_text)})
     trips, warnings, facts = round_trips(rows, number)
     quotes = [q for q in facts["quotes"] if q]
@@ -794,7 +872,7 @@ def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Op
             for st in strategies:
                 st.strategy_return_pct = last
             return ReadResult(strategies, "tradingview", rows=len(frame), columns_seen=cols, columns_used=used,
-                              source_hint="backtest", warnings=notes)
+                              source_hint="backtest", warnings=notes + list(canon.attrs.get("notes", [])))
     money, pct = find_result_columns(cols)
     # A result column that is all empty or zero (a spot fills export with a "Realized PnL" column) is not the result.
     blank_result = bool(money) and pct is None and numbers_of(frame[money]).fillna(0).eq(0).all()
@@ -814,9 +892,21 @@ def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Op
             return _need(cols, "We couldn't find a profit/P&L column, or buy/sell fills.")
     when = find_column(cols, _CLOSE_TIME, avoid=[c for c in (money, pct) if c])
     entry = find_column(cols, _OPEN_TIME, avoid=[c for c in (money, pct, when) if c])
+    if when is None and entry is None:      # no time-ish header (a headerless file): a column of dates will do
+        when = _fill_time_column(cols, frame, [c for c in (money, pct) if c])
     if entry == when:
         entry = None
+    if when and f"{when} (2)" in cols and entry is None:
+        # MT5 lists "Time" twice: when the position opened, then when it closed
+        dupes = [when] + [c for c in cols if re.fullmatch(re.escape(when) + r" \(\d+\)", c)]
+        entry, when = dupes[0], dupes[-1]
     group = find_column(cols, _STRATEGY, avoid=[c for c in (money, pct, when) if c])
+    if group is not None:
+        # A strategy column names a few strategies, each with several trades. A tag or label on every row (an order
+        # id, a note) is not one: split by it, 32,000 trades became 32,000 "strategies" of one trade each.
+        sizes = frame[group].astype(str).str.strip().value_counts()
+        if len(sizes) > max(1, len(frame) // 5) or (sizes >= 3).mean() < 0.5:
+            group = None
     fee = find_column(cols, _FEE, avoid=[c for c in (money, pct) if c])
     side = find_column(cols, ("side", "direction", "position side", "position"), avoid=[c for c in (money, pct) if c])
     symbol = find_column(cols, _SYMBOL, avoid=[c for c in (money, pct, group) if c])
@@ -846,14 +936,37 @@ def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Op
     # Futures-style fill exports carry realized P&L only on closing rows: drop the opening rows, but only for
     # files that look like fills (a price and a quantity), never breakeven trades in a trade table.
     fill_shaped = _looks_like_fills(cols, frame) is not None
+    gross_fills = False
     if money and side and fill_shaped and canon["pnl"].eq(0).mean() > 0.3 and canon["pnl"].ne(0).sum() >= 1:
         dropped = int(canon["pnl"].eq(0).sum())
+        if "fee" in canon:
+            # An opening fill's fee belongs to the trade it opens: carry it to that symbol's next closing row
+            # (dropping the opening rows used to drop their fees too).
+            pnl, fees = canon["pnl"].to_numpy(), canon["fee"].fillna(0).to_numpy(copy=True)
+            keys = canon["symbol"].to_numpy() if "symbol" in canon else np.full(len(canon), "")
+            order = np.argsort(canon["time"].to_numpy(), kind="stable") if canon["time"].notna().all() \
+                else np.arange(len(canon))
+            pending: Dict[Any, float] = {}
+            for i in order:
+                if pnl[i] == 0:
+                    pending[keys[i]] = pending.get(keys[i], 0.0) + fees[i]
+                else:
+                    fees[i] += pending.pop(keys[i], 0.0)
+            canon["fee"] = fees
+            gross_fills = True
         canon = canon[canon["pnl"].ne(0)]
         warning.append(f"Dropped {dropped} rows with a P&L of exactly 0 (opening fills).")
     money_unit = (unit if unit != "%" else None) or (_currency_in(money) if money else None) or \
         _cell_currency(frame[money] if money else None)
     strategies = build_trades(canon, unit=(money_unit or "money") if money else "%", name=name,
                               prefer="%" if not money else unit)
+    if gross_fills:
+        # Exchange fills with realized P&L on the closing rows (futures trade history) report it before fees.
+        for st in strategies:
+            if st.fees is not None:
+                st.fees_included = False
+        warning.append("Realized profit on these fills is before fees, so the fee column (opening fills included) "
+                       "is taken off. If the profit already includes fees, say fees_included=yes.")
     if any("dates_partial" in st.notes for st in strategies):
         warning.append("Some rows have no readable close date, so the trades are taken in file order (a newest-first "
                        "file is turned around).")
@@ -882,12 +995,11 @@ def build_trades(canon: pd.DataFrame, *, unit: str, name: str, prefer: Optional[
     when there is any; percent rides along. ``prefer`` = "%" judges percent."""
     canon = canon.reset_index(drop=True)
     if "strategy" in canon and canon["strategy"].notna().any():
-        keys = list(dict.fromkeys(canon["strategy"].astype(str)))
+        groups = list(canon.groupby(canon["strategy"].astype(str), sort=False))     # one pass, in file order
     else:
-        keys = [None]
+        groups = [(None, canon)]
     out: List[Trades] = []
-    for key in keys:
-        part = canon if key is None else canon[canon["strategy"].astype(str) == key]
+    for key, part in groups:
         money = part["pnl"].to_numpy(dtype=float) if "pnl" in part else np.full(len(part), np.nan)
         pct = part["pct"].to_numpy(dtype=float) if "pct" in part else np.full(len(part), np.nan)
         has_money = bool(np.isfinite(money).sum()) and unit != "%"

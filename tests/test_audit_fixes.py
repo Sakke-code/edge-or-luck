@@ -176,6 +176,127 @@ def test_a_fee_column_is_asked_about_and_taken_off_when_told():
     assert net["verdict"]["code"] != "real_edge"
 
 
+@pytest.mark.parametrize("cell,want", [("EUR 12.50", 12.5), ("-EUR 3", -3.0), ("ETH 0.5", 0.5), ("‐5", -5.0),
+                                       ("－5", -5.0), ("1.234.567", 1234567.0), ("+-5", -5.0), ("$1,234.50", 1234.5)])
+def test_cells_read_as_the_amount_they_show(cell, want):
+    from edgeorluck.readers import number
+    assert number(cell) == want
+
+
+@pytest.mark.parametrize("cell", ["12:30", "1/2", "[1, 2.5]", "2025-01-03"])
+def test_cells_that_are_not_amounts_read_as_nothing(cell):
+    import math
+    from edgeorluck.readers import number
+    assert not math.isfinite(number(cell)) and not math.isfinite(number([1, 2.5]))
+
+
+def test_time_and_price_columns_are_the_right_ones():
+    from edgeorluck.readers import read_any
+    rows = "\n".join(f"2025-01-{d:02d} 09:00,2025-01-{d:02d} 17:00,{(-1) ** d}" for d in range(1, 31))
+    r = read_any("Time Opened,Time Closed,PnL\n" + rows)
+    assert r.columns_used["close_time"] == "Time Closed" and r.columns_used["entry_time"] == "Time Opened"
+    r = read_any("Exit Price,Symbol,PnL\n" + "\n".join(f"10{d},BTC,{(-1) ** d}" for d in range(30)))
+    assert "close_time" not in r.columns_used
+
+
+def test_dates_are_read_the_same_way_down_a_column():
+    from edgeorluck.readers import _times
+    us = _times(pd.Series(["01/05/25", "01/13/25", "02/03/25"])).dt.strftime("%Y-%m-%d").tolist()
+    eu = _times(pd.Series(["05-01-2025", "13-01-2025", "03-02-2025"])).dt.strftime("%Y-%m-%d").tolist()
+    assert us == ["2025-01-05", "2025-01-13", "2025-02-03"] and eu == ["2025-01-05", "2025-01-13", "2025-02-03"]
+
+
+def test_tradingview_open_trades_and_pasted_exports():
+    from edgeorluck.readers import read_any
+    head = "Trade #,Type,Signal,Date/Time,Price USDT,Contracts,Profit USDT"
+    rows = []
+    for i in range(1, 31):
+        rows += [f"{i},Exit long,Close,2025-01-{i:02d} 12:00,101,1,{(-1) ** i}",
+                 f"{i},Entry long,Long,2025-01-{i:02d} 09:00,100,1,{(-1) ** i}"]
+    open_rows = ["31,Exit long,Open,2025-01-31 23:00,70,1,-300", "31,Entry long,Long,2025-01-31 09:00,100,1,-300"]
+    r = read_any(head + "\n" + "\n".join(reversed(rows + open_rows)))
+    assert len(r.strategies[0].pnl) == 30 and -300 not in r.strategies[0].pnl
+    twice = read_any(head + "\n" + "\n".join(reversed(rows)) + "\n" + "\n".join(reversed(rows)))
+    assert len(twice.strategies[0].pnl) == 60
+
+
+def test_a_tag_on_every_row_is_not_a_strategy():
+    text = "close time,tag,pnl\n" + "\n".join(f"2025-01-{d % 28 + 1:02d},order-{d},{(-1) ** d}" for d in range(200))
+    r = eol.judge(text)
+    assert r["summary"]["strategies"] == 1 and r["summary"]["trades"] == 200
+
+
+def test_headerless_files_and_padded_title_lines():
+    from edgeorluck.readers import read_any
+    body = "\n".join(f"2025-01-{d:02d},{(-1) ** d * 1.5}" for d in range(1, 9))
+    r = read_any(body)
+    assert len(r.strategies[0].pnl) == 8 and r.strategies[0].times is not None
+    r = read_any("My trades export,,\nclose time,symbol,pnl\n" +
+                 "\n".join(f"2025-01-{d:02d},BTC,{(-1) ** d}" for d in range(1, 31)))
+    assert len(r.strategies[0].pnl) == 30
+
+
+def test_fills_with_signed_sells_and_unlabelled_fees():
+    from edgeorluck.readers import read_any
+    head = "Time,Pair,Side,Price,Quantity,Fee"
+    rows = []
+    for k in range(20):     # the buy pays 0.001 BTC (0.1% of the coins), the sell 59.94 USDT (0.1% of the money)
+        rows += [f"2025-01-{k + 1:02d} 09:00,BTCUSDT,BUY,60000,1,0.001",
+                 f"2025-01-{k + 1:02d} 10:00,BTCUSDT,SELL,60000,-0.999,59.94"]
+    st = read_any(head + "\n" + "\n".join(rows)).strategies[0]
+    assert len(st.pnl) == 20
+    assert st.pnl[0] == pytest.approx(-119.94, abs=1e-6)  # a flat trade loses its two 0.1% fees
+
+
+def test_futures_fills_have_their_opening_fees_taken_off():
+    head = "Date(UTC),Symbol,Side,Price,Quantity,Amount,Fee,Realized Profit"
+    rows = []
+    for i in range(40):
+        gross = 5.0 if i % 2 else -3.0
+        rows += [f"2025-01-{1 + i % 28:02d} {i // 28 * 2 + 8:02d}:00:00,BTCUSDT,BUY,100,10,1000,0.8,0",
+                 f"2025-01-{1 + i % 28:02d} {i // 28 * 2 + 9:02d}:00:00,BTCUSDT,SELL,{100 + gross / 10},10,{1000 + gross},0.8,{gross}"]
+    r = eol.judge(head + "\n" + "\n".join(rows))
+    assert r["numbers"]["total"] == pytest.approx(-24.0) and r["numbers"]["fees"]["paid"] == pytest.approx(64.0)
+
+
+def test_freqtrade_trades_without_is_short_are_long():
+    trades = [{"profit_abs": 1.0 if k % 2 else -0.5, "profit_ratio": 0.01, "close_date": f"2025-01-{k + 1:02d}",
+               **({"is_short": False} if k % 3 else {})} for k in range(28)]
+    r = eol.judge({"strategy": {"s": {"trades": trades, "stake_currency": "USDT"}}})
+    assert r["strategies"][0]["numbers"]["trades"] == 28
+    from edgeorluck.readers import read_any
+    assert set(read_any({"strategy": {"s": {"trades": trades}}}).strategies[0].side) == {1.0}
+
+
+def test_percent_formatted_excel_cells_keep_their_scale(tmp_path):
+    openpyxl = pytest.importorskip("openpyxl")
+    import datetime as dt
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["Close date", "Return %"])
+    for i, v in enumerate([0.015, -0.01, 0.02, -0.005]):
+        ws.append([dt.datetime(2025, 1, 1 + i, 10), v])
+        ws.cell(row=i + 2, column=2).number_format = "0.00%"
+    path = tmp_path / "sheet.xlsx"
+    wb.save(path)
+    from edgeorluck.readers import read_any
+    st = read_any(str(path)).strategies[0]
+    assert st.unit == "%" and list(st.pnl) == [1.5, -1.0, 2.0, -0.5]
+
+
+def test_private_samples_are_only_for_this_computer(tmp_path, monkeypatch):
+    private = tmp_path / "private"
+    private.mkdir()
+    (private / "my_bot.csv").write_text(samples.lucky(), encoding="utf-8")
+    monkeypatch.setenv("EDGEORLUCK_PRIVATE_SAMPLES", str(private))
+    c = create_app(Ledger(root=tmp_path / "l"), rate_limit=1000).test_client()
+    local = [s["id"] for s in c.get("/api/samples").get_json()]
+    away = [s["id"] for s in c.get("/api/samples", environ_base={"REMOTE_ADDR": "203.0.113.9"}).get_json()]
+    assert any(i.startswith("private:") for i in local) and not any(i.startswith("private:") for i in away)
+    pid = next(i for i in local if i.startswith("private:"))
+    assert c.post("/api/judge", json={"sample": pid}, environ_base={"REMOTE_ADDR": "203.0.113.9"}).status_code == 404
+
+
 def test_a_unit_is_a_short_code_never_free_text():
     r = eol.judge([1.0, -0.5] * 20, unit="USDT")
     assert r["numbers"]["unit"] == "USDT"

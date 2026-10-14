@@ -118,6 +118,12 @@ def round_trips(rows: List[Dict[str, Any]], number) -> Tuple[pd.DataFrame, List[
             facts["fills"] += 1
             fee, coin = f.get("fee", float("nan")), (f.get("fee_coin") or "").upper()
             fee = abs(fee) if math.isfinite(fee) else 0.0
+            if fee and not coin and base:
+                # No coin named: a fee of about 0.1% of the quantity is in the coin bought, about 0.1% of the money
+                # spent is in the quote currency. Read as quote, a base-coin fee shrank to nearly nothing.
+                as_quote, as_base = fee / (qty * price), fee / qty
+                if not 1e-6 <= as_quote <= 0.02 and 1e-6 <= as_base <= 0.02:
+                    coin = base
             fee_in_base = fee if coin and coin == base else 0.0
             fee_in_quote = fee if (not coin or coin == quote) else 0.0
             if fee and coin and coin not in (base, quote):

@@ -37,9 +37,16 @@ from .compare import compare_runs
 from .readers import ReadResult, Trades, _normalize_unit, number, read_any
 from .words import count, day, fmt, how_often, iso_day, join_and, one_in, rnd, round_list, share
 
-ENGINE_VERSION = "2.2.0"
+ENGINE_VERSION = "2.2.1"
 SCHEMA_VERSION = "1.0"
 CHANGELOG = [
+    {"version": "2.2.1", "date": "2026-10-14",
+     "change": "The rest of the audit's reader fixes: cells like 'EUR 12.50', rare minus signs, 1.234.567 and clock "
+               "times; one day-or-month reading per date column; open trades and pasted-together exports in "
+               "TradingView files; time and price columns under more names; a per-row tag is not a strategy; "
+               "headerless files and padded title lines; signed sell quantities, unlabelled fees and futures fills "
+               "(opening fees taken off); freqtrade trades without is_short; percent-formatted Excel cells. Private "
+               "samples only on this computer. The judge is unchanged."},
     {"version": "2.2.0", "date": "2026-10-14",
      "change": "Fixes from a full code audit. Web: a request can no longer make the server read its own files; the "
                "rate limit uses the real address; caps per check; plain JSON errors; forecasts are graded only by "
@@ -1489,9 +1496,9 @@ def analyze(read: ReadResult, settings: Settings, *, details: bool = True,
     if read.need is not None or not read.strategies:
         return need_input(read, settings)
     strategies = read.strategies
-    if settings.fees_included is False:
-        # The trader says the results are before fees: where the file has a fee column, take it off every trade.
-        for st in strategies:
+    # Results before fees (the trader says so, or the export's format does): take the fee column off every trade.
+    for st in strategies:
+        if settings.fees_included is False or (settings.fees_included is None and st.fees_included is False):
             if (st.fees is not None and st.unit != "%" and st.fees_included is not True
                     and np.isfinite(st.fees).any() and "fees_subtracted" not in st.notes):
                 st.pnl = st.pnl - np.nan_to_num(np.abs(st.fees))
