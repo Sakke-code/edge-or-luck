@@ -148,6 +148,14 @@ def test_the_registry_entry_matches_the_release_and_the_readme():
     assert entry["version"] == entry["packages"][0]["version"] == edgeorluck.__version__
     assert len(entry["description"]) <= 100 and entry["packages"][0]["packageArguments"][0]["value"] == "mcp"
     assert f"mcp-name: {entry['name']} -->" in (ROOT / "README.md").read_text(encoding="utf-8")
+    plugin = json.loads((ROOT / "plugin" / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    market = json.loads((ROOT / ".claude-plugin" / "marketplace.json").read_text(encoding="utf-8"))
+    assert plugin["version"] == edgeorluck.__version__ and (ROOT / market["plugins"][0]["source"]).is_dir()
+    skill = (ROOT / "plugin" / "skills" / "edge-or-luck" / "SKILL.md").read_text(encoding="utf-8")
+    head = dict(line.split(": ", 1) for line in skill.split("---")[1].strip().splitlines())
+    assert head["name"] == "edge-or-luck" and len(head["description"]) <= 1024
+    assert json.loads((ROOT / "plugin" / ".mcp.json").read_text(encoding="utf-8"))["mcpServers"]["edgeorluck"][
+        "args"] == ["edgeorluck", "mcp"]
 
 
 def test_readme_snippets_name_real_entry_points():

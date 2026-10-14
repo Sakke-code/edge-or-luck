@@ -1,0 +1,14 @@
+{
+  "name": "edge-or-luck",
+  "owner": { "name": "edge or luck", "url": "https://github.com/Sakke-code/edge-or-luck" },
+  "description": "edge or luck: judge whether trading results are a real edge or luck, and test ideas honestly.",
+  "plugins": [
+    {
+      "name": "edge-or-luck",
+      "source": "./plugin",
+      "description": "A strict judge for trades and backtests, an honest backtester and forward tests: a skill plus the MCP server.",
+      "category": "finance",
+      "tags": ["trading", "backtest", "overfitting"]
+    }
+  ]
+}

@@ -171,7 +171,15 @@ The MCP server runs on your machine, so the assistant can pass the path of your 
 - `rule_language` lists the rule language.
 - The server counts every record and rule it judges in a session as a version tried, so the bar rises with them even when nobody says.
 
-These use [uv](https://docs.astral.sh/uv/)'s `uvx`, which fetches the package from PyPI on first use:
+**Claude Code plugin** (the MCP server plus a skill that tells Claude when to reach for it and how to relay a verdict honestly):
+
+```text
+/plugin install edge-or-luck --marketplace Sakke-code/edge-or-luck
+```
+
+**Any agent that reads Agent Skills** (Claude, Codex and others): copy [`plugin/skills/edge-or-luck`](plugin/skills/edge-or-luck/SKILL.md) into its skills folder.
+
+The MCP server alone uses [uv](https://docs.astral.sh/uv/)'s `uvx`, which fetches the package from PyPI on first use:
 
 Claude Code:
 
