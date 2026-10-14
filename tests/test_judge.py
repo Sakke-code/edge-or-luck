@@ -75,9 +75,11 @@ def test_lucky_reads_consistently_with_its_coin_flips():
     coin = r["numbers"]["coin_flip"]
     assert coin["ended_higher"] > coin["needed_at_most"]                  # can't tell, and the bar says why
     sentence = r["strategies"][0]["luck"]["sentence"]
-    assert "a pass here needs" in sentence and "check again at any time" in sentence
-    real = run("real")["numbers"]["coin_flip"]
-    assert real["ended_higher"] <= real["needed_at_most"]
+    assert "stricter test" in sentence and "check again at any time" in sentence
+    assert "rarer than about 1 in" in sentence and "needs" not in sentence   # the bar as odds, not a copy count
+    real = run("real")
+    assert real["numbers"]["coin_flip"]["ended_higher"] <= real["numbers"]["coin_flip"]["needed_at_most"]
+    assert real["strategies"][0]["luck"]["sentence"].endswith("It passes.")
 
 
 # ── honesty on noise ──────────────────────────────────────────────────────────

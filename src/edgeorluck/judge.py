@@ -142,7 +142,12 @@ def _drawdown(x: np.ndarray) -> Tuple[float, float, int]:
     curve = np.concatenate(([0.0], np.cumsum(x)))
     peak = np.maximum.accumulate(curve)
     dd = peak - curve
-    at_peak = np.nonzero(dd <= 1e-12)[0]
+    # "At the peak" up to rounding, measured against the size of the curve. An absolute 1e-12 misread large
+    # amounts (628040.6 - 72356.44 + 72356.44 is not exactly 628040.6 in floating point), and the card then said
+    # "0.000000 USDT below your peak, 2 trades ago" (found by tests/test_bridge_counting.py).
+    tol = 1e-10 * max(1.0, float(np.max(np.abs(curve))))
+    dd = np.where(dd <= tol, 0.0, dd)
+    at_peak = np.nonzero(dd == 0.0)[0]
     return float(dd.max()), float(dd[-1]), int(len(curve) - 1 - at_peak[-1])
 
 
@@ -898,7 +903,6 @@ def _coin_sentence(coin: Dict[str, Any], code: str, mean: float, versions: Optio
     base = f"In {copies:,} coin-flip copies of your own trades, {above:,} ended higher than you."
     if mean <= 0:
         return base + " Luck alone did as well as this record."
-    need = coin["needed_at_most"]
     if coin.get("needed_one_in") is None:
         return base + f" With so few trades, no result could pass yet."
     reason = ("you can check again at any time" + (f" and you tried {versions} versions" if versions and versions > 1
@@ -906,10 +910,15 @@ def _coin_sentence(coin: Dict[str, Any], code: str, mean: float, versions: Optio
                                                    else ""))
     rare = coin["needed_one_in"]
     rare = int(float(f"{rare:.2g}")) if rare >= 100 else rare
-    need_text = f"{need:,} or fewer" if need >= 1 else f"none (rarer than about 1 in {rare:,})"
+    # The coin flips are a picture; the verdict rests on the evidence test, which also allows for checking again
+    # and for the versions tried. The two can differ by a few copies (found by tests/test_bridge_counting.py: a
+    # real_edge card read "3 ended higher ... a pass needs 1 or fewer ... It passes"), so the bar is given as
+    # odds, never as a count of copies.
     if code in ("real_edge",):
-        return base + f" A pass here needs {need_text}, because {reason}. It passes."
-    return base + f" That alone might look convincing, but a pass here needs {need_text}, because {reason}."
+        return base + (f" The verdict uses a stricter test than this picture: luck would need odds rarer than about "
+                       f"1 in {rare:,}, because {reason}. It passes.")
+    return base + (f" That alone might look convincing, but the verdict uses a stricter test: luck would need odds "
+                   f"rarer than about 1 in {rare:,}, because {reason}.")
 
 
 def _checks(st, read, settings, n, code, mean, unit, fees, top3, drawdown, recent, money_card, benchmark,
