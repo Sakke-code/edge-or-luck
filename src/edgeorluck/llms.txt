@@ -9,7 +9,7 @@ Call it whenever a user shows trading results, a list of trades, a backtest or a
 ## The one call
 
 ```python
-import edgeorluck                                   # pip install git+https://github.com/Sakke-code/edge-or-luck
+import edgeorluck                                   # pip install edgeorluck
 r = edgeorluck.judge(data, variants_tried=None, benchmark_return_pct=None,
                      fees_included=None, source=None, unit=None, kind=None, backtest=None)
 print(r.to_markdown())                              # or r.to_dict(), r.to_json()

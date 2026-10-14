@@ -1547,7 +1547,7 @@ h1 .line{display:block;white-space:nowrap}
 
   /* ---------- assistant tabs ---------- */
   var SNIPS = {
-    python: { p: "Install it, then add one line after any backtest. It reads backtesting.py, vectorbt and freqtrade results, or a plain list of trades.", code: "pip install git+https://github.com/Sakke-code/edge-or-luck\n\nimport edgeorluck\nstats = bt.run()\nprint(edgeorluck.judge(stats).to_markdown())" },
+    python: { p: "Install it, then add one line after any backtest. It reads backtesting.py, vectorbt and freqtrade results, or a plain list of trades.", code: "pip install edgeorluck\n\nimport edgeorluck\nstats = bt.run()\nprint(edgeorluck.judge(stats).to_markdown())" },
     claude: { p: "Run this once in your terminal. Claude Code can then judge any trade file you point it at.", code: "claude mcp add edge-or-luck -- uvx --from \"edgeorluck[mcp]\" edgeorluck-mcp" },
     codex: { p: "Add this to ~/.codex/config.toml.", code: "[mcp_servers.edge-or-luck]\ncommand = \"uvx\"\nargs = [\"--from\", \"edgeorluck[mcp]\", \"edgeorluck-mcp\"]" },
     cursor: { p: "Add this to .cursor/mcp.json in your project.", code: "{\n  \"mcpServers\": {\n    \"edge-or-luck\": {\n      \"command\": \"uvx\",\n      \"args\": [\"--from\", \"edgeorluck[mcp]\", \"edgeorluck-mcp\"]\n    }\n  }\n}" },

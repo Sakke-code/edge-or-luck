@@ -23,8 +23,7 @@ pip install "edgeorluck[web]"     # + the web page and API
 pip install "edgeorluck[xlsx]"    # + Excel files
 ```
 
-Until the package is on PyPI, install it straight from GitHub:
-`pip install "edgeorluck[all] @ git+https://github.com/Sakke-code/edge-or-luck"`.
+The latest code, straight from GitHub: `pip install "edgeorluck[all] @ git+https://github.com/Sakke-code/edge-or-luck"`.
 
 ## Use it
 
@@ -89,7 +88,7 @@ A versioned JSON result (`schema_version` 1.0; `edgeorluck.schema()` or `edgeorl
 
 The MCP server runs on your machine, so the assistant can pass the path of your export. Its tool `judge_trades` takes `file_path`, `csv_text` or `pnl`, plus `variants_tried`, `benchmark_return_pct`, `fees_included`, `source`, `unit` and the `backtest_...` fields.
 
-**Once the package is on PyPI** (these use [uv](https://docs.astral.sh/uv/)'s `uvx`):
+These use [uv](https://docs.astral.sh/uv/)'s `uvx`, which fetches the package from PyPI on first use:
 
 Claude Code:
 
@@ -118,7 +117,7 @@ Cursor (`.cursor/mcp.json`) and Claude Desktop (`claude_desktop_config.json`):
 }
 ```
 
-**Now, from a local clone** (after `pip install -e ".[mcp]"` in a virtual environment), point the same entries at that environment's Python:
+**Without uv** (after `pip install "edgeorluck[mcp]"` in a virtual environment), point the same entries at that environment's Python:
 
 ```bash
 claude mcp add edgeorluck -- /path/to/edge-or-luck/.venv/bin/python -m edgeorluck.mcp_server
