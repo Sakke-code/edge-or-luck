@@ -86,6 +86,15 @@ print(bt.to_markdown())
 
 That classic rule made 31 trades and +1.5% in total. Simply holding made +96.6% over the same dates. Verdict: **No edge once the market is taken out.**
 
+Stocks, ETFs, indices and currencies work the same way:
+
+```python
+eol.prices("SPY", "1d", start="2010-01-01")      # stocks, ETFs, indices as Yahoo Finance writes them: AAPL, NOKIA.HE, ^GSPC
+eol.prices("EURUSD", "1d", start="2015-01-01")   # two currencies: the European Central Bank's daily reference rates
+```
+
+Stock prices are split- and dividend-adjusted, with 1h (about the last two years), 1d or 1w bars. Currencies have one rate a day, so their trades fill at the next day's rate.
+
 What makes it honest:
 
 - **No impossible fills.** Each decision is made at a bar's close and filled at the next bar's open. Every fill pays a fee and slippage (0.1% and 0.05% by default; `fee_pct=`, `slippage_pct=`).
@@ -147,7 +156,7 @@ edgeorluck backtest --buy "pct(24) < -8" --take 6 --hold 72 --prices my_prices.c
 - One position at a time, all in.
 - Spot prices: no funding, borrowing or leverage.
 - Stops are checked at closes.
-- Prices are fetched from Binance's public market data on your own machine, and nothing is stored.
+- Prices are fetched on your own machine from free public sources (Binance's market data, Yahoo Finance's chart data, which is unofficial, and the ECB's reference rates), and nothing is stored.
 
 ## What you get back
 

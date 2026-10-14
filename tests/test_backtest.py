@@ -357,6 +357,41 @@ def test_prices_explains_bad_input(monkeypatch):
         market.prices("NOPEUSDT", "1h", start="2024-01-01", end="2024-01-02")
 
 
+def test_prices_for_stocks_and_currencies(monkeypatch):
+    import urllib.error
+    now = pd.Timestamp.now(tz="UTC").floor("D")
+    days = pd.date_range(end=now, periods=40, freq="D") + pd.Timedelta(hours=13, minutes=30)   # the last: today, open
+    seen = []
+
+    def fake_urlopen(request, timeout=30):
+        seen.append(request)
+        if "NOPE" in request.full_url:
+            raise urllib.error.HTTPError(request.full_url, 404, "Not Found", {}, io.BytesIO(b'{"chart":{"result":null}}'))
+        if "finance.yahoo" in request.full_url:
+            c = [100.0 + i for i in range(40)]
+            quote = {"open": c, "high": [x + 1 for x in c], "low": [x - 1 for x in c], "close": c, "volume": [1] * 40}
+            return _Response(json.dumps({"chart": {"result": [{"timestamp": [int(t.timestamp()) for t in days],
+                             "indicators": {"quote": [quote], "adjclose": [{"adjclose": [x / 2 for x in c]}]}}]}}).encode())
+        dates = pd.date_range(end=now, periods=30, freq="B")
+        return _Response(json.dumps({"rates": {d.strftime("%Y-%m-%d"): {"USD": 1.1 + i / 1000}
+                                               for i, d in enumerate(dates)}}).encode())
+    monkeypatch.setattr(market.urllib.request, "urlopen", fake_urlopen)
+    market._mk_cache.clear()
+    px = market.prices("spy", "1d", start=now - pd.Timedelta(days=60))
+    assert "/v8/finance/chart/SPY?interval=1d" in seen[0].full_url and "edgeorluck" in seen[0].get_header("User-agent")
+    assert len(px) == 39 and px["open"].iloc[0] == px["close"].iloc[0] == 50.0     # adjusted; today's bar left out
+    assert px.attrs["source"].startswith("Yahoo Finance SPY 1d")
+    fx = market.prices("EUR/USD", "1d", start=now - pd.Timedelta(days=60))
+    assert list(fx.columns) == ["close"] and len(fx) == 30 and "base=EUR&symbols=USD" in seen[-1].full_url
+    assert "next bar's close" in eol.backtest(fx, {"buy": "close > sma(5)", "sell": "close < sma(5)"}).to_markdown()
+    with pytest.raises(market.PriceError, match="Yahoo Finance has no"):
+        market.prices("NOPE", "1d")
+    with pytest.raises(market.PriceError, match="interval"):
+        market.prices("EURUSD", "1h")
+    assert market.kind_of("NOKIA.HE") == ("stock", "NOKIA.HE") and market.kind_of("usd/jpy") == ("forex", "USDJPY")
+    assert market.kind_of("stock:SETH")[0] == "stock" and market.kind_of("ETHBTC")[0] == "crypto"
+
+
 def test_load_prices_reads_csv_text_files_and_lists(tmp_path):
     text = "Date,Open,High,Low,Close,Volume\n" + "\n".join(
         f"2024-01-{d:02d},{100 + d},{101 + d},{99 + d},{100.5 + d},5" for d in range(1, 11))

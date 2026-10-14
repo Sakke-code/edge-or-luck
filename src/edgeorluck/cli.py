@@ -9,7 +9,8 @@
     edgeorluck --single-file out.py    # the judge in one file, for chatbots
 
 An idea with no trades yet: test it honestly, or tune it on one part of the
-history and judge it on the rest (prices from Binance, or --prices file.csv):
+history and judge it on the rest (stocks and ETFs from Yahoo Finance, currencies
+from the ECB, crypto from Binance, or --prices file.csv):
 
     edgeorluck backtest --buy "rsi(14) < 30" --sell "rsi(14) > 70" --symbol ETHUSDT --start 2023-01-01
     edgeorluck tune --buy "rsi(14) < {low}" --sell "rsi(14) > {high}" --grid "low=20,25,30 high=65,70,75"
@@ -87,7 +88,8 @@ def _rule_parser(command: str) -> argparse.ArgumentParser:
     p.add_argument("--take", help="take profit in percent, checked at each close")
     p.add_argument("--hold", help="the most bars to hold a trade")
     p.add_argument("--short", action="store_true", help="sell first (a short) instead of buying")
-    p.add_argument("--symbol", default="BTCUSDT", help="a Binance spot pair (default BTCUSDT)")
+    p.add_argument("--symbol", default="BTCUSDT", help="a stock or ETF as Yahoo writes it (AAPL, SPY), two currencies "
+                                                     "(EURUSD), or a Binance spot pair (default BTCUSDT)")
     p.add_argument("--interval", default="1h", help="bar length: 1m 5m 15m 1h 4h 1d ... (default 1h)")
     p.add_argument("--start", help="first date, like 2023-01-01 (default: two years ago)")
     p.add_argument("--end", help="last date (default: now)")

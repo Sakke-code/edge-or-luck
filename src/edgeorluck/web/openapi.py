@@ -23,8 +23,9 @@ FIELDS = {
     "study": "The study id an earlier answer gave. Pass it every time, so each version tried counts.",
     "buy": "When to enter, in the rule language (see ruleLanguage), e.g. rsi(14) < 30 and close > sma(200).",
     "sell": "When to get out, in the rule language.",
-    "symbol": "A Binance spot pair, like BTCUSDT.",
-    "interval": "Bar size: 15m, 1h, 4h, 1d and so on.",
+    "symbol": "A stock, ETF or index as Yahoo Finance writes it (AAPL, SPY, ^GSPC), two currencies (EURUSD: ECB daily "
+              "rates), or a Binance spot pair (BTCUSDT).",
+    "interval": "Bar size: 1h, 1d or 1w for stocks; 1d or 1w for currencies; 15m, 1h, 4h, 1d and more for crypto.",
     "start": "First date, like 2024-01-01 (default: two years ago).",
     "end": "Last date (default: now).",
     "stop_loss_pct": "Get out at this loss, in percent.",
@@ -42,8 +43,9 @@ FIELDS = {
 OPERATIONS = {
     "judge": ("judgeTrades", "Judge whether a trading record is a real edge or luck. Call it whenever the user shows "
                              "trades or a backtest and asks if it is good. Quote the headline; ask its questions."),
-    "backtest": ("backtestRule", "Test a trading idea honestly on Binance prices (fills at the next bar's open, with "
-                                 "costs, no look-ahead) and judge it. Use it instead of writing your own backtest."),
+    "backtest": ("backtestRule", "Test a trading idea honestly on stock, ETF, currency or crypto prices (fills at the "
+                                 "next bar's open, with costs, no look-ahead) and judge it. Use it instead of writing "
+                                 "your own backtest."),
     "tune": ("tuneRule", "Pick a rule's settings on the first part of the prices and judge the choice once on the "
                          "unseen last part. Use it instead of running many backtests and keeping the best."),
     "forward": ("forwardTest", "Judge a frozen rule only on the trades it made after it was frozen, from its "

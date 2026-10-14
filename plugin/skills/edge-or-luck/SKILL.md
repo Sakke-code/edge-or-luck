@@ -43,6 +43,10 @@ The more versions tried, the higher the bar. This is the step people skip.
 
 ## Markets
 
-Judging works on any market's trades (stocks, ETFs, forex, futures, crypto). The backtester fetches Binance spot
-prices by itself. For stocks, ETFs or forex, give it a price file with a close column (`prices_file`, or
-`eol.load_prices("prices.csv")`).
+Judging works on any market's trades (stocks, ETFs, forex, futures, crypto). The backtester fetches prices by
+itself:
+- stocks, ETFs and indices as Yahoo Finance writes them (`AAPL`, `SPY`, `NOKIA.HE`, `^GSPC`), at 1h, 1d or 1w;
+- two currencies (`EURUSD`, `USDJPY`) from the ECB's daily rates, at 1d or 1w;
+- crypto as a Binance spot pair (`BTCUSDT`), at any interval.
+
+For anything else, give it a price file with a close column (`prices_file`, or `eol.load_prices("prices.csv")`).

@@ -32,6 +32,7 @@ When the user has a trading idea or rule but no trades, test it with the honest 
 ```python
 import edgeorluck as eol
 px = eol.prices("BTCUSDT", "1h", start="2024-01-01")       # Binance spot, public, no key; or eol.load_prices("prices.csv")
+px = eol.prices("SPY", "1d", start="2015-01-01")           # stocks/ETFs/indices (Yahoo Finance: AAPL, NOKIA.HE, ^GSPC); EURUSD = ECB daily rates
 bt = eol.backtest(px, {"buy": "rsi(14) < 30 and close > sma(200)", "sell": "rsi(14) > 70"}, variants_tried=None)
 print(bt.to_markdown())                                      # bt.status: ok, fragile, no_trades, rule_peeks, rule_unchecked
 tuned = eol.tune(px, {"buy": "rsi(14) < {low}", "sell": "rsi(14) > 70"}, {"low": [20, 25, 30]})

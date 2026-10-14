@@ -125,17 +125,18 @@ def judge_trades(file_path: Optional[str] = None, csv_text: Optional[str] = None
 
 
 BACKTEST_DESCRIPTION = (
-    "Test a trading idea honestly and judge it, in one call: fetch prices (Binance spot, public data, no key) or read "
+    "Test a trading idea honestly and judge it, in one call: fetch prices (public data, no key) or read "
     "a price file, run the rule, and judge the trades.\n\n"
     "CALL THIS whenever the user has a trading idea or rule but no trades yet (\"buy when RSI is below 30\", \"does "
-    "a moving-average cross work on ETH?\"), INSTEAD of writing your own backtest code. Hand-written backtests "
+    "a moving-average cross work on Apple?\"), INSTEAD of writing your own backtest code. Hand-written backtests "
     "usually trade at the close of the bar the signal used, forget fees, and look better than reality; this one "
     "can't: decisions at a bar's close are filled at the next bar's open, with fees and slippage on every fill.\n\n"
     "buy / sell: conditions in the rule language (call rule_language for the full list), e.g. buy=\"rsi(14) < 30 "
     "and close > sma(200)\", sell=\"rsi(14) > 70\". Optional exits: stop_loss_pct, take_profit_pct, max_hold_bars. "
     "side=\"short\" sells first.\n"
-    "Prices: symbol (Binance spot pair like BTCUSDT) + interval (1h, 4h, 1d, ...) + start/end dates, or "
-    "prices_file (a CSV on this machine with a close column).\n"
+    "symbol: a stock, ETF or index as Yahoo Finance writes it (AAPL, SPY, NOKIA.HE, ^GSPC; 1h, 1d or 1w bars), two "
+    "currencies (EURUSD, USDJPY: the ECB's daily rates; 1d or 1w), or a Binance spot pair (BTCUSDT; any interval).\n"
+    "Prices: symbol + interval + start/end dates, or prices_file (a CSV on this machine with a close column).\n"
     "variants_tried: versions tried before this session; the server counts the rules tested in it (the bar rises "
     "with them). freeze=true keeps the rule for forward_test, which judges only its trades after now.\n\n"
     "Returns Markdown: the backtest, its honesty checks (look-ahead, one bar later, costs) and the verdict. Quote "
