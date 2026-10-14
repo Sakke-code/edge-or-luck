@@ -1,5 +1,6 @@
-/* edge or luck: the Flippy games, small games starring Flip as a thank-you to supporters. support.py lists them and
-   the tier each one opens at; a supporter's thank-you link sets the tier in this browser. Best scores stay here too. */
+/* edge or luck: the Flippy games, small games starring Flip: the first free, the rest a thank-you to supporters.
+   support.py lists them and the tier each one opens at; a supporter's thank-you link sets the tier in this browser.
+   Best scores stay here too. */
 (function () {
   "use strict";
   var DATA = window.EOL_GAMES, $ = function (id) { return document.getElementById(id); };
@@ -292,10 +293,11 @@
     game.reset(); draw();
     var t = tier();
     if (t < g.tier) {
+      var free = DATA.games.filter(function (x) { return !x.tier; })[0];
       feel("sleepy");
       overlay("A thank-you game", g.name + " opens for supporters from " + DATA.tiers[g.tier - 1] +
-              (t ? " (yours here: " + DATA.tiers[t - 1] + ")" : "") + ". Flip Flip is free for everyone.",
-              [{ label: "Support edge or luck", href: "/support" }, { label: "Play Flip Flip", href: "/play" }], !first);
+              (t ? " (yours here: " + DATA.tiers[t - 1] + ")" : "") + ". " + free.name + " is free for everyone.",
+              [{ label: "Support edge or luck", href: "/support" }, { label: "Play " + free.name, go: function () { choose(free); } }], !first);
     } else {
       feel("idle");
       overlay(g.name, g.how, [{ label: "Play", go: start }], !first);
@@ -305,7 +307,8 @@
     var t = tier();
     document.querySelectorAll(".pick").forEach(function (b) {
       var g = DATA.games.filter(function (x) { return x.id === b.getAttribute("data-id"); })[0], top = best(g.id, 0);
-      b.querySelector("small").textContent = t < g.tier ? "🔒 From " + DATA.tiers[g.tier - 1] : top ? "Best: " + top : "Ready to play";
+      b.querySelector("small").textContent = t < g.tier ? "🔒 From " + DATA.tiers[g.tier - 1] : top ? "Best: " + top
+        : g.tier ? "Ready to play" : "Free for everyone";
     });
   }
 

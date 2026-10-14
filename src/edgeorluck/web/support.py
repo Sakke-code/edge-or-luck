@@ -49,9 +49,10 @@ ITEMS = [
 ]
 SLOTS = [("hat", "On his head"), ("face", "On his face"), ("neck", "Round his neck"), ("back", "On his back"),
          ("skin", "His coin"), ("emote", "When you tap him: a face"), ("move", "When you tap him: a move")]
-# The Flippy games: small games with Flip, more of them the more someone supports (/games, static/assets/games.js).
+# The Flippy games: small games with Flip (/games, static/assets/games.js). The first is free for everyone (tier 0); more
+# open the more someone supports.
 GAMES = [
-    {"id": "catch", "name": "Catch the coins", "tier": 1,
+    {"id": "catch", "name": "Catch the coins", "tier": 0,
      "how": "Move Flip with the mouse, your finger or the arrow keys. Gold coins are points; three red candles and it's over."},
     {"id": "hop", "name": "Bull run", "tier": 2,
      "how": "Tap, click or press space to hop over the red candles. The market speeds up as you go."},
@@ -112,6 +113,7 @@ def _tier_card(n: int, name: str, how: str) -> str:
 
 
 def page() -> str:
+    free = " and ".join(g["name"] for g in GAMES if not g["tier"])
     tiers = "".join(_tier_card(n, name, how) for n, (name, how) in enumerate(TIERS, start=1))
     body = f"""<section class="intro wrap" aria-labelledby="title">
   <div>
@@ -129,7 +131,7 @@ def page() -> str:
     <h2 id="wardrobe-title">Flip's wardrobe</h2>
     <p id="tierNow">Nothing unlocked here yet.</p>
     <div class="slots" id="slots"></div>
-    <p class="hint">Flip wears it on every page. Tap him anywhere to see his face and move. <a href="/games">The Flippy games →</a></p>
+    <p class="hint">Flip wears it on every page. Tap him anywhere to see his face and move. <a href="/games">The Flippy games →</a> ({free} free for everyone)</p>
   </section>
 </section>
 <script>window.EOL_WARDROBE = {json.dumps({"items": ITEMS, "slots": SLOTS, "tiers": [n for n, _ in TIERS]})};</script>
@@ -165,7 +167,7 @@ def thanks_page(tier: int) -> str:
 def games_page() -> str:
     body = f"""<section class="wrap games" aria-labelledby="title">
   <h1 id="title">The Flippy games</h1>
-  <p class="lede">Small games starring Flip, a thank-you to supporters: the more you support, the more games. <a href="/play">Flip Flip</a> is free for everyone.</p>
+  <p class="lede">Small games starring Flip. The first one is free for everyone, like <a href="/play">Flip Flip</a>; supporters get more, and the more you support, the more games.</p>
   <div class="picker" id="picker"></div>
   <p class="say" id="say" aria-live="polite"></p>
   <section class="stage" id="stage" aria-label="The game">

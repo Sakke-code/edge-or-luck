@@ -192,6 +192,8 @@ def test_support_is_one_click_and_a_thank_you_link_unlocks_flips_extras(tmp_path
         support.thanks_token(5)
     assert [i["tier"] for i in support.ITEMS] == sorted(i["tier"] for i in support.ITEMS)
     assert {i["slot"] for i in support.ITEMS} <= {s for s, _ in support.SLOTS}
+    assert [g["tier"] for g in support.GAMES] == [0, 2, 3]                             # the first game is for everyone
+    assert "Catch the coins free for everyone" in page and "free for everyone" in client.get("/games").get_data(as_text=True)
     for path in ("/", "/strategies", "/guides", "/story", "/play", "/how", "/privacy", "/games"):
         html = client.get(path).get_data(as_text=True)
         head, foot = html.split("</header>")[0], html.split("<footer")[1]
