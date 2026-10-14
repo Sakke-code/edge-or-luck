@@ -176,6 +176,100 @@ h1 .line{display:block;white-space:nowrap}
 .promises svg{width:22px;height:20px;margin-top:1px;color:var(--green)}
 .promises b{color:var(--ink);font-weight:600}
 
+/* ---- Start with what you have ---- */
+.start{display:flex;flex-wrap:wrap;align-items:center;gap:10px;max-width:640px}
+.start-q{flex:0 0 100%;font-weight:600;font-size:17px}
+.opt-btn{display:inline-flex;align-items:center;gap:8px;min-height:46px;padding:8px 16px 8px 12px;border:1.5px solid var(--rule);
+  border-radius:15px 11px 14px 10px / 11px 14px 10px 15px;background:color-mix(in srgb,var(--paper) 80%,transparent);color:var(--ink-2);font-size:16px;font-weight:500;cursor:pointer}
+.opt-btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.opt-btn:hover{border-color:var(--ink-3);color:var(--ink)}
+.opt-btn[aria-pressed="true"]{border-color:var(--ink);color:var(--ink);background:color-mix(in srgb,var(--marker) 72%,var(--paper))}
+.idea input[type=text]{display:block;width:100%;min-height:46px;padding:10px 12px;border:1.5px solid var(--ink-3);border-radius:6px;background:var(--paper);font-size:17px;color:var(--ink)}
+.idea-help{margin:12px 0 8px;font-size:15px;color:var(--ink-2);max-width:60ch}
+.idea-prompt{margin:0;padding:12px 14px;max-height:230px;overflow:auto;white-space:pre-wrap;border-radius:6px;background:color-mix(in srgb,var(--ink) 6%,transparent);
+  font-family:var(--text);font-size:14.5px;line-height:1.5;color:var(--ink)}
+.soon{font-family:var(--hand);font-size:17px;color:var(--ink-3)}
+
+/* what the judge read, so the trader knows the right file went in */
+.read{margin:0 0 24px;max-width:66ch;font-size:16px}
+.read-as{display:grid;grid-template-columns:24px minmax(0,1fr);gap:8px;margin:0;color:var(--ink)}
+.read-as svg{width:20px;height:18px;margin-top:3px;color:var(--green)}
+.read-notes{list-style:none;margin:6px 0 0 32px;padding:0;font-size:15px;color:var(--amber)}
+.read-notes li{margin-top:3px}
+.read-cols{margin:6px 0 0 32px;font-size:15px;color:var(--ink-3)}
+.read-cols summary{cursor:pointer;width:max-content;color:var(--ink-2);text-decoration:underline;text-decoration-style:dotted;text-underline-offset:.2em}
+.read-cols ul{margin:6px 0 0;padding-left:18px}
+
+/* Flip walks along in the corner once the page moves on */
+.buddy{position:fixed;right:18px;bottom:12px;z-index:30;width:78px;height:84px;transform:translateX(150px);transition:transform 1.3s linear;pointer-events:none}
+.buddy.in{transform:translateX(0)}
+.buddy .pet{position:absolute;inset:0;width:100%;height:100%;pointer-events:auto}
+.buddy .bubble{right:86px;bottom:34px;max-width:250px;opacity:0;transition:opacity .25s;pointer-events:none}
+.buddy .bubble.show{opacity:1}
+@media (prefers-reduced-motion:reduce){.buddy{transition:none}}
+.linkish{display:inline;background:none;border:0;padding:0;font:inherit;text-align:left;color:var(--ink);text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:.2em;cursor:pointer}
+.linkish:hover{text-decoration-thickness:2px}
+
+/* where to find the trades */
+.finder{margin:20px 0 0;max-width:600px}
+.finder .panel ol{margin:0 0 10px;padding-left:20px;font-size:16px}
+.finder .panel li{margin-top:5px}
+.finder .panel .note{margin:0;font-size:14px;color:var(--ink-3)}
+
+/* paste instead of a file */
+.paste{padding:16px 18px 18px;border:1.5px dashed var(--ink-3);border-radius:6px;background:color-mix(in srgb,var(--paper) 82%,transparent)}
+.paste label{display:block;font-weight:600;font-size:18px;margin-bottom:8px}
+.paste textarea{display:block;width:100%;min-height:140px;padding:10px 12px;border:1.5px solid var(--ink-3);border-radius:6px;background:var(--paper);
+  font-family:ui-monospace,"Cascadia Mono",Consolas,monospace;font-size:15px;line-height:1.5;resize:vertical;color:var(--ink)}
+.paste .row{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-top:12px}
+.alt{margin:12px 0 0;font-size:16px;color:var(--ink-3)}
+
+/* ---- Flip, the referee coin ---- */
+.drop-wrap{position:relative;margin-top:92px}
+.pet{position:absolute;right:26px;bottom:calc(100% - 4px);width:84px;height:90px;padding:0;border:0;background:none;cursor:pointer;color:var(--ink);z-index:3}
+.pet svg{display:block;width:100%;height:100%;overflow:visible}
+.flip .coin{fill:var(--paper);stroke:currentColor;stroke-width:2.4}
+.flip .rim{fill:none;stroke:currentColor;stroke-width:1.1;stroke-dasharray:2.2 3.2;opacity:.5}
+.flip .ln{fill:none;stroke:currentColor;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.flip .ink{fill:currentColor}
+.flip .soft{fill:none;stroke:var(--pencil-2);stroke-width:1.6;stroke-linecap:round}
+.flip .tiny{fill:var(--paper);stroke:currentColor;stroke-width:1.8}
+.flip .spark{fill:none;stroke:var(--amber);stroke-width:1.8;stroke-linecap:round}
+.flip .drop-sweat{fill:color-mix(in srgb,var(--focus) 30%,var(--paper));stroke:currentColor;stroke-width:1.4}
+.flip .hand-t{font-family:var(--hand);font-weight:700;fill:currentColor}
+.flip .pupils,.flip .tossme,.flip .all{transform-box:fill-box;transform-origin:center}
+.flip.blink .pupils{transform:scaleY(.12)}
+.flip.tossing .pupils{transform:translateY(-2.2px)}
+.flip .leg-l,.flip .leg-r{transform-box:fill-box;transform-origin:50% 0}
+.flip.walking .all{animation:waddle .44s ease-in-out infinite}
+.flip.walking .leg-l{animation:step .44s ease-in-out infinite}
+.flip.walking .leg-r{animation:step .44s ease-in-out -.22s infinite}
+@keyframes waddle{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg) translateY(-1.5px)}}
+@keyframes step{0%,100%{transform:translateY(0) rotate(0)}50%{transform:translateY(-4px) rotate(-10deg)}}
+.flip.bounce .all{animation:bounce .55s ease-in-out infinite}
+.flip.hop .all{animation:hop .55s cubic-bezier(.3,.6,.4,1) 2}
+.flip.tossing .tossme{animation:toss .9s ease-in-out infinite}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+@keyframes hop{0%,100%{transform:translateY(0)}40%{transform:translateY(-9px)}}
+@keyframes toss{0%{transform:translate(0,0) scaleX(1)}25%{transform:translate(0,-20px) scaleX(.15)}50%{transform:translate(0,-28px) scaleX(-1)}75%{transform:translate(0,-16px) scaleX(.15)}100%{transform:translate(0,0) scaleX(1)}}
+.bubble{position:absolute;right:122px;bottom:calc(100% + 12px);width:max-content;max-width:350px;padding:7px 14px 8px;border:1.5px solid var(--ink);border-radius:16px;
+  background:var(--paper);font-family:var(--hand);font-size:18px;line-height:1.3;color:var(--ink);z-index:3}
+.bubble .tail{position:absolute;width:16px;height:14px;right:-14px;bottom:10px;overflow:visible}
+.bubble .tail path{fill:var(--paper);stroke:var(--ink);stroke-width:1.5;stroke-linejoin:round}
+.bubble.pop{animation:pop .28s ease-out}
+@keyframes pop{from{transform:scale(.94);opacity:.4}to{transform:scale(1);opacity:1}}
+.res-pet{display:flex;flex-direction:column;align-items:flex-end;gap:12px;padding-right:30px}
+.result-head > .res-pet{grid-column:1;grid-row:1}
+.res-pet .pet{position:static;width:72px;height:77px}
+.res-pet .bubble{position:relative;right:auto;bottom:auto;width:auto;max-width:170px;font-size:17px}
+.res-pet .bubble .tail{right:18px;bottom:auto;top:-13px;transform:rotate(-90deg)}
+@media (prefers-reduced-motion:reduce){.flip *,.bubble{animation:none!important}}
+
+/* small things that answer a result */
+.checks svg path{stroke-dasharray:46;stroke-dashoffset:46;animation:draw .45s ease-out forwards;animation-delay:calc(.3s + var(--i,0) * 90ms)}
+@keyframes draw{to{stroke-dashoffset:0}}
+@media (prefers-reduced-motion:reduce){.checks svg path{animation:none;stroke-dashoffset:0}}
+
 /* ---- Results ---- */
 .result{padding-top:56px;padding-bottom:40px;scroll-margin-top:12px}
 .result-head{display:grid;grid-template-columns:200px 1fr;gap:0}
@@ -255,7 +349,11 @@ h1 .line{display:block;white-space:nowrap}
 .next svg{width:52px;height:26px;margin-top:6px;color:var(--ink)}
 .next p{margin:0}
 .next .label{font-weight:600;margin-right:6px}
-.next mark{background:linear-gradient(transparent 8%,var(--marker) 8%,var(--marker) 92%,transparent 92%);color:inherit;padding:0 2px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.next mark{background-color:transparent;background-image:linear-gradient(var(--marker),var(--marker));background-repeat:no-repeat;background-size:100% 84%;background-position:0 55%;
+  color:inherit;padding:0 2px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.next mark.sweep{animation:sweep .8s ease-out .35s both}
+@keyframes sweep{from{background-size:0% 84%}to{background-size:100% 84%}}
+@media (prefers-reduced-motion:reduce){.next mark.sweep{animation:none}}
 .next .whyline{margin-top:6px;font-size:16px;color:var(--ink-3)}
 
 .ask{margin:24px 0 0;padding:16px 18px;border:1.5px solid var(--rule);border-radius:6px;max-width:68ch;background:color-mix(in srgb,var(--paper-raised) 70%,transparent)}
@@ -383,6 +481,14 @@ footer b{color:var(--ink-2);font-weight:600}
   .hero-art{position:relative;top:0;width:auto;height:250px;margin:0 0 6px;-webkit-mask-image:none;mask-image:none}
   h1{width:auto;font-size:clamp(40px,10.5vw,64px)}
   h1 .line{display:inline;white-space:normal}
+  .drop-wrap{margin-top:104px}
+  .buddy{width:62px;height:67px;right:10px;bottom:8px}
+  .buddy .bubble{right:66px;bottom:26px;max-width:170px;font-size:15px;padding:5px 11px 6px}
+  .drop-wrap > .pet{width:72px;height:77px;right:12px}
+  .drop-wrap > .bubble{right:92px;max-width:calc(100% - 96px);font-size:17px}
+  .res-pet{flex-direction:row;align-items:center;justify-content:flex-start;padding:0 0 16px}
+  .res-pet .bubble{max-width:calc(100% - 90px)}
+  .res-pet .bubble .tail{right:auto;left:-14px;top:auto;bottom:10px;transform:scaleX(-1)}
   .promises{grid-template-columns:repeat(2,minmax(0,1fr))}
   .result-head,.sheet,.pairs,.privacy{grid-template-columns:minmax(0,1fr)}
   .result-head > div,.pairs h3,.pairs p,.privacy span{grid-column:1}
@@ -436,8 +542,18 @@ footer b{color:var(--ink-2);font-weight:600}
   <div class="wrap">
     <div class="hero-copy">
       <h1><span class="line">Is your strategy</span> <span class="line">real, or just lucky?</span></h1>
-      <p class="lede">Drop your trade history. In a few seconds you get an honest answer, and the reason why.</p>
+      <p class="lede">We check your trades against 1,000 coin-flip versions of them. You get a plain verdict, the why, and what to do next.</p>
 
+      <div class="start" role="group" aria-labelledby="startQ">
+        <span class="start-q" id="startQ">What do you have?</span>
+        <button class="opt-btn" type="button" data-start="file" aria-pressed="true"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 2.5h6.5l4 4v11H5zM11.5 2.5v4h4M7.5 11h6M7.5 14h4" /></svg>A file of trades</button>
+        <button class="opt-btn" type="button" data-start="paste" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 3.5h5v2.5h-5zM7.2 4.5H4.5v13h11v-13h-2.7M7.5 10h5M7.5 13h3.5" /></svg>Numbers to paste</button>
+        <button class="opt-btn" type="button" data-start="idea" aria-pressed="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.5a5 5 0 0 0-3 9c.8.6 1 1.4 1 2.3h4c0-.9.2-1.7 1-2.3a5 5 0 0 0-3-9zM8.2 16.2h3.6M8.8 18.2h2.4" /></svg>Only an idea</button>
+      </div>
+
+      <div class="drop-wrap" id="dropWrap">
+        <div class="bubble" id="heroBubble" aria-hidden="true"><span class="say"></span><svg class="tail" viewBox="0 0 16 14" aria-hidden="true"><path d="M0 1.5C6 3 10.5 7 15 13 9.5 11 5 10 0 10.5"/></svg></div>
+        <button class="pet" id="heroPet" type="button" aria-label="Flip, the referee coin. Press for a tip."></button>
       <div class="drop" id="drop">
         <svg class="tray" viewBox="0 0 52 52" aria-hidden="true"><path d="M10 30.5v9.2c0 1.6 1.2 2.8 2.8 2.8h26.4c1.6 0 2.8-1.2 2.8-2.8v-9.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M26 34.5V9.8m-9 8.4 9-8.9 9 8.9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <div>
@@ -451,7 +567,35 @@ footer b{color:var(--ink-2);font-weight:600}
             <span id="workingText">Judging your trades</span>
           </div>
         </div>
-        <input type="file" id="file" multiple accept=".csv,.tsv,.txt,.xlsx,.xls,.json" aria-label="Choose trade files">
+        <input type="file" id="file" multiple accept=".csv,.tsv,.txt,.xlsx,.xls,.json,.zip" aria-label="Choose trade files">
+      </div>
+        <form class="paste" id="pasteBox" hidden>
+          <label for="pasteText">Paste your results</label>
+          <textarea id="pasteText" spellcheck="false" placeholder="One result per trade, money or %:&#10;+1.20&#10;-0.80&#10;2.5%&#10;&#10;Or a table copied from a spreadsheet."></textarea>
+          <div class="row">
+            <button class="btn" id="pasteGo" type="submit">Check these</button>
+          </div>
+        </form>
+        <form class="paste idea" id="ideaBox" hidden>
+          <label for="ideaText">Your idea, in plain words</label>
+          <input id="ideaText" type="text" autocomplete="off" spellcheck="false" placeholder="Buy BTC when RSI drops below 30, sell when it goes above 70">
+          <p class="idea-help">Paste this prompt into ChatGPT, Claude or any AI that can run code. It writes an honest backtest of your idea, then judges the trades with edge or luck.</p>
+          <pre class="idea-prompt" id="ideaPrompt"></pre>
+          <div class="row">
+            <button class="btn" id="ideaCopy" type="button"><svg viewBox="0 0 18 18" aria-hidden="true"><rect x="5.5" y="5.5" width="9.5" height="10" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 5.5V4a1.5 1.5 0 0 0-1.5-1.5H4.5A1.5 1.5 0 0 0 3 4v7a1.5 1.5 0 0 0 1.5 1.5h1" fill="none" stroke="currentColor" stroke-width="1.6"/></svg><span>Copy the prompt</span></button>
+            <span class="soon">Soon: test an idea right here, no AI needed.</span>
+          </div>
+        </form>
+      </div>
+      <p class="alt" id="whereRow"><button type="button" class="linkish" id="whereBtn" aria-expanded="false" aria-controls="finder">Where do I find my trades?</button></p>
+      <div class="finder" id="finder" hidden>
+        <div class="tabs" role="tablist" aria-label="Where your trades are">
+          <button class="tab" role="tab" aria-selected="true" data-find="tradingview">TradingView</button>
+          <button class="tab" role="tab" aria-selected="false" data-find="exchange">An exchange</button>
+          <button class="tab" role="tab" aria-selected="false" data-find="bot">A bot</button>
+          <button class="tab" role="tab" aria-selected="false" data-find="other">Anything else</button>
+        </div>
+        <div class="panel" role="tabpanel" id="findPanel"></div>
       </div>
       <p class="error" id="error" role="alert" hidden></p>
 
@@ -471,9 +615,18 @@ footer b{color:var(--ink-2);font-weight:600}
 
 <section class="result wrap" id="result" aria-live="polite" hidden>
   <div class="result-head">
+    <div class="res-pet" aria-hidden="true">
+      <div class="pet" id="resPet"></div>
+      <div class="bubble" id="resBubble"><span class="say"></span><svg class="tail" viewBox="0 0 16 14"><path d="M0 1.5C6 3 10.5 7 15 13 9.5 11 5 10 0 10.5"/></svg></div>
+    </div>
     <div>
       <h2 id="resHeadline"></h2>
       <p id="resText"></p>
+      <div class="read" id="readBox" hidden>
+        <p class="read-as"><svg viewBox="0 0 22 20" aria-hidden="true"><path d="M2.5 11.2c2.2 1.3 4 3.6 5.4 6.1 3-6.4 7.3-11.7 12-15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="readAs"></span></p>
+        <ul class="read-notes" id="readNotes"></ul>
+        <details class="read-cols" id="readColsBox"><summary>Which columns we used</summary><ul id="readCols"></ul></details>
+      </div>
       <ul class="index" id="index" hidden></ul>
       <div id="asks"></div>
       <div class="actions">
@@ -562,7 +715,7 @@ footer b{color:var(--ink-2);font-weight:600}
   </div>
 </section>
 
-<section class="band wrap" aria-labelledby="limitsTitle">
+<section class="band wrap" id="limits" aria-labelledby="limitsTitle">
   <h2 id="limitsTitle">What it can't tell you</h2>
   <p class="intro">An honest answer includes its limits.</p>
   <ul class="limits">
@@ -605,6 +758,11 @@ footer b{color:var(--ink-2);font-weight:600}
     </div>
   </div>
 </footer>
+
+<div class="buddy" id="buddy" aria-hidden="true" hidden>
+  <div class="bubble" id="buddyBubble"><span class="say"></span><svg class="tail" viewBox="0 0 16 14"><path d="M0 1.5C6 3 10.5 7 15 13 9.5 11 5 10 0 10.5"/></svg></div>
+  <button class="pet" id="buddyPet" type="button" tabindex="-1"></button>
+</div>
 
 <script>
 (function () {
@@ -775,7 +933,7 @@ footer b{color:var(--ink-2);font-weight:600}
   function heroBox() {
     if (window.innerWidth <= 900) return { l: 16, r: 120, t: 44, b: 30 };
     // The fan starts just right of the drop zone, so no pencil runs under the text.
-    var art = heroArt.getBoundingClientRect(), dz = $("drop").getBoundingClientRect();
+    var art = heroArt.getBoundingClientRect(), dz = $("dropWrap").getBoundingClientRect();
     var l = Math.max(60, dz.right - art.left + 56);
     return { l: l, r: 120, t: 150, b: 150 };
   }
@@ -821,6 +979,247 @@ footer b{color:var(--ink-2);font-weight:600}
     s.appendChild(svgEl("circle", { cx: "206", cy: "14", r: "3.6", fill: "currentColor" }));
   })();
 
+  /* ---------- Flip, the referee coin ---------- */
+  // A small pen-drawn coin that says what to do next and reacts to the verdict.
+  // Static markup only; moods show and hide its parts.
+  var FLIP_SVG = '<svg class="flip" viewBox="-42 -50 84 90" aria-hidden="true"><g class="all">' +
+    '<path class="ln leg-l" d="M-8 20.5-10 35.5h-5.5"/><path class="ln leg-r" d="M8 20.5l2 15h5.5"/>' +
+    '<circle class="coin" cx="0" cy="-4" r="25"/><circle class="rim" cx="0" cy="-4" r="19.5"/>' +
+    '<g class="eyes" data-p="eyes"><g class="pupils"><ellipse class="ink" cx="-8" cy="-9" rx="2.7" ry="3.3"/><ellipse class="ink" cx="8" cy="-9" rx="2.7" ry="3.3"/></g></g>' +
+    '<path data-p="e-happy" class="ln" d="M-11.5-8.5q3.5-5 7 0M4.5-8.5q3.5-5 7 0"/>' +
+    '<path data-p="e-sleep" class="ln" d="M-11.5-8h7M4.5-8h7"/>' +
+    '<path data-p="b-up" class="ln" d="M-12-16.5q3.5-3 7 0M5-16.5q3.5-3 7 0"/>' +
+    '<path data-p="b-worry" class="ln" d="M-12-14.5-5-17.5M12-14.5 5-17.5"/>' +
+    '<path data-p="b-conf" class="ln" d="M-12-16q3.5-3.5 7 0M5-15h7"/>' +
+    '<path data-p="m-smile" class="ln" d="M-5.5 2.5q5.5 4.5 11 0"/>' +
+    '<path data-p="m-grin" class="ink" style="stroke:currentColor;stroke-width:1.4;stroke-linejoin:round" d="M-8 1.5q8 9.5 16 0-8 2.6-16 0z"/>' +
+    '<path data-p="m-flat" class="ln" d="M-5.5 4h11"/>' +
+    '<path data-p="m-wavy" class="ln" d="M-7 5q1.75-2.6 3.5 0t3.5 0 3.5 0 3.5 0"/>' +
+    '<ellipse data-p="m-o" class="ln" cx="0" cy="4" rx="2.8" ry="3.4"/>' +
+    '<path data-p="m-sleep" class="ln" d="M-4 4.5q4 2 8 0"/>' +
+    '<path data-p="a-down" class="ln" d="M-24.5 1q-7 5-8.5 13M24.5 1q7 5 8.5 13"/>' +
+    '<path data-p="a-up" class="ln" d="M-24-3q-8-1-11.5-11M24-3q8-1 11.5-11"/>' +
+    '<path data-p="a-toss" class="ln" d="M-24.5 1q-7 5-8.5 13M24-3q7-3 9-14"/>' +
+    '<ellipse data-p="x-coin" class="tiny tossme" cx="34" cy="-21" rx="4.6" ry="4.6"/>' +
+    '<path data-p="x-spark" class="spark" d="M-33-33v6M-36-30h6M34-38v5M31.5-35.5h5M30-15v4M28-13h4"/>' +
+    '<path data-p="x-sweat" class="drop-sweat" d="M20-30q3.6 4.6 0 7.2-3.6-2.6 0-7.2z"/>' +
+    '<g data-p="x-zz"><text class="hand-t" x="20" y="-30" font-size="10">z</text><text class="hand-t" x="27" y="-39" font-size="13">z</text></g>' +
+    '<text data-p="x-q" class="hand-t" x="22" y="-31" font-size="17">?</text>' +
+    '<g data-p="x-dots"><circle class="ink" cx="24" cy="-33" r="1.6"/><circle class="ink" cx="30" cy="-37" r="1.9"/><circle class="ink" cx="37" cy="-41.5" r="2.2"/></g>' +
+    '</g></svg>';
+  var MOODS = {
+    idle: ["eyes", "m-smile", "a-down"],
+    excited: ["eyes", "b-up", "m-o", "a-up"],
+    flipping: ["eyes", "m-o", "a-toss", "x-coin"],
+    happy: ["e-happy", "m-grin", "a-up", "x-spark"],
+    shrug: ["eyes", "b-up", "m-flat", "a-up"],
+    meh: ["eyes", "m-flat", "a-down"],
+    worried: ["eyes", "b-worry", "m-wavy", "a-down", "x-sweat"],
+    sleepy: ["e-sleep", "m-sleep", "a-down", "x-zz"],
+    wait: ["eyes", "m-smile", "a-down", "x-dots"],
+    confused: ["eyes", "b-conf", "m-flat", "a-down", "x-q"]
+  };
+  function makeFlip(host, bubble) {
+    host.innerHTML = FLIP_SVG;
+    var svg = host.querySelector("svg"), eyes = svg.querySelector(".eyes"), words = bubble && bubble.querySelector(".say");
+    var api = {
+      svg: svg, current: null,
+      mood: function (m) {
+        var parts = MOODS[m] || MOODS.idle;
+        svg.querySelectorAll("[data-p]").forEach(function (p) { p.style.display = parts.indexOf(p.getAttribute("data-p")) >= 0 ? "" : "none"; });
+        svg.classList.toggle("bounce", m === "excited");
+        svg.classList.toggle("tossing", m === "flipping");
+        if (m === "happy" && api.current !== "happy") api.hop();
+        api.current = m;
+      },
+      say: function (t) {
+        if (!words || words.textContent === t) return;
+        words.textContent = t;
+        bubble.classList.remove("pop"); void bubble.offsetWidth; bubble.classList.add("pop");
+      },
+      hop: function () {
+        if (reduce) return;
+        svg.classList.remove("hop"); svg.getBoundingClientRect(); svg.classList.add("hop");
+      },
+      look: function (x, y) {
+        var r = svg.getBoundingClientRect();
+        if (!r.width || r.bottom < 0 || r.top > window.innerHeight) return;
+        var dx = x - (r.left + r.width / 2), dy = y - (r.top + r.height * 0.38), d = Math.sqrt(dx * dx + dy * dy) || 1;
+        var k = Math.min(1, d / 200) * 2.3;
+        eyes.setAttribute("transform", "translate(" + (dx / d * k).toFixed(2) + " " + (dy / d * k).toFixed(2) + ")");
+      }
+    };
+    svg.addEventListener("animationend", function (e) { if (e.animationName === "hop") svg.classList.remove("hop"); });
+    api.mood("idle");
+    if (!reduce) (function blink() {
+      setTimeout(function () {
+        if (api.current !== "flipping" && api.current !== "happy" && api.current !== "sleepy") {
+          svg.classList.add("blink");
+          setTimeout(function () { svg.classList.remove("blink"); }, 140);
+        }
+        blink();
+      }, 2600 + Math.random() * 3800);
+    })();
+    return api;
+  }
+  var heroFlip = makeFlip($("heroPet"), $("heroBubble"));
+  var resFlip = makeFlip($("resPet"), $("resBubble"));
+  if (!reduce) {
+    var px = 0, py = 0, looking = false;
+    window.addEventListener("pointermove", function (e) {
+      px = e.clientX; py = e.clientY;
+      if (looking) return;
+      looking = true;
+      requestAnimationFrame(function () { looking = false; heroFlip.look(px, py); resFlip.look(px, py); if (buddy) buddy.look(px, py); });
+    }, { passive: true });
+  }
+  var HELLO = "Hi, I'm Flip! Give me your closed trades and I'll test them against 1,000 coin flips.";
+  heroFlip.say(HELLO);
+  var TIPS = [
+    "Tell me how many versions you tried. It changes the verdict.",
+    "I read your file and forget it. Nothing is stored.",
+    "Fewer than 30 trades? I'll say too early instead of guessing.",
+    "Same file, same answer. Every time.",
+    "Fees are paid twice per trade: in and out.",
+    "A losing streak isn't always a broken strategy. I'll tell you the odds.",
+    "Backtest great, live bad? Drop your live trades, then the backtest, and I'll compare.",
+    "I flip a coin for each of your trades, a thousand times over."
+  ];
+  var tipAt = 0;
+  $("heroPet").addEventListener("click", function () { heroFlip.mood("idle"); heroFlip.hop(); heroFlip.say(TIPS[tipAt++ % TIPS.length]); });
+  // The judge's verdict, in Flip's words.
+  function reaction(rep) {
+    var cards = rep.strategies || [], k = cards.length, counts = (rep.summary && rep.summary.counts) || {};
+    var cmp = rep.compare || (cards[0] && cards[0].compare);
+    if (cmp && cmp.code === "worse_than_backtest") return ["worried", "Live is doing worse than the backtest promised."];
+    if (k > 1) {
+      if (counts.real_edge) return ["happy", counts.real_edge + " of " + k + " beat luck. See which below."];
+      if (counts.losing) return ["worried", "None of these beat luck, and " + (counts.losing === 1 ? "one loses" : counts.losing + " lose") + " for real."];
+      return ["shrug", "None of these beat luck yet."];
+    }
+    var code = cards[0] && cards[0].verdict && cards[0].verdict.code;
+    return ({
+      real_edge: ["happy", "You beat luck! Keep checking it as it trades."],
+      cant_tell: ["shrug", "Too close to call. It needs more trades."],
+      no_edge: ["meh", "Luck did just as well as this."],
+      losing: ["worried", "Ouch. This one loses for real."],
+      faded: ["sleepy", "It worked, then it stopped."],
+      too_early: ["wait", "Too early to tell. Come back with more trades."]
+    })[code] || ["idle", "Here's what I found."];
+  }
+
+  /* where to find the trades */
+  var FIND = {
+    tradingview: ["Open the chart with your strategy on it.", "In the Strategy Tester panel at the bottom, open List of trades.", "Use the export button there and save the file.", "Drop that file below."],
+    exchange: ["Open Orders and find your spot trade history. It may be called Trade History or Order History.", "Click Export, pick the dates and download the file.", "Drop it below. We pair your buys and sells into closed trades for you."],
+    bot: ["freqtrade: drop the backtest result from user_data/backtest_results, the .json or .zip file.", "Other bots: export the closed trades as CSV, one row per trade with its profit.", "Or ask your AI to save the backtest's trades to a CSV file."],
+    other: ["Copy each trade's result from your spreadsheet, Telegram bot or notes. Money or %, both work.", "Choose Numbers to paste above and paste them, one result per line.", "Only closed trades count. Open positions have no result yet."]
+  };
+  function showFind(key) {
+    document.querySelectorAll("#finder .tab").forEach(function (t) { t.setAttribute("aria-selected", t.dataset.find === key ? "true" : "false"); });
+    var p = $("findPanel"), ol = el("ol");
+    p.textContent = "";
+    FIND[key].forEach(function (s) { ol.appendChild(el("li", null, s)); });
+    p.appendChild(ol);
+    p.appendChild(el("p", "note", "Menu names change now and then. If a file doesn't work, we show what we found and what we need."));
+  }
+  document.querySelectorAll("#finder .tab").forEach(function (t) { t.addEventListener("click", function () { showFind(t.dataset.find); }); });
+  $("whereBtn").addEventListener("click", function () {
+    var f = $("finder"), open = f.hidden;
+    f.hidden = !open;
+    $("whereBtn").setAttribute("aria-expanded", String(open));
+    if (open) {
+      showFind("tradingview");
+      heroFlip.mood("idle"); heroFlip.say("Pick where your trades are, and I'll show you how to get them.");
+    }
+  });
+
+  /* Flip walks along: once both the drop-box Flip and the result Flip are out of
+     view, a third one walks into the corner, marches while the page scrolls, says a
+     word about what is on screen, and takes the trader back up when tapped. */
+  var buddyEl = $("buddy"), buddy = makeFlip($("buddyPet"), $("buddyBubble"));
+  var inView = { hero: true, res: false }, buddyIn = false, walkT, hideT, said = {};
+  var watchSheets = function () {}, lastSeen = null;
+  function tryTalk(t) {
+    var id = t.id, line = LINES[id] || SHEET_LINES[t.getAttribute("data-code")];
+    if (!line || said[id] || !buddyIn) return;
+    said[id] = 1;
+    buddySay(line[1], line[0]);
+  }
+  function walkFor(ms) {
+    if (reduce) return;
+    buddy.svg.classList.add("walking");
+    clearTimeout(walkT);
+    walkT = setTimeout(function () { buddy.svg.classList.remove("walking"); }, ms);
+  }
+  function buddyQuiet() { $("buddyBubble").classList.remove("show"); }
+  function buddySay(text, mood) {
+    if (!buddyIn) return;
+    if (mood) buddy.mood(mood);
+    buddy.say(text);
+    $("buddyBubble").classList.add("show");
+    clearTimeout(hideT);
+    hideT = setTimeout(buddyQuiet, window.innerWidth < 600 ? 2800 : 4200);
+  }
+  function placeBuddy() {
+    var want = !inView.hero && !inView.res;
+    if (want === buddyIn) return;
+    buddyIn = want;
+    walkFor(1300);
+    if (want) {
+      buddyEl.hidden = false;
+      buddy.mood("idle");
+      requestAnimationFrame(function () { requestAnimationFrame(function () { buddyEl.classList.add("in"); }); });
+      // Once arrived, say a word about whatever is on screen now.
+      setTimeout(function () {
+        if (!buddyIn || !lastSeen) return;
+        var r = lastSeen.getBoundingClientRect();
+        if (r.bottom > 0 && r.top < window.innerHeight) tryTalk(lastSeen);
+      }, reduce ? 0 : 1400);
+    } else {
+      buddyQuiet();
+      buddyEl.classList.remove("in");
+      setTimeout(function () { if (!buddyIn) buddyEl.hidden = true; }, reduce ? 0 : 1350);
+    }
+  }
+  var LINES = {
+    how: ["idle", "This is how I check your trades."],
+    proof: ["idle", "Here's how often I get it wrong."],
+    limits: ["shrug", "Nobody sees everything. Here's what I can't."],
+    ai: ["happy", "Your AI can call me too."]
+  };
+  var SHEET_LINES = {
+    real_edge: ["happy", "This one beat luck."],
+    cant_tell: ["shrug", "This one is too close to call."],
+    no_edge: ["meh", "Luck did as well as this one."],
+    losing: ["worried", "This one loses for real."],
+    faded: ["sleepy", "This one stopped working."],
+    too_early: ["wait", "Too few trades in this one."]
+  };
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { inView[e.target === $("heroPet") ? "hero" : "res"] = e.isIntersecting; });
+      placeBuddy();
+    }).observe($("heroPet"));
+    var resIO = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { inView.res = e.isIntersecting; });
+      placeBuddy();
+    });
+    resIO.observe($("resPet"));
+    var talkIO = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) { if (e.isIntersecting) { lastSeen = e.target; tryTalk(e.target); } });
+    }, { threshold: 0.35 });
+    ["how", "proof", "limits", "ai"].forEach(function (id) { talkIO.observe($(id)); });
+    watchSheets = function () {
+      document.querySelectorAll(".sheet").forEach(function (s) { delete said[s.id]; talkIO.observe(s); });
+    };
+  }
+  window.addEventListener("scroll", function () { if (buddyIn) walkFor(300); }, { passive: true });
+  $("buddyPet").addEventListener("click", function () {
+    buddySay("Let's check another one!", "happy");
+    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+  });
+
   /* ---------- samples ---------- */
   var samplesBox = $("samples");
   function sampleButton(s) {
@@ -855,6 +1254,8 @@ footer b{color:var(--ink-2);font-weight:600}
   function busy(on, text) {
     drop.classList.toggle("busy", on);
     if (text) $("workingText").textContent = text;
+    $("pasteGo").disabled = on;
+    $("pasteGo").textContent = on ? "Checking…" : "Check these";
   }
   function showError(box, data) {
     var e = $(box), need = data && data.need;
@@ -879,9 +1280,12 @@ footer b{color:var(--ink-2);font-weight:600}
     $("error").hidden = true; $("errorBack").hidden = true;
     var count = req.files ? req.files.length : 0;
     busy(true, req.kind === "sample" ? "Judging the sample" : (count > 1 ? "Judging " + count + " files" : "Judging your trades"));
+    var pet = req.backtest ? resFlip : heroFlip;
+    pet.mood("flipping");
+    pet.say(req.kind === "sample" ? "Flipping 1,000 coins with this sample…" : req.kind === "paste" ? "Flipping 1,000 coins with your numbers…" : "Flipping 1,000 coins with your trades…");
     var init;
-    if (req.kind === "sample") {
-      var body = { sample: req.sample };
+    if (req.kind === "sample" || req.kind === "paste") {
+      var body = req.kind === "sample" ? { sample: req.sample } : { csv_text: req.text };
       FIELDS.forEach(function (k) { if (opts[k] != null && opts[k] !== "") body[k] = opts[k]; });
       init = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
     } else {
@@ -891,16 +1295,30 @@ footer b{color:var(--ink-2);font-weight:600}
       FIELDS.forEach(function (k) { if (opts[k] != null && opts[k] !== "") fd.append(k, String(opts[k])); });
       init = { method: "POST", body: fd };
     }
+    // Flip tosses for at least a moment, so the answer never lands before you see it work.
+    var started = Date.now(), linger = reduce ? 0 : 1100;
     return fetch("/api/judge", init).then(function (r) {
       return r.json().catch(function () { return { error: "The server sent something we couldn't read." }; }).then(function (j) { return { ok: r.ok, j: j }; });
     }).then(function (res) {
+      var wait = linger - (Date.now() - started);
+      return wait > 0 ? new Promise(function (ok) { setTimeout(function () { ok(res); }, wait); }) : res;
+    }).then(function (res) {
       busy(false);
       $("dropBack").classList.remove("busy");
-      if (!res.ok || res.j.error || res.j.status === "need_input") { showError(req.backtest ? "errorBack" : "error", res.j); return; }
+      if (!res.ok || res.j.error || res.j.status === "need_input") {
+        showError(req.backtest ? "errorBack" : "error", res.j);
+        pet.mood("confused");
+        pet.say(res.j && res.j.need ? "I can't read this one yet. Just below is what I need." : "Something went wrong. Just below is what happened.");
+        return;
+      }
       lastReport = res.j;
+      heroFlip.mood("idle");
+      heroFlip.say("Done! Your verdict is just below. Want to check another?");
       render(res.j);
     }).catch(function () {
       busy(false);
+      pet.mood("confused");
+      pet.say("I can't reach the judge right now. Try again in a moment.");
       showError("error", { error: "We couldn't reach the judge.", why: "Check your connection and try again." });
     });
   }
@@ -919,6 +1337,73 @@ footer b{color:var(--ink-2);font-weight:600}
     $("dropBack").classList.add("busy");
     judge({ kind: "files", files: last.files, backtest: fs }, lastOpts);
   });
+  // Flip notices a file coming. Children fire their own enter/leave, hence the depth count.
+  var dragDepth = 0;
+  drop.addEventListener("dragenter", function () {
+    dragDepth++;
+    if (heroFlip.current !== "excited") { heroFlip.mood("excited"); heroFlip.say("Ooh, a file! Let go and I'll look."); }
+  });
+  drop.addEventListener("dragleave", function () {
+    dragDepth = Math.max(0, dragDepth - 1);
+    if (!dragDepth && heroFlip.current === "excited") { heroFlip.mood("idle"); heroFlip.say(HELLO); }
+  });
+  drop.addEventListener("drop", function () { dragDepth = 0; });
+
+  /* start with what you have: a file, numbers to paste, or only an idea */
+  var START_LINES = {
+    file: HELLO,
+    paste: "Paste one result per trade, one per line. Money or %, both work.",
+    idea: "No trades yet? Tell me the idea and I'll write what to ask your AI."
+  };
+  function setStart(mode) {
+    document.querySelectorAll(".opt-btn").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.start === mode ? "true" : "false"); });
+    drop.hidden = mode !== "file";
+    $("pasteBox").hidden = mode !== "paste";
+    $("ideaBox").hidden = mode !== "idea";
+    $("whereRow").hidden = mode !== "file";
+    if (mode !== "file") { $("finder").hidden = true; $("whereBtn").setAttribute("aria-expanded", "false"); }
+    $("error").hidden = true;
+    heroFlip.mood("idle");
+    heroFlip.say(START_LINES[mode]);
+    if (mode === "paste") $("pasteText").focus();
+    if (mode === "idea") { updateIdea(); $("ideaText").focus(); }
+  }
+  document.querySelectorAll(".opt-btn").forEach(function (b) { b.addEventListener("click", function () { setStart(b.dataset.start); }); });
+
+  // An idea with no trades yet: a prompt that makes the trader's AI backtest it honestly.
+  function ideaPrompt(idea) {
+    return [
+      "Please test this trading idea honestly for me: " + (idea || "<describe your idea here>"),
+      "",
+      "1. Write a Python backtest on at least two years of hourly price data for the coins or stocks in the idea.",
+      "2. Keep it honest: act only at the next bar's open after a signal, never at the bar the signal was calculated on. Charge 0.1% fees on every buy and every sell, plus a little slippage.",
+      "3. Keep a list of every closed trade with its exit date and its profit.",
+      "4. Judge the trades with edge-or-luck: pip install edgeorluck, then print(edgeorluck.judge(trades, variants_tried=N).to_markdown()), where N is how many versions or settings you tried.",
+      "5. Explain the verdict to me in plain words, with the why and the next step. Don't call it an edge unless the judge says real edge.",
+      "",
+      "If you can't download price data or install packages, tell me what you need from me. Or save the trades as a CSV file (exit date, profit) so I can drop it on the edge or luck page."
+    ].join("\n");
+  }
+  function updateIdea() { $("ideaPrompt").textContent = ideaPrompt($("ideaText").value.trim()); }
+  $("ideaText").addEventListener("input", updateIdea);
+  $("ideaBox").addEventListener("submit", function (e) { e.preventDefault(); });
+  $("ideaCopy").addEventListener("click", function () {
+    updateIdea();
+    copyText($("ideaPrompt").textContent, $("ideaCopy"), "Copied");
+    heroFlip.mood("happy");
+    heroFlip.say("Copied! Paste it into your AI, then bring the trades back to me.");
+  });
+  $("pasteBox").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var t = $("pasteText").value.trim();
+    if (!t) { $("pasteText").focus(); return; }
+    document.querySelectorAll(".sample").forEach(function (o) { o.setAttribute("aria-pressed", "false"); });
+    judge({ kind: "paste", text: t }, {});
+  });
+
+  var COL_WORDS = { percent: "result in %", money: "result in money", pnl: "result", profit: "result", close_time: "close time",
+    time: "time", strategy: "strategy", side: "buy or sell", price: "price", qty: "quantity", quote_total: "amount",
+    pair: "pair", symbol: "pair", fee: "fee", fee_coin: "fee coin" };
 
   /* ---------- rendering ---------- */
   var VERDICT_WORDS = { real_edge: "Real edge", cant_tell: "Can't tell yet", no_edge: "No edge", losing: "Losing", faded: "Faded", too_early: "Too early" };
@@ -930,6 +1415,19 @@ footer b{color:var(--ink-2);font-weight:600}
     var sum = rep.summary || {};
     $("resHeadline").textContent = sum.headline || "Here is what we found.";
     $("resText").textContent = sum.text || "";
+    // What the judge read, so the trader can tell the right file went in.
+    var inp = rep.input || {}, rb = $("readBox");
+    rb.hidden = !inp.read_as || !!(last && last.kind === "sample");
+    if (!rb.hidden) {
+      $("readAs").textContent = inp.read_as;
+      var notes = $("readNotes"); notes.textContent = "";
+      (inp.warnings || []).forEach(function (w) { notes.appendChild(el("li", null, w)); });
+      notes.hidden = !notes.children.length;
+      var cols = $("readCols"), used = inp.columns_used || {};
+      cols.textContent = "";
+      Object.keys(used).forEach(function (k) { cols.appendChild(el("li", null, (COL_WORDS[k] || k.replace(/_/g, " ")) + ": “" + used[k] + "”")); });
+      $("readColsBox").hidden = !Object.keys(used).length;
+    }
     $("compareBtn").hidden = !(last && last.kind === "files");
     $("compareBox").hidden = true;
     drawers = drawers.slice(0, 1);
@@ -956,12 +1454,16 @@ footer b{color:var(--ink-2);font-weight:600}
     var sheets = $("sheets");
     sheets.textContent = "";
     cards.forEach(function (card, i) { sheets.appendChild(sheet(card, i)); });
+    watchSheets();
     var pairs = (rep.portfolio && rep.portfolio.pairs) || [];
     var pb = $("pairs");
     pb.querySelectorAll("p").forEach(function (p) { p.remove(); });
     pairs.forEach(function (p) { pb.appendChild(el("p", null, p.sentence)); });
     pb.hidden = !pairs.length;
     $("privacy").textContent = rep.privacy || "";
+    var re = reaction(rep);
+    resFlip.mood(re[0]);
+    resFlip.say(re[1]);
     requestAnimationFrame(function () {
       redrawAll();
       res.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
@@ -1048,6 +1550,7 @@ footer b{color:var(--ink-2);font-weight:600}
     var v = c.verdict || {}, code = v.code || "too_early", unit = c.unit;
     var art = el("article", "sheet " + toneClass(v));
     art.id = "s-" + idx;
+    art.setAttribute("data-code", code);
     var margin = el("div", "margin");
     var grade = el("div", "grade", v.label || VERDICT_WORDS[code] || code);
     grade.appendChild(svgEl("svg", { "aria-hidden": "true" })).appendChild(svgEl("path", {}));
@@ -1176,8 +1679,9 @@ footer b{color:var(--ink-2);font-weight:600}
     if (checks.length) {
       var ul = el("ul", "checks");
       ul.setAttribute("aria-label", "Checks");
-      checks.forEach(function (k) {
+      checks.forEach(function (k, i) {
         var li = el("li", k.status || "warn");
+        li.style.setProperty("--i", i);
         li.appendChild(mark(k.status));
         var d = el("div");
         var label = k.status === "pass" ? "Passed: " : k.status === "fail" ? "Failed: " : "Watch out: ";
@@ -1221,7 +1725,7 @@ footer b{color:var(--ink-2);font-weight:600}
     nx.appendChild(arrow);
     var nd = el("div"), np = el("p");
     np.appendChild(el("span", "label", "Next step:"));
-    np.appendChild(el("mark", null, ns.text));
+    np.appendChild(el("mark", "sweep", ns.text));
     nd.appendChild(np);
     if (ns.why) nd.appendChild(el("p", "whyline", "Why: " + ns.why));
     nx.appendChild(nd);
@@ -1317,7 +1821,7 @@ footer b{color:var(--ink-2);font-weight:600}
   };
   var panel = $("panel");
   function showTab(key) {
-    document.querySelectorAll(".tab").forEach(function (t) { t.setAttribute("aria-selected", t.dataset.tab === key ? "true" : "false"); });
+    document.querySelectorAll("#ai .tab").forEach(function (t) { t.setAttribute("aria-selected", t.dataset.tab === key ? "true" : "false"); });
     var s = SNIPS[key]; panel.textContent = "";
     panel.appendChild(el("p", null, s.p));
     panel.appendChild(el("pre", null, s.code));
@@ -1326,7 +1830,7 @@ footer b{color:var(--ink-2);font-weight:600}
     panel.appendChild(b);
     if (key === "chatgpt") { var a = el("a", null, "Download the one-file judge"); a.href = "/assets/edgeorluck_single.py"; a.setAttribute("download", ""); a.style.marginLeft = "14px"; a.style.fontSize = "15px"; panel.appendChild(a); }
   }
-  document.querySelectorAll(".tab").forEach(function (t) { t.addEventListener("click", function () { showTab(t.dataset.tab); }); });
+  document.querySelectorAll("#ai .tab").forEach(function (t) { t.addEventListener("click", function () { showTab(t.dataset.tab); }); });
   showTab("python");
 })();
 </script>
