@@ -339,7 +339,7 @@ def _shell(title: str, description: str, body: str, *, alternate: Optional[str] 
 <footer>
   <div class="wrap">
     <div><p><b>Not financial advice.</b> edge or luck judges past results. It doesn't tell you what to trade or how much.</p></div>
-    <div><p>Open source under the MIT licence. <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">Source on GitHub</a>{tip}</p></div>
+    <div><p>Open source under the MIT licence. <a href="https://github.com/Sakke-code/edge-or-luck" rel="noopener">Source on GitHub</a> · <a href="/privacy">Privacy</a>{tip}</p></div>
   </div>
 </footer>
 <script src="/assets/site.js"></script>

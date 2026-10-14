@@ -38,6 +38,7 @@ JSON {"error", "why"} with a 4xx code.
 """
 from __future__ import annotations
 
+import html
 import inspect
 import io
 import json
@@ -176,6 +177,21 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
     @app.get("/api/usage")
     def api_usage():
         return jsonify(usage.summary())
+
+    @app.get("/privacy")
+    def privacy_page():
+        e = html.escape
+        kept = [PRIVACY, "Through the assistant tools (/mcp and /api/tools): the trades and rules you send are used for "
+                "the answer and dropped. A frozen rule is not kept by us either: its receipt, signed by the server, "
+                "holds the rule and the time, and you keep it.", "Prices come from public sources (Binance, Yahoo "
+                "Finance, the European Central Bank) and are fetched by the server, not linked to you.",
+                "No accounts, no cookies for tracking, no ads, no selling of anything. The code that does all this is "
+                "open: github.com/Sakke-code/edge-or-luck."]
+        body = ('<article class="wrap guide"><header class="guide-head"><div><h1>Privacy</h1><p class="lede">What edge '
+                'or luck keeps, and what it doesn\'t.</p></div></header><div class="prose">'
+                + "".join(f"<p>{e(p)}</p>" for p in kept) + "</div></article>")
+        return Response(guides._shell("Privacy · edge or luck", "What edge or luck keeps, and what it doesn't.", body,
+                                      current="/privacy"), mimetype="text/html")
     @app.get("/strategies")
     @app.get("/strategies.md", defaults={"as_md": True})
     def strategies_hub(as_md: bool = False):

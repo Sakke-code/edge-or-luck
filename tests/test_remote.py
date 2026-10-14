@@ -161,7 +161,7 @@ def test_usage_is_counted_without_knowing_who(tmp_path, monkeypatch):
     stored = Usage(tmp_path)                  # nothing but counts reaches the disk
     assert all(set(k.split(":")[0] for k in day) <= {"page", "link", "tools", "mcp"} for day in stored.days.values())
     assert "pnl" not in (tmp_path / "usage.json").read_text(encoding="utf-8")
-    assert client.get("/api/engine").get_json()["tip_url"] is None
+    assert client.get("/api/engine").get_json()["tip_url"] is None and b"never stored" in client.get("/privacy").data
     monkeypatch.setenv("EDGEORLUCK_TIP_URL", "https://ko-fi.com/edgeorluck")
     assert "Keep it free" in client.get("/strategies").get_data(as_text=True)
     assert client.get("/api/engine").get_json()["tip_url"] == "https://ko-fi.com/edgeorluck"
