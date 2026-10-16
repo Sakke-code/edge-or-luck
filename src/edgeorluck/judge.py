@@ -1698,16 +1698,16 @@ def _summary(cards: List[Dict[str, Any]], counts: Dict[str, int], pairs: List[Di
 def judge_dict(data: Any = None, *, variants_tried: Any = None, benchmark_return_pct: Any = None,
                kind: Optional[str] = None, unit: Optional[str] = None, fees_included: Any = None,
                source: Any = None, backtest: Any = None, name: Optional[str] = None,
-               include_chart: bool = False, details: bool = True) -> Dict[str, Any]:
+               include_chart: bool = False, details: bool = True, allow_paths: bool = True) -> Dict[str, Any]:
     settings = make_settings(variants_tried, benchmark_return_pct, fees_included, source, unit, kind, include_chart)
     try:
-        read = read_any(data, kind=kind, unit=unit, name=name)
+        read = read_any(data, kind=kind, unit=unit, name=name, allow_paths=allow_paths)
     except Exception as exc:  # the readers should not raise; if one does, the trader still gets an answer
         read = ReadResult([], "unknown", need={"problem": f"Could not read the input ({type(exc).__name__}: {exc})."})
     bt = None
     if backtest is not None:
         try:
-            bt = read_any(backtest, kind=None, unit=None, name="Backtest")
+            bt = read_any(backtest, kind=None, unit=None, name="Backtest", allow_paths=allow_paths)
         except Exception as exc:
             bt = ReadResult([], "unknown", need={"problem": f"Could not read the backtest ({exc})."})
     try:

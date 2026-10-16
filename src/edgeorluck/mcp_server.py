@@ -62,6 +62,9 @@ JUDGE_DESCRIPTION = (
 
 SESSION: set = set()     # each distinct record or rule judged since the server started: a version tried
 _CURRENT: ContextVar[Optional[str]] = ContextVar("edgeorluck_session", default=None)  # over the web: the session id
+# May a string name a file on this computer? Yes over stdio (your own files); never over the web (web/tools.py),
+# where csv_text that looks like a path is only text.
+_FILES: ContextVar[bool] = ContextVar("edgeorluck_files", default=True)
 _SESSIONS: "OrderedDict[str, set]" = OrderedDict()     # over the web, the most recent MAX_SESSIONS sessions
 MAX_SESSIONS = 10_000
 _SESSIONS_LOCK = threading.Lock()
@@ -113,7 +116,8 @@ def judge_trades(file_path: Optional[str] = None, csv_text: Optional[str] = None
         return (f"No file at {data}. Check the path (an absolute path is safest), or pass the file's text as "
                 "csv_text.")
     run = partial(judge, data, benchmark_return_pct=benchmark_return_pct, fees_included=fees_included, source=source,
-                  unit=unit, kind=kind, backtest=_path(backtest_file_path) or backtest_csv_text or backtest_pnl)
+                  unit=unit, kind=kind, backtest=_path(backtest_file_path) or backtest_csv_text or backtest_pnl,
+                  allow_paths=_FILES.get())
     result = run(variants_tried=variants_tried)
     if result.status == "ok":           # the same trades judged again (say, with an answer added) are no new version
         _tried().add(result["input_fingerprint"])

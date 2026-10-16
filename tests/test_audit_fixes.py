@@ -54,6 +54,23 @@ def test_the_api_never_opens_a_file_named_in_a_request(client, tmp_path):
         assert j["status"] == "need_input" and "api_key_ABC123" not in json.dumps(j)
 
 
+def test_the_web_tools_never_open_a_file_named_in_a_request(client, tmp_path):
+    # 2026-10-16: the JSON tools (/api/tools/*) and the hosted MCP server (/mcp) read a path-looking csv_text from
+    # the server's disk and echoed it as "Columns we saw"; /proc/self/environ, one line, gave the signing secret.
+    from edgeorluck import mcp_server
+    from edgeorluck.web import tools
+    secret = tmp_path / "server_side.csv"
+    secret.write_text("api_key_ABC123,owner_x\n" + samples.lucky(), encoding="utf-8")
+    environ = tmp_path / "environ"
+    environ.write_bytes(b"PATH=/usr/bin\0EDGEORLUCK_SECRET=api_key_ABC123\0PORT=8080\0")
+    for path in (secret.as_posix(), environ.as_posix()):
+        assert "api_key_ABC123" not in tools.judge(csv_text=path)["markdown"]
+        assert "api_key_ABC123" not in tools.judge(pnl=[1, -1] * 20, backtest_csv_text=path)["markdown"]
+        assert "api_key_ABC123" not in client.post("/api/tools/judge", json={"csv_text": path}).get_data(as_text=True)
+    assert "api_key_ABC123" in mcp_server.judge_trades(file_path=environ.as_posix())   # your own computer: still read
+    assert "api_key_ABC123" in mcp_server.judge_trades(csv_text=environ.as_posix())    # ... the same, as before
+
+
 def test_the_rate_limit_ignores_a_made_up_forwarded_for(tmp_path):
     c = create_app(Ledger(root=tmp_path), rate_limit=3).test_client()
     codes = [c.get("/api/judge?pnl=1,-1,2", headers={"X-Forwarded-For": f"10.0.0.{i}"}).status_code for i in range(5)]

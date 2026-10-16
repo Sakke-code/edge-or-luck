@@ -60,7 +60,8 @@ class Result(Mapping):
 
 def judge(data: Any = None, *, variants_tried: Any = None, benchmark_return_pct: Any = None,
           kind: Optional[str] = None, unit: Optional[str] = None, fees_included: Any = None, source: Any = None,
-          backtest: Any = None, name: Optional[str] = None, include_chart: bool = False) -> Result:
+          backtest: Any = None, name: Optional[str] = None, include_chart: bool = False,
+          allow_paths: bool = True) -> Result:
     """Judge a trading record: a real edge, or luck?
 
     data: a file path (CSV/TSV/XLSX/freqtrade JSON), CSV text or bytes, a
@@ -78,9 +79,11 @@ def judge(data: Any = None, *, variants_tried: Any = None, benchmark_return_pct:
     backtest: the backtest's trades (same forms as data), to check whether
         live trades behave like the backtest promised.
     include_chart: add equity and coin-flip curves (for drawing).
+    allow_paths: False when the input comes from someone else (a web visitor): a string is then only ever text,
+        never the name of a file on this computer.
 
     Never raises on messy input: status "need_input" says what is missing.
     """
     return Result(judge_dict(data, variants_tried=variants_tried, benchmark_return_pct=benchmark_return_pct,
                              kind=kind, unit=unit, fees_included=fees_included, source=source, backtest=backtest,
-                             name=name, include_chart=include_chart))
+                             name=name, include_chart=include_chart, allow_paths=allow_paths))

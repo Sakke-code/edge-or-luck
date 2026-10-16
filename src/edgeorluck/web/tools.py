@@ -28,12 +28,14 @@ _SECRET = (os.environ.get("EDGEORLUCK_SECRET") or secrets.token_hex(32)).encode(
 
 @contextlib.contextmanager
 def studied(study: Optional[str]) -> Iterator[str]:
-    """Count what is judged inside under this study (a new one when none or a malformed one is given)."""
+    """Count what is judged inside under this study (a new one when none or a malformed one is given). Inside,
+    no string names a file on this server: every web tool is called through here."""
     key = study if isinstance(study, str) and _STUDY.match(study) else secrets.token_hex(6)
-    token = local._CURRENT.set(key)
+    token, files = local._CURRENT.set(key), local._FILES.set(False)
     try:
         yield key
     finally:
+        local._FILES.reset(files)
         local._CURRENT.reset(token)
 
 
