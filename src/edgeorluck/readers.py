@@ -101,6 +101,8 @@ def number(value: Any) -> float:
         return float("nan")
     if re.search(r"\d[:/]\d", text) or text[:1] in "[{":   # a clock time, a date or fraction, a list: not an amount
         return float("nan")
+    if re.fullmatch(r"\d{1,2}\.\d{1,2}\.(\d{2}|\d{4})", text):   # 01.01.2025: a date, not 1,012,025
+        return float("nan")
     text = re.sub(r"^\+-", "-", text)
     if text.count(".") > 1 and "," not in text:     # 1.234.567: dots as thousands separators
         text = text.replace(".", "")
@@ -303,6 +305,27 @@ def numbers_from_text(text: str) -> Optional[Tuple[List[float], Optional[str]]]:
         return None
     unit = "%" if "%" in body else _currency_in(body)
     return [v for v in values if math.isfinite(v)], unit
+
+
+_THOUSANDS = re.compile(r"[-+(]?[$€£]?\d{1,3}(,\d{3})+(\.\d+)?\)?%?")
+
+
+def _columns(text: str) -> bool:
+    """Lines that all split into the same two or more fields on one separator: a table, never a list of results
+    ("Datum;Gewinn" over "01.01.2025;-1,0" rows was read as one, the dates among the results). A list's own
+    separators on one line ("12.5; -3; 4.1"), a decimal comma on each line ("-1,0") and thousands separators
+    ("1,234.50") don't make columns."""
+    lines = [ln.strip().rstrip(";\t ") for ln in text.splitlines() if ln.strip()]
+    if len(lines) < 2:
+        return False
+    for sep in (";", "\t"):
+        widths = {len(ln.split(sep)) for ln in lines}
+        if len(widths) == 1 and widths.pop() >= 2:
+            return True
+    widths = {len(ln.split(",")) for ln in lines}
+    if len(widths) != 1 or widths.pop() < 2 or all(_THOUSANDS.fullmatch(ln) for ln in lines):
+        return False
+    return _has_words(lines[0]) or any("." in cell for ln in lines for cell in ln.split(","))
 
 
 def _numbers_with_words_around(text: str) -> Tuple[Optional[Tuple[List[float], Optional[str]]], List[str]]:
@@ -999,6 +1022,24 @@ def _from_table(frame: pd.DataFrame, name: str, *, unit: Optional[str], kind: Op
             canon = canon[~drop]
             warning.append(f"Left out {int(drop.sum())} opening execution{'s' if drop.sum() != 1 else ''}: the "
                            "broker marks them as opening, and only the closing ones carry a trade's result.")
+    # Rows without a "Total" label that are still no trades: a last row with no date whose result is the sum of
+    # all the others (MetaTrader 5's positions report ends with one; counted, it doubled the record), and trades a
+    # status column calls still open (vectorbt's trades saved as CSV keep the open one, at its unrealized result).
+    col = "pnl" if canon["pnl"].notna().any() else "pct"
+    if when and len(canon) >= 3 and pd.isna(canon["time"].iloc[-1]) and canon["time"].iloc[:-1].notna().all():
+        last, rest = canon[col].iloc[-1], canon[col].iloc[:-1]
+        if pd.notna(last) and rest.notna().all() and abs(last - rest.sum()) <= 0.01 + 0.005 * len(rest):
+            canon = canon.iloc[:-1]
+            warning.append("Left out the last row: it has no date, and its result is the sum of the others (a total).")
+    status = find_column(cols, ("status", "trade status", "position status"),
+                         avoid=[c for c in (money, pct, when) if c])
+    if status is not None:
+        states = frame.loc[canon.index, status].astype(str).str.strip().str.lower()
+        still_open = states.eq("open").to_numpy()
+        if states.isin(["open", "closed"]).all() and still_open.any():
+            canon = canon[~still_open]
+            warning.append(f"Left out {int(still_open.sum())} trade{'s' if still_open.sum() != 1 else ''} still "
+                           "open: an open trade's result isn't final yet.")
     # Futures-style fill exports carry realized P&L only on closing rows: drop the opening rows, but only for
     # files that look like fills (a price and a quantity), never breakeven trades in a trade table.
     fill_shaped = _looks_like_fills(cols, frame) is not None
@@ -1278,9 +1319,10 @@ def _read_text(text: str, *, kind: str, unit: Optional[str], name: str,
         if parsed is not None and not (isinstance(parsed, list) and all(isinstance(v, (int, float)) for v in parsed)):
             # text inside text is never a file name
             return read_any(parsed, kind=kind, unit=unit, name=explicit, allow_paths=False)
-    pasted = numbers_from_text(stripped) if kind in ("auto", "pnl") else None
+    listable = kind == "pnl" or (kind == "auto" and not _columns(stripped))
+    pasted = numbers_from_text(stripped) if listable else None
     skipped: List[str] = []
-    if pasted is None and kind in ("auto", "pnl"):
+    if pasted is None and listable:
         pasted, skipped = _numbers_with_words_around(stripped)
     if pasted is not None:
         values, seen_unit = pasted

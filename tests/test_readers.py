@@ -130,6 +130,40 @@ def test_pasted_lists_of_numbers():
     assert read_any("12,5\n-3,2").strategies[0].pnl.tolist() == [12.5, -3.2]
 
 
+def test_an_unlabelled_total_and_an_open_trade_are_no_trades():
+    # 2026-10-16 audit: MetaTrader 5's positions report ends in a total with no label (it was counted: 41 trades,
+    # the result doubled), and vectorbt's trades saved as CSV keep the still-open trade (Status "Open").
+    profits = [round((-1) ** i * 12.5 + i * 0.37, 2) for i in range(40)]
+    rows = [["Time", "Symbol", "Type", "Volume", "Profit"]]
+    rows += [[f"2025.03.{1 + i % 28:02d} 10:{i:02d}:00", "EURUSD", "buy", "0.10", f"{p:.2f}"]
+             for i, p in enumerate(profits)]
+    r = read_any(csv_text(rows + [["", "", "", "", f"{sum(profits):.2f}"]]))
+    [st] = r.strategies
+    assert len(st.pnl) == 40 and st.pnl.sum() == pytest.approx(sum(profits))
+    assert any("sum of the others" in w for w in r.warnings)
+    assert len(read_any(csv_text(rows + [["", "", "", "", "99.00"]])).strategies[0].pnl) == 41   # not a total
+    vbt = [["Exit Trade Id", "Size", "Entry Timestamp", "Exit Timestamp", "PnL", "Return", "Status"]]
+    vbt += [[i, 1, f"2025-01-{1 + i % 28:02d}", f"2025-02-{1 + i % 28:02d}", p, p / 100, "Closed"]
+            for i, p in enumerate(profits)]
+    r = read_any(csv_text(vbt + [[40, 1, "2025-03-01", "2025-03-02", 55.5, 0.555, "Open"]]))
+    assert len(r.strategies[0].pnl) == 40 and any("still open" in w for w in r.warnings)
+
+
+def test_a_table_of_numbers_and_dates_is_a_table_not_a_list():
+    # 2026-10-16: "Datum;Gewinn" over "01.01.2025;-1,0" rows was read as a list with every cell a result: 80
+    # "trades", each date one of +1,012,025, and the verdict a real edge. A trade number column did the same.
+    results = [round(0.3 * (-1) ** i + 0.05 * (i % 4), 2) for i in range(40)]
+    day = [f"{1 + i % 28:02d}.{1 + i // 28:02d}.2025" for i in range(40)]
+    comma = [f"{x:.2f}".replace(".", ",") for x in results]
+    for text in ("Datum;Gewinn\n" + "\n".join(f"{d};{x}" for d, x in zip(day, comma)),
+                 "Date\tResult\n" + "\n".join(f"{d}\t{x}" for d, x in zip(day, results)),
+                 "Trade;Profit\n" + "\n".join(f"{i + 1};{x}" for i, x in enumerate(comma)),
+                 "pnl,size\n" + "\n".join(f"{x},100" for x in results)):
+        [st] = read_any(text).strategies
+        assert st.pnl.tolist() == pytest.approx(results), text[:12]
+    assert math.isnan(number("01.01.2025")) and number("1.234.567") == 1234567.0
+
+
 def test_python_shapes():
     assert read_any([1.0, -2.0, "3%"]).strategies[0].unit == "%"
     assert len(read_any(np.array([1.0, 2.0, -1.0])).strategies[0].pnl) == 3
