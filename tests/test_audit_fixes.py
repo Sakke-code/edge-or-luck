@@ -67,8 +67,12 @@ def test_the_web_tools_never_open_a_file_named_in_a_request(client, tmp_path):
         assert "api_key_ABC123" not in tools.judge(csv_text=path)["markdown"]
         assert "api_key_ABC123" not in tools.judge(pnl=[1, -1] * 20, backtest_csv_text=path)["markdown"]
         assert "api_key_ABC123" not in client.post("/api/tools/judge", json={"csv_text": path}).get_data(as_text=True)
-    assert "api_key_ABC123" in mcp_server.judge_trades(file_path=environ.as_posix())   # your own computer: still read
-    assert "api_key_ABC123" in mcp_server.judge_trades(csv_text=environ.as_posix())    # ... the same, as before
+    trades = tmp_path / "trades.csv"
+    trades.write_text(samples.lucky(), encoding="utf-8")
+    read = "Read a table of closed trades"
+    assert read not in tools.judge(csv_text=trades.as_posix())["markdown"]                 # the web: only text
+    assert read in mcp_server.judge_trades(file_path=trades.as_posix())                    # your own computer: read
+    assert read in mcp_server.judge_trades(csv_text=trades.as_posix())                     # ... the same, as before
 
 
 def test_odd_tool_values_and_huge_results_get_plain_answers(client):
