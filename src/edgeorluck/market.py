@@ -140,9 +140,11 @@ def prices(symbol: str = "BTCUSDT", interval: str = "1h", start: Any = None, end
     if kind == "stock" and interval == "1h" and start_ms < (now - timedelta(days=729)).timestamp() * 1000:
         raise PriceError("Yahoo Finance keeps hourly bars for about the last two years: start later, or use 1d.")
     # A period that ends near now also depends on which bars have finished since: the bar count now is in the key,
-    # so a frame cached while a bar was forming isn't handed out after it has closed.
+    # so a frame cached while a bar was forming isn't handed out after it has closed. A stock's day closes with its
+    # session, not on a bar boundary, so its recent periods are fetched again each hour.
     now_ms = int(now.timestamp() * 1000)
-    key = (kind, symbol, interval, start_ms, end_ms // step, now_ms // step if end_ms > now_ms - 2 * step else None)
+    slot = min(step, 3_600_000) if kind == "stock" else step
+    key = (kind, symbol, interval, start_ms, end_ms // step, now_ms // slot if end_ms > now_ms - 2 * step else None)
     if key in _mk_cache:
         return _mk_cache[key].copy()
     fetch = {"crypto": _binance, "stock": _yahoo, "forex": _ecb}[kind]
@@ -212,7 +214,16 @@ def _yahoo(symbol: str, interval: str, start_ms: int, end_ms: int, now_ms: int) 
         for col in ("open", "high", "low", "close"):
             frame[col] = frame[col] * factor
     frame.index = pd.to_datetime(pd.Series(result[0]["timestamp"]), unit="s", utc=True)
-    finished = frame.index + pd.Timedelta(milliseconds=INTERVAL_MS[interval]) <= pd.Timestamp(now_ms, unit="ms", tz="UTC")
+    done = frame.index + pd.Timedelta(milliseconds=INTERVAL_MS[interval])
+    meta = result[0].get("meta") or {}
+    regular = (meta.get("currentTradingPeriod") or {}).get("regular") or {}
+    offset = regular.get("gmtoffset", meta.get("gmtoffset"))
+    if interval == "1d" and isinstance(regular.get("end"), (int, float)) and isinstance(offset, (int, float)):
+        # A day's bar is done at its session's close on the exchange's clock. Yahoo stamps it at the open, so
+        # "a day after the stamp" hid yesterday's session until today's open.
+        shift = pd.Timedelta(seconds=offset)
+        done = (frame.index + shift).floor("D") + pd.Timedelta(seconds=(regular["end"] + offset) % 86_400) - shift
+    finished = done <= pd.Timestamp(now_ms, unit="ms", tz="UTC")
     frame = frame[np.asarray(finished) & frame["close"].notna().to_numpy()]
     frame = frame[~frame.index.duplicated(keep="last")]
     frame.attrs["source"] = f"Yahoo Finance {symbol} {interval} (split- and dividend-adjusted)"

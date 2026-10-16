@@ -359,8 +359,21 @@ def test_prices_explains_bad_input(monkeypatch):
 
 def test_prices_for_stocks_and_currencies(monkeypatch):
     import urllib.error
-    now = pd.Timestamp.now(tz="UTC").floor("D")
-    days = pd.date_range(end=now, periods=40, freq="D") + pd.Timedelta(hours=13, minutes=30)   # the last: today, open
+    from datetime import datetime
+
+    class _At(datetime):                                  # the clock prices() reads
+        at = None
+
+        @classmethod
+        def now(cls, tz=None):
+            return cls.at
+
+    monkeypatch.setattr(market, "datetime", _At)
+    today = pd.Timestamp("2026-10-14", tz="UTC")          # a Wednesday; New York is UTC-4
+    days = pd.date_range(end=today, periods=40, freq="D") + pd.Timedelta(hours=13, minutes=30)   # stamped at the open
+    session = {"start": int((today + pd.Timedelta(hours=13, minutes=30)).timestamp()),
+               "end": int((today + pd.Timedelta(hours=20)).timestamp()), "gmtoffset": -14400}
+    meta = {"gmtoffset": -14400, "currentTradingPeriod": {"regular": session}}
     seen = []
 
     def fake_urlopen(request, timeout=30):
@@ -370,18 +383,28 @@ def test_prices_for_stocks_and_currencies(monkeypatch):
         if "finance.yahoo" in request.full_url:
             c = [100.0 + i for i in range(40)]
             quote = {"open": c, "high": [x + 1 for x in c], "low": [x - 1 for x in c], "close": c, "volume": [1] * 40}
-            return _Response(json.dumps({"chart": {"result": [{"timestamp": [int(t.timestamp()) for t in days],
+            return _Response(json.dumps({"chart": {"result": [{"meta": meta, "timestamp": [int(t.timestamp()) for t in days],
                              "indicators": {"quote": [quote], "adjclose": [{"adjclose": [x / 2 for x in c]}]}}]}}).encode())
-        dates = pd.date_range(end=now, periods=30, freq="B")
+        dates = pd.date_range(end=today, periods=30, freq="B")
         return _Response(json.dumps({"rates": {d.strftime("%Y-%m-%d"): {"USD": 1.1 + i / 1000}
                                                for i, d in enumerate(dates)}}).encode())
+
+    def spy(hour):
+        _At.at = (today + pd.Timedelta(hours=hour)).to_pydatetime()
+        return market.prices("spy", "1d", start=today - pd.Timedelta(days=60))
+
     monkeypatch.setattr(market.urllib.request, "urlopen", fake_urlopen)
     market._mk_cache.clear()
-    px = market.prices("spy", "1d", start=now - pd.Timedelta(days=60))
+    px = spy(10.5)                  # before the open: yesterday's session is done, today's has not begun
     assert "/v8/finance/chart/SPY?interval=1d" in seen[0].full_url and "edgeorluck" in seen[0].get_header("User-agent")
-    assert len(px) == 39 and px["open"].iloc[0] == px["close"].iloc[0] == 50.0     # adjusted; today's bar left out
-    assert px.attrs["source"].startswith("Yahoo Finance SPY 1d")
-    fx = market.prices("EUR/USD", "1d", start=now - pd.Timedelta(days=60))
+    assert len(px) == 39 and px["open"].iloc[0] == px["close"].iloc[0] == 50.0     # adjusted
+    assert px.index[-1] == days[-2] and px.attrs["source"].startswith("Yahoo Finance SPY 1d")
+    assert len(spy(15)) == 39                             # the session is open: its bar is still forming
+    assert len(spy(21)) == 40 and len(seen) == 3          # it closed at 20:00 UTC, and was fetched again within the hour
+    meta.clear()                                          # without the session's hours: done a day after the stamp
+    market._mk_cache.clear()
+    assert len(spy(21)) == 39
+    fx = market.prices("EUR/USD", "1d", start=today - pd.Timedelta(days=60))
     assert list(fx.columns) == ["close"] and len(fx) == 30 and "base=EUR&symbols=USD" in seen[-1].full_url
     assert "next bar's close" in eol.backtest(fx, {"buy": "close > sma(5)", "sell": "close < sma(5)"}).to_markdown()
     with pytest.raises(market.PriceError, match="Yahoo Finance has no"):
