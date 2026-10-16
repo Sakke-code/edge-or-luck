@@ -20,6 +20,7 @@ import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, Iterator, List, Optional, Union
 
+from .. import market
 from .. import mcp_server as local
 
 _STUDY = re.compile(r"^[A-Za-z0-9_-]{6,40}$")
@@ -28,13 +29,15 @@ _SECRET = (os.environ.get("EDGEORLUCK_SECRET") or secrets.token_hex(32)).encode(
 
 @contextlib.contextmanager
 def studied(study: Optional[str]) -> Iterator[str]:
-    """Count what is judged inside under this study (a new one when none or a malformed one is given). Inside,
-    no string names a file on this server: every web tool is called through here."""
+    """Count what is judged inside under this study (a new one when none or a malformed one is given). Every web
+    tool is called through here: inside, no string names a file on this server, and fetching and tuning keep to
+    the web's limits (market.WEB)."""
     key = study if isinstance(study, str) and _STUDY.match(study) else secrets.token_hex(6)
-    token, files = local._CURRENT.set(key), local._FILES.set(False)
+    token, files, web = local._CURRENT.set(key), local._FILES.set(False), market.WEB.set(True)
     try:
         yield key
     finally:
+        market.WEB.reset(web)
         local._FILES.reset(files)
         local._CURRENT.reset(token)
 

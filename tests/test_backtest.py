@@ -522,3 +522,42 @@ def test_the_one_file_build_backtests_like_the_package(tmp_path):
         assert mod.tune(px, tuned, grid).to_dict() == eol.tune(px, tuned, grid).to_dict()
     finally:
         sys.modules.pop("eol_single_bt", None)
+
+
+def test_web_calls_keep_to_the_fetch_and_tune_limits(monkeypatch):
+    """2026-10-16 audit: one 1m backtest over the web asked Binance for 294 windows, and 1,000 tune settings over
+    two years of hourly bars took 9.5 s. Web calls share the server's one address and its workers; the library and
+    the tools on your own computer keep their limits."""
+    from edgeorluck import simulate
+    from edgeorluck.web import tools
+    step = market.INTERVAL_MS["1m"]
+    asked = []
+
+    def fake_get(path):
+        q = parse_qs(urlparse(path).query)
+        asked.append(q)
+        start, end = int(q["startTime"][0]), int(q["endTime"][0])
+        bars = range(-(-start // step) * step, end + 1, step)
+        return [[t, "1", "1", "1", "1", "1", t + step - 1, "0", 0, "0", "0", "0"] for t in bars][:int(q["limit"][0])]
+
+    monkeypatch.setattr(market, "_mk_get", fake_get)
+    market._mk_cache.clear()
+    market._binance_sent.clear()
+    try:
+        with tools.studied(None):
+            with pytest.raises(market.PriceError, match="more than 50,000 bars"):
+                market.prices("BTCUSDT", "1m", start="2026-01-01", end="2026-06-01")
+            assert not asked                                  # refused before any request
+            px = market.prices("BTCUSDT", "1m")               # the default period: the last 50,000 bars
+            assert len(px) <= market.WEB_MAX_BARS and len(asked) <= 51
+            monkeypatch.setattr(market, "WEB_BINANCE_PER_MINUTE", len(asked) + 10)
+            with pytest.raises(market.PriceError, match="busy"):
+                market.prices("ETHUSDT", "1m")                # the whole server's minute is spent
+            monkeypatch.setattr(simulate, "WEB_TUNE_WORK", 1_000)
+            with pytest.raises(RuleError, match="more than one call here may test"):
+                eol.tune(walk(300), {"buy": "rsi(3) < {low}", "sell": "rsi(3) > 60"}, {"low": list(range(5, 15))})
+        assert eol.tune(walk(300), {"buy": "rsi(3) < {low}", "sell": "rsi(3) > 60"}, {"low": list(range(5, 15))})
+        assert len(market.prices("BTCUSDT", "1m", start="2026-04-01", end="2026-06-01")) > market.WEB_MAX_BARS
+    finally:
+        market._binance_sent.clear()
+        market._mk_cache.clear()

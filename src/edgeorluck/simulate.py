@@ -33,7 +33,7 @@ from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 
-from .market import PriceError, load_prices
+from .market import WEB, PriceError, load_prices
 from .result import Result, judge
 from .rulebook import RULE_SERIES, Rule, RuleError, compile_rule, rule_from
 
@@ -42,6 +42,7 @@ DEFAULT_SLIPPAGE_PCT = 0.05     # per fill, against you
 PEEK_CHECKPOINTS = 24           # evenly spread cuts, plus the first bars and the decision changes
 PEEK_CHANGES = 60               # at most this many decision changes are cut at (and the bars before them)
 MAX_COMBINATIONS = 1000
+WEB_TUNE_WORK = 2_000_000       # over the web: settings x bars in one tune call, about a second of work
 MIN_TUNE_TRADES = 10
 
 SIM_FOR_THE_ASSISTANT = [
@@ -560,8 +561,13 @@ def tune(prices: Any, rule: Any, grid: Mapping[str, Sequence[Any]], *, holdout: 
     n = len(frame)
     cut = int(round(n * (1.0 - holdout)))
     fills, _ = _sim_fill_prices(frame)
+    settings = _sim_grid(grid)
+    if WEB.get() and len(settings) * n > WEB_TUNE_WORK:
+        # 1,000 settings over two years of hourly bars took 9.5 s; ten such calls held every worker of the site
+        raise RuleError(f"{len(settings):,} settings over {n:,} bars is more than one call here may test "
+                        f"({WEB_TUNE_WORK:,} settings times bars): try fewer values or a shorter period")
     rows, best_i, best_score, built, seen, combos = [], None, -math.inf, [], set(), []
-    for params in _sim_grid(grid):
+    for params in settings:
         made = rule(**params) if (callable(rule) and not isinstance(rule, (Rule, Mapping))) else rule_from(rule, params)
         made = _sim_rule(made) if not isinstance(made, Rule) else made
         if isinstance(made, Rule):

@@ -24,7 +24,7 @@ dependencies = ["numpy>=1.23", "pandas>=1.5", "mcp>=1.2"]
 [project.optional-dependencies]
 web = ["flask>=2.2", "waitress>=2.1"]
 mcp = []                                            # kept so 'edgeorluck[mcp]' still installs: mcp is built in
-host = ["flask>=2.2", "a2wsgi>=1.10", "mcp>=2.2"]   # the hosted site: web app + MCP over HTTP (web/remote.py)
+host = ["flask>=2.2", "a2wsgi>=1.10", "mcp>=2.2", "openpyxl>=3.0"]   # the hosted site (web/remote.py), .xlsx too
 xlsx = ["openpyxl>=3.0"]
 all = ["flask>=2.2", "waitress>=2.1", "a2wsgi>=1.10", "openpyxl>=3.0"]
 dev = ["pytest>=7", "jsonschema>=4", "flask>=2.2", "waitress>=2.1", "a2wsgi>=1.10", "openpyxl>=3.0"]

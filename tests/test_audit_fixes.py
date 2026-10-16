@@ -71,6 +71,43 @@ def test_the_web_tools_never_open_a_file_named_in_a_request(client, tmp_path):
     assert "api_key_ABC123" in mcp_server.judge_trades(csv_text=environ.as_posix())    # ... the same, as before
 
 
+def test_odd_tool_values_and_huge_results_get_plain_answers(client):
+    # 2026-10-16 audit: variants_tried "abc" answered with Python's own error text, results of 1e308 summed to
+    # an infinity JSON can't hold, and the hosted tools asked for a file_path they don't take.
+    from edgeorluck.web import tools
+    r = client.post("/api/tools/judge", json={"pnl": [1, -1] * 20, "variants_tried": "abc"})
+    assert r.status_code == 400 and r.get_json()["error"] == "a field has a value of the wrong kind"
+    assert client.post("/api/tools/backtest", json={}).get_json()["error"] == "missing field(s) buy"
+    huge = eol.judge([1e308] * 20 + [-1e308] * 20, include_chart=True)
+    assert None in json.loads(huge.to_json(None))["strategies"][0]["chart"]["you"]
+    assert "file_path" not in tools.judge()["markdown"]
+
+
+def test_the_site_sends_safety_headers_and_never_shows_private_samples_behind_a_proxy(tmp_path, monkeypatch):
+    # 2026-10-16 audit: no security headers; an odd thank-you token gave a 500; behind a proxy "this computer"
+    # came from a header; a link's trade numbers went into the server's access log.
+    from pathlib import Path
+    c = create_app(Ledger(root=tmp_path / "ledger"), rate_limit=1000).test_client()
+    page = c.get("/")
+    assert page.headers["X-Content-Type-Options"] == "nosniff" and page.headers["X-Frame-Options"] == "DENY"
+    assert page.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert "Strict-Transport-Security" not in page.headers
+    assert c.get("/", base_url="https://example.org").headers["Strict-Transport-Security"].startswith("max-age=")
+    assert c.get("/thanks/a.%C3%A9").status_code == 404
+    private = tmp_path / "private"
+    private.mkdir()
+    (private / "mine.csv").write_text("pnl\n" + "\n".join(["1", "-1"] * 20), encoding="utf-8")
+    monkeypatch.setenv("EDGEORLUCK_PRIVATE_SAMPLES", str(private))
+    assert "private:mine" in {s["id"] for s in c.get("/api/samples").get_json()}        # on this computer
+    monkeypatch.setenv("EDGEORLUCK_PROXIES", "1")
+    hosted = create_app(Ledger(root=tmp_path / "hosted"), rate_limit=1000).test_client()
+    local_looking = {"X-Forwarded-For": "127.0.0.1"}
+    assert "private:mine" not in {s["id"] for s in hosted.get("/api/samples", headers=local_looking).get_json()}
+    assert hosted.post("/api/judge", json={"sample": "private:mine"}, headers=local_looking).status_code == 404
+    assert "request log" in c.get("/privacy").get_data(as_text=True)
+    assert "--no-access-log" in (Path(__file__).parents[1] / "Dockerfile").read_text(encoding="utf-8")
+
+
 def test_the_rate_limit_ignores_a_made_up_forwarded_for(tmp_path):
     c = create_app(Ledger(root=tmp_path), rate_limit=3).test_client()
     codes = [c.get("/api/judge?pnl=1,-1,2", headers={"X-Forwarded-For": f"10.0.0.{i}"}).status_code for i in range(5)]

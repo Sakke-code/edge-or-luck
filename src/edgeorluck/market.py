@@ -15,10 +15,13 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import time
 import urllib.error
 import urllib.request
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import ContextVar
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -43,6 +46,28 @@ ECB_CODES = set("AUD BGN BRL CAD CHF CNY CZK DKK EUR GBP HKD HUF IDR ILS INR ISK
 CRYPTO_QUOTES = ("USDT", "USDC", "FDUSD", "TUSD", "BUSD", "DAI", "BTC", "ETH", "BNB", "EUR", "TRY")
 _UA = {"User-Agent": "edgeorluck (+https://github.com/Sakke-code/edge-or-luck)", "Accept": "application/json"}
 _mk_cache: Dict[tuple, pd.DataFrame] = {}
+# A call over the web (web/tools.py sets WEB) fetches at most WEB_MAX_BARS bars, and all of them together at most
+# WEB_BINANCE_PER_MINUTE Binance requests a minute: they leave from the server's one address, which Binance bans
+# past its own limit (about 3,000 a minute), and then no visitor gets prices. One 1m backtest asked for 294.
+WEB: ContextVar[bool] = ContextVar("edgeorluck_web", default=False)
+WEB_MAX_BARS = 50_000
+WEB_BINANCE_PER_MINUTE = 1_200
+_binance_sent: "deque[float]" = deque()
+_binance_lock = threading.Lock()
+
+
+def _spend_binance(requests: int) -> None:
+    """Count requests about to go to Binance from a web call; refuse them when the minute's budget is spent."""
+    if not WEB.get():
+        return
+    with _binance_lock:
+        now = time.monotonic()
+        while _binance_sent and now - _binance_sent[0] > 60.0:
+            _binance_sent.popleft()
+        if len(_binance_sent) + requests > WEB_BINANCE_PER_MINUTE:
+            raise PriceError("The price source is busy right now: try again in a minute, or bring your own prices "
+                             "with load_prices().")
+        _binance_sent.extend([now] * requests)
 
 
 class PriceError(RuntimeError):
@@ -122,7 +147,7 @@ def prices(symbol: str = "BTCUSDT", interval: str = "1h", start: Any = None, end
         dividend-adjusted open, high, low, close and volume, at 1h (about the last two years), 1d or 1w;
         or two currencies (EURUSD, USDJPY): the European Central Bank's daily reference rate as the
         close, at 1d or 1w. See kind_of().
-    start defaults to two years ago, end to now."""
+    start defaults to two years ago, or as far back as the bar limit allows; end defaults to now."""
     kind, symbol = kind_of(symbol)
     allowed = {"crypto": INTERVAL_MS, "stock": YAHOO_INTERVALS, "forex": ("1d", "1w")}[kind]
     if interval not in allowed:
@@ -133,10 +158,14 @@ def prices(symbol: str = "BTCUSDT", interval: str = "1h", start: Any = None, end
     if start is None:
         start_ms -= start_ms % step         # "two years ago" on a bar boundary, so repeated calls share the cache
     end_ms = min(_mk_ms(end, now), int(now.timestamp() * 1000))
+    cap = WEB_MAX_BARS if WEB.get() else MAX_BARS
+    if start is None and (end_ms - start_ms) / step > cap:     # the default period, cut to the bars one call may fetch
+        start_ms = end_ms - cap * step
+        start_ms += -start_ms % step
     if start_ms >= end_ms:
         raise PriceError("start must be before end.")
-    if (end_ms - start_ms) / step > MAX_BARS:
-        raise PriceError(f"That is more than {MAX_BARS:,} bars: pick a later start or a longer interval.")
+    if (end_ms - start_ms) / step > cap:
+        raise PriceError(f"That is more than {cap:,} bars: pick a later start or a longer interval.")
     if kind == "stock" and interval == "1h" and start_ms < (now - timedelta(days=729)).timestamp() * 1000:
         raise PriceError("Yahoo Finance keeps hourly bars for about the last two years: start later, or use 1d.")
     # A period that ends near now also depends on which bars have finished since: the bar count now is in the key,
@@ -163,6 +192,7 @@ def _binance(symbol: str, interval: str, start_ms: int, end_ms: int, now_ms: int
     windows = [(lo, min(lo + span - 1, end_ms)) for lo in range(start_ms, end_ms, span)]
     paths = [f"/api/v3/klines?symbol={symbol}&interval={interval}&startTime={lo}&endTime={hi}&limit={KLINE_LIMIT}"
              for lo, hi in windows]
+    _spend_binance(len(paths))
     with ThreadPoolExecutor(max_workers=max(1, min(FETCH_WORKERS, len(paths)))) as pool:
         rows: List[list] = [row for batch in pool.map(_mk_get, paths) for row in (batch or [])]
     if not rows:

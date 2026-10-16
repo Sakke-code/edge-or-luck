@@ -159,6 +159,10 @@ def test_behind_a_proxy_the_visitor_is_the_address_the_proxy_added(tmp_path, mon
     assert json.loads(body)["servers"][0]["url"] == "https://example.org"     # what a GPT's actions call
     image = (Path(__file__).parents[1] / "Dockerfile").read_text(encoding="utf-8")
     assert "EDGEORLUCK_PROXIES=1" in image and "--no-proxy-headers" in image and "forwarded-allow-ips" not in image
+    # The image installs .[host]: the page takes .xlsx files, so the host extra must read them (2026-10-16).
+    import re
+    project = (Path(__file__).parents[1] / "pyproject.toml").read_text(encoding="utf-8")
+    assert "openpyxl" in re.search(r"^host = \[(.*?)\]", project, re.M).group(1)
 
 
 @pytest.mark.slow

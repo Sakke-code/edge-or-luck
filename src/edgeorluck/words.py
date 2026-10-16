@@ -125,5 +125,6 @@ def rnd(value: Any, digits: int = 6) -> Any:
     return value
 
 
-def round_list(values: np.ndarray) -> List[float]:
-    return [float(f"{v:.4g}") for v in values]
+def round_list(values: np.ndarray) -> List[Optional[float]]:
+    """Rounded for a chart; None where a value isn't finite (JSON has no infinity: 1e308 trades summed to one)."""
+    return [float(f"{v:.4g}") if math.isfinite(v) else None for v in values]

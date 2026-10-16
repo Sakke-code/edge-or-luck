@@ -173,6 +173,16 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
     app.config["EDGEORLUCK_LEDGER"] = book
     usage = app.config["EDGEORLUCK_USAGE"] = Usage(book.root)
 
+    @app.after_request
+    def _safety_headers(response: Response) -> Response:
+        # no sniffing, no framing (clickjacking), only the origin to other sites, and HTTPS once served over it
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        if request.scheme == "https":
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
+        return response
+
     def _counted(way: str) -> None:
         usage.count(way, request.headers.get("User-Agent", ""))
 
@@ -198,7 +208,9 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
         e = html.escape
         kept = [PRIVACY, "Through the assistant tools (/mcp and /api/tools): the trades and rules you send are used for "
                 "the answer and dropped. A frozen rule is not kept by us either: its receipt, signed by the server, "
-                "holds the rule and the time, and you keep it.", "Prices come from public sources (Binance, Yahoo "
+                "holds the rule and the time, and you keep it.", "A check sent as a link (/api/judge?pnl=...) carries "
+                "its numbers in the address itself, and the hosting provider's own request log may keep addresses; "
+                "send a file, a paste or the tools instead to keep them out of it.", "Prices come from public sources (Binance, Yahoo "
                 "Finance, the European Central Bank) and are fetched by the server, not linked to you.",
                 "Supporting happens on Buy Me a Coffee or Patreon, under their own privacy policies; we receive nothing "
                 "about you from them. A supporter's thank-you link unlocks Flip's extras in that browser only.",
@@ -251,13 +263,17 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
         payload = request.get_json(silent=True)
         if not isinstance(payload, dict):
             return _error("send a JSON object", "Its fields are listed in /openapi.json.", 400)
-        unknown = sorted(set(payload) - set(inspect.signature(fn).parameters))
+        params = inspect.signature(fn).parameters
+        unknown = sorted(set(payload) - set(params))
         if unknown:
             return _error(f"unknown field(s) {', '.join(unknown)}", "The fields are listed in /openapi.json.", 400)
+        missing = [n for n, p in params.items() if p.default is inspect.Parameter.empty and n not in payload]
+        if missing:
+            return _error(f"missing field(s) {', '.join(missing)}", "The fields are listed in /openapi.json.", 400)
         try:
             answer = fn(**payload)
-        except TypeError as exc:                      # a required field left out
-            return _error("a required field is missing", str(exc), 400)
+        except (TypeError, ValueError):               # a value of the wrong kind ("abc" for a number)
+            return _error("a field has a value of the wrong kind", "Each field's kind is in /openapi.json.", 400)
         _counted("tools")
         return jsonify(answer)
 
@@ -352,8 +368,9 @@ def create_app(ledger: Optional[Ledger] = None, *, rate_limit: int = RATE_LIMIT)
 
     def _on_this_computer() -> bool:
         """Private samples (EDGEORLUCK_PRIVATE_SAMPLES: your own records) are shown only to a browser on the
-        same computer, never to visitors of a hosted site."""
-        return (request.remote_addr or "") in ("127.0.0.1", "::1")
+        same computer, never to visitors of a hosted site. Behind a proxy (EDGEORLUCK_PROXIES) the address comes
+        from a header, so nobody there is on this computer."""
+        return proxies == 0 and (request.remote_addr or "") in ("127.0.0.1", "::1")
 
     def _sample(sample_id: str) -> Dict[str, Any]:
         if str(sample_id).startswith("private:") and not _on_this_computer():

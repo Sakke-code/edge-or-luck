@@ -82,7 +82,7 @@ def tier_of_token(token: str) -> int:
     """The tier a thank-you link unlocks, or 0 when it isn't one this site signed."""
     body, _, sig = str(token).rpartition(".")
     tier, good = body.split(".")[0], _signature(body)
-    ok = bool(body) and good is not None and hmac.compare_digest(sig, good) and tier.isdigit()
+    ok = bool(body) and good is not None and hmac.compare_digest(sig.encode(), good.encode()) and tier.isdigit()
     return int(tier) if ok and 1 <= int(tier) <= len(TIERS) else 0
 
 

@@ -109,6 +109,8 @@ def judge_trades(file_path: Optional[str] = None, csv_text: Optional[str] = None
                  backtest_pnl: Optional[List[float]] = None, detail: str = "markdown") -> str:
     """Judge a trading record: Markdown (detail="full": then the JSON result)."""
     data = _path(file_path) or csv_text or pnl
+    if data is None and not _FILES.get():          # over the web there are no files to name
+        return "Nothing to judge: pass csv_text (the export's text) or pnl (a list of results per trade, oldest first)."
     if data is None:
         return ("Nothing to judge: pass file_path (an export on this machine), csv_text (its text) or pnl (a list "
                 "of results per trade, oldest first).")
