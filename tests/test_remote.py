@@ -113,6 +113,54 @@ def test_the_mcp_server_for_the_web(monkeypatch):
     asyncio.run(run())
 
 
+def test_behind_a_proxy_the_visitor_is_the_address_the_proxy_added(tmp_path, monkeypatch):
+    """The rate limits, the site's and the MCP tools', key on the visitor's address. Behind one proxy that is the
+    last entry of X-Forwarded-For; the first is whatever the visitor wrote, which uvicorn's '*' trust read."""
+    pytest.importorskip("a2wsgi")
+    from pathlib import Path
+    from starlette.applications import Starlette
+    from edgeorluck.web import remote
+    seen = []
+
+    async def probe(scope, receive, send):
+        seen.append((scope.get("client"), scope.get("scheme")))
+
+    def visitor(proxies, headers, kind="http"):
+        scope = {"type": kind, "scheme": "http" if kind == "http" else "ws", "client": ("10.0.0.2", 5000),
+                 "headers": [(k.lower().encode(), v.encode()) for k, v in headers]}
+        asyncio.run(remote._behind_proxies(probe, proxies)(scope, None, None))
+        return seen[-1]
+
+    written = [("X-Forwarded-For", "6.6.6.6, 203.0.113.9"), ("X-Forwarded-Proto", "https")]
+    assert visitor(1, written) == (("203.0.113.9", 0), "https")
+    assert visitor(2, written) == (("6.6.6.6", 0), "http")             # one more hop back; only one scheme given
+    assert visitor(0, written) == visitor(1, []) == (("10.0.0.2", 5000), "http")   # the connection itself
+    assert visitor(1, [("X-Forwarded-For", "6.6.6.6"), ("X-Forwarded-For", "203.0.113.9")])[0] == ("203.0.113.9", 0)
+    assert visitor(1, [("X-Forwarded-Proto", "https")], "websocket")[1] == "wss"
+    monkeypatch.setenv("EDGEORLUCK_DATA_DIR", str(tmp_path))
+    assert isinstance(remote.make_app(), Starlette)                     # no proxy declared: nothing is rewritten
+    monkeypatch.setenv("EDGEORLUCK_PROXIES", "1")
+    hosted = remote.make_app()
+    assert not isinstance(hosted, Starlette)
+    sent = []
+
+    async def receive():
+        return {"type": "http.request", "body": b"", "more_body": False}
+
+    async def send(message):
+        sent.append(message)
+
+    scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1", "method": "GET", "scheme": "http",
+             "path": "/openapi.json", "raw_path": b"/openapi.json", "query_string": b"", "root_path": "",
+             "client": ("10.0.0.2", 5000), "server": ("10.0.0.1", 8080),
+             "headers": [(b"host", b"example.org")] + [(k.lower().encode(), v.encode()) for k, v in written]}
+    asyncio.run(hosted(scope, receive, send))
+    body = b"".join(m.get("body", b"") for m in sent if m["type"] == "http.response.body")
+    assert json.loads(body)["servers"][0]["url"] == "https://example.org"     # what a GPT's actions call
+    image = (Path(__file__).parents[1] / "Dockerfile").read_text(encoding="utf-8")
+    assert "EDGEORLUCK_PROXIES=1" in image and "--no-proxy-headers" in image and "forwarded-allow-ips" not in image
+
+
 @pytest.mark.slow
 def test_the_hosted_app_serves_the_site_the_api_and_mcp_over_http(tmp_path, monkeypatch):
     pytest.importorskip("a2wsgi")

@@ -52,7 +52,8 @@ CHANGELOG = [
                "a privacy page, and /support (Buy Me a Coffee, Patreon) whose thank-you links unlock Flip's wardrobe "
                "and the Flippy games (/games), the first free for everyone. One menu on every page, phones too; "
                "/strategies keeps money made apart from edge, in plain words. A stock's daily bar counts as done at "
-               "its session's close, so yesterday's session is there before today's open."},
+               "its session's close, so yesterday's session is there before today's open. Behind a proxy, the rate "
+               "limits key on the address the proxy added, never on one a visitor writes (EDGEORLUCK_PROXIES)."},
     {"version": "2.4.0", "date": "2026-10-14",
      "change": "For assistants: the MCP server counts every record and rule it judges in a session as a version "
                "tried, so the bar rises even when nobody says. backtest_rule(freeze=true) keeps a rule, and the new "

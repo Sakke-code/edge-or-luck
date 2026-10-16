@@ -1,11 +1,12 @@
 """The hosted site as one ASGI app: the web app at /, and the MCP server at /mcp for assistants that connect to a
 URL (ChatGPT, Claude and others):
 
-    uvicorn --factory edgeorluck.web.remote:make_app --host 0.0.0.0 --port $PORT --proxy-headers
+    EDGEORLUCK_PROXIES=1 uvicorn --factory edgeorluck.web.remote:make_app --host 0.0.0.0 --port $PORT --no-proxy-headers
 
 The tools are the local ones without files on anyone's computer (web/tools.py): versions tried are counted per
 study id the answers hand out, and a frozen rule comes back as a signed receipt. EDGEORLUCK_HOSTS (comma-separated
-host names) turns on the MCP transport's host check; unset, any host is served. Needs 'edgeorluck[host]'.
+host names) turns on the MCP transport's host check; unset, any host is served. EDGEORLUCK_PROXIES is the number
+of proxies in front of the app (_behind_proxies). Needs 'edgeorluck[host]'.
 """
 from __future__ import annotations
 
@@ -137,6 +138,31 @@ def build(usage: Optional[Usage] = None) -> MCPServer:
     return server
 
 
+def _behind_proxies(app: Any, proxies: int) -> Any:
+    """``app`` seeing each visitor as the nearest of ``proxies`` trusted proxies saw them: the address that proxy
+    added to X-Forwarded-For (the proxies-th from the right) and the scheme it was reached on. The rest of the header
+    is whatever the visitor wrote, so it is never read. Both rate limits key on this address: the site's (which
+    also has ProxyFix) and the MCP tools', which ProxyFix never sees. uvicorn's --forwarded-allow-ips '*' took the
+    leftmost address, so a visitor could name their own."""
+    if proxies <= 0:
+        return app
+
+    async def seen_by_the_proxy(scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] in ("http", "websocket"):
+            def values(name: bytes) -> List[str]:
+                return [v.strip() for key, raw in scope["headers"] if key == name
+                        for v in raw.decode("latin-1").split(",") if v.strip()]
+            hops, protos = values(b"x-forwarded-for"), values(b"x-forwarded-proto")
+            scope = dict(scope)
+            if len(hops) >= proxies:
+                scope["client"] = (hops[-proxies], 0)
+            if len(protos) >= proxies and protos[-proxies] in ("http", "https"):
+                secure = protos[-proxies] == "https"
+                scope["scheme"] = ("https" if secure else "http") if scope["type"] == "http" else ("wss" if secure else "ws")
+        await app(scope, receive, send)
+    return seen_by_the_proxy
+
+
 def make_app() -> Any:
     """The web app and the MCP server, in one ASGI app (data in EDGEORLUCK_DATA_DIR)."""
     hosts = [h.strip() for h in os.environ.get("EDGEORLUCK_HOSTS", "").split(",") if h.strip()]
@@ -146,7 +172,7 @@ def make_app() -> Any:
     site = create_app()
     app = build(site.config["EDGEORLUCK_USAGE"]).streamable_http_app(transport_security=security, host="0.0.0.0")
     app.router.routes.append(Mount("/", app=WSGIMiddleware(site)))
-    return app
+    return _behind_proxies(app, int(os.environ.get("EDGEORLUCK_PROXIES", "0") or 0))
 
 
 __all__ = ["build", "make_app"]
