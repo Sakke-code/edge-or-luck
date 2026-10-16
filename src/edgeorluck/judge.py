@@ -40,7 +40,7 @@ from .words import count, day, fmt, how_often, iso_day, join_and, one_in, rnd, r
 ENGINE_VERSION = "2.5.0"
 SCHEMA_VERSION = "1.0"
 CHANGELOG = [
-    {"version": "2.5.0", "date": "2026-10-14",
+    {"version": "2.5.0", "date": "2026-10-16",
      "change": "Stocks, ETFs, indices and currencies: the backtester fetches Yahoo Finance (split- and "
                "dividend-adjusted) and the ECB's daily rates as well as Binance, by symbol (AAPL, SPY, ^GSPC, "
                "EURUSD, BTCUSDT). Broker exports: Trading 212, Interactive Brokers, Nordnet (Finnish, Swedish, "
@@ -50,7 +50,9 @@ CHANGELOG = [
                "versions counted per study id; frozen rules as receipts the server signs; a Claude Code plugin with "
                "a skill; uvx edgeorluck mcp (server.json for the MCP registry). A public usage count (/api/usage), "
                "a privacy page, and /support (Buy Me a Coffee, Patreon) whose thank-you links unlock Flip's wardrobe "
-               "and the Flippy games (/games)."},
+               "and the Flippy games (/games), the first free for everyone. One menu on every page, phones too; "
+               "/strategies keeps money made apart from edge, in plain words. A stock's daily bar counts as done at "
+               "its session's close, so yesterday's session is there before today's open."},
     {"version": "2.4.0", "date": "2026-10-14",
      "change": "For assistants: the MCP server counts every record and rule it judges in a session as a version "
                "tried, so the bar rises even when nobody says. backtest_rule(freeze=true) keeps a rule, and the new "
