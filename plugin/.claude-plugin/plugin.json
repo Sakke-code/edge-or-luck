@@ -1,7 +1,7 @@
 {
   "name": "edge-or-luck",
   "displayName": "edge or luck",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "description": "Is a trading strategy a real edge, or luck? A strict judge for trades and backtests, an honest backtester, and forward tests, as a skill and an MCP server.",
   "author": { "name": "edge or luck", "url": "https://github.com/Sakke-code/edge-or-luck" },
   "homepage": "https://github.com/Sakke-code/edge-or-luck",

@@ -37,9 +37,18 @@ from .compare import compare_runs
 from .readers import ReadResult, Trades, _normalize_unit, number, read_any
 from .words import count, day, fmt, how_often, iso_day, join_and, one_in, rnd, round_list, share
 
-ENGINE_VERSION = "2.5.0"
+ENGINE_VERSION = "2.5.1"
 SCHEMA_VERSION = "1.0"
 CHANGELOG = [
+    {"version": "2.5.1", "date": "2026-10-16",
+     "change": "Fixes from an audit before hosting. The hosted assistant tools (/api/tools, /mcp) no longer open a "
+               "file on the server when csv_text looks like a path (one line of a file could come back, a secret "
+               "among it). A table whose cells are all numbers or dates (Datum;Gewinn, a trade number beside a "
+               "profit) is read as a table, not as a list with every cell a trade: such files had got a false real "
+               "edge. An unlabelled total at the bottom (MetaTrader 5) and trades a status column calls open are no "
+               "trades. Over the web a call fetches at most 50,000 bars, the server at most 1,200 Binance requests a "
+               "minute, and a tune tests at most 2,000,000 settings times bars; the site sends safety headers, keeps "
+               "no access log, never shows private samples behind a proxy and reads .xlsx files."},
     {"version": "2.5.0", "date": "2026-10-16",
      "change": "Stocks, ETFs, indices and currencies: the backtester fetches Yahoo Finance (split- and "
                "dividend-adjusted) and the ECB's daily rates as well as Binance, by symbol (AAPL, SPY, ^GSPC, "

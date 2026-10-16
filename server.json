@@ -2,18 +2,18 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.Sakke-code/edge-or-luck",
   "title": "edge or luck",
-  "description": "Is a trading record a real edge or luck? An honest judge, backtester and public forward tests.",
+  "description": "Is a trading record a real edge or luck? An honest judge, backtester and forward tests.",
   "repository": {
     "url": "https://github.com/Sakke-code/edge-or-luck",
     "source": "github"
   },
-  "version": "2.5.0",
+  "version": "2.5.1",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "edgeorluck",
-      "version": "2.5.0",
+      "version": "2.5.1",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
